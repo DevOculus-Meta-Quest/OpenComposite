@@ -62,9 +62,13 @@ public:
 
 private:
 	void ThrowIfFailed(HRESULT test);
+	ID3D11Texture2D *ProduceUsableTexture(ID3D11Texture2D *input, D3D11_TEXTURE2D_DESC &inputDesc);
 
 	ID3D11Device *device;
 	ID3D11DeviceContext *context;
+
+	ID3D11Texture2D *staging;
+	D3D11_TEXTURE2D_DESC stagingDesc; // IDK if it's necessary, but why not.
 
 	ID3D11InputLayout *pLayout;
 	ID3D11VertexShader *pVS;

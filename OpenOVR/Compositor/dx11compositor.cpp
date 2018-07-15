@@ -211,6 +211,8 @@ void DX11Compositor::Invoke(ovrEyeType eye, const vr::Texture_t * texture, const
 	D3D11_TEXTURE2D_DESC srcDesc;
 	src->GetDesc(&srcDesc);
 
+	ID3D11Texture2D *usableSrc = ProduceUsableTexture(src, srcDesc);
+
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	memset(&srvDesc, 0, sizeof(srvDesc));
 	srvDesc.Format = srcDesc.Format;
@@ -219,7 +221,7 @@ void DX11Compositor::Invoke(ovrEyeType eye, const vr::Texture_t * texture, const
 	srvDesc.Texture2D.MipLevels = -1;
 
 	ID3D11ShaderResourceView *srv;
-	ThrowIfFailed(device->CreateShaderResourceView(src, &srvDesc, &srv));
+	ThrowIfFailed(device->CreateShaderResourceView(usableSrc, &srvDesc, &srv));
 
 	// Produce the final image
 	ID3D11RenderTargetView* view = renderTargets[eye][currentIndex];
@@ -248,4 +250,46 @@ void DX11Compositor::Invoke(ovrEyeType eye, const vr::Texture_t * texture, const
 	context->Draw(6, 0);
 
 	srv->Release();
+}
+
+ID3D11Texture2D * DX11Compositor::ProduceUsableTexture(ID3D11Texture2D * input, D3D11_TEXTURE2D_DESC & inputDesc) {
+	if (inputDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+		// Texture is usable, no need for staging
+		return input;
+	}
+
+	bool usable = staging != NULL;
+#define CHECK(name) \
+if(inputDesc.name != stagingDesc.name) { \
+	usable = false; \
+	OOVR_LOG("Resource mismatch: " #name); \
+}
+
+	CHECK(Width);
+	CHECK(Height);
+	CHECK(MipLevels);
+	CHECK(Format);
+	CHECK(SampleDesc.Count);
+	CHECK(SampleDesc.Quality);
+#undef CHECK
+
+	if (!usable) {
+		OOVR_LOG("Generating new staging resource");
+
+		if (staging) {
+			staging->Release();
+			staging = NULL;
+		}
+
+		stagingDesc = inputDesc;
+		stagingDesc.Usage = D3D11_USAGE_DEFAULT;
+		stagingDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+		device->CreateTexture2D(&stagingDesc, NULL, &staging);
+	}
+
+	// Is this a performance drag? MSDN says it's basically a memcpy, so hopefully not.
+	context->CopyResource(staging, input);
+
+	return staging;
 }
