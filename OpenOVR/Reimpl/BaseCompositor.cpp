@@ -36,6 +36,46 @@ typedef int ovr_enum_t;
 	throw "stub"; \
 }
 
+//******************************************************************************
+const int MaxNameLen = 256;
+
+#include <Windows.h>
+#include "dbghelp.h"
+#include <sstream>
+#pragma comment(lib,"Dbghelp.lib")
+
+void GetStackWalk() {
+	std::string outWalk;
+
+	// Set up the symbol options so that we can gather information from the current
+	// executable's PDB files, as well as the Microsoft symbol servers.  We also want
+	// to undecorate the symbol names we're returned.  If you want, you can add other
+	// symbol servers or paths via a semi-colon separated list in SymInitialized.
+	::SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_UNDNAME);
+	//if (!::SymInitialize(::GetCurrentProcess(), "http://msdl.microsoft.com/download/symbols", TRUE)) return false;
+
+	// Capture up to 25 stack frames from the current call stack.  We're going to
+	// skip the first stack frame returned because that's the GetStackWalk function
+	// itself, which we don't care about.
+	PVOID addrs[25] = { 0 };
+	USHORT frames = CaptureStackBackTrace(1, 25, addrs, NULL);
+
+	for (USHORT i = 0; i < frames; i++) {
+		std::stringstream stream;
+		stream << std::hex << (DWORD64)addrs[i];
+		std::string result(stream.str());
+		outWalk.append(stream.str());
+		outWalk.append("\n");
+	}
+
+	::SymCleanup(::GetCurrentProcess());
+
+	OOVR_LOG(outWalk.c_str());
+	MessageBoxA(NULL, outWalk.c_str(), "OOVR Stack Trace", MB_OK);
+}
+
+//******************************************************************************
+
 void BaseCompositor::SubmitFrames() {
 	ovrSession &session = *ovr::session;
 	ovrGraphicsLuid &luid = *ovr::luid;
@@ -70,7 +110,7 @@ void BaseCompositor::SubmitFrames() {
 
 	ovrLayerEyeFov ld;
 	ld.Header.Type = ovrLayerType_EyeFov;
-	ld.Header.Flags = ovrLayerFlag_TextureOriginAtBottomLeft;   // Because OpenGL.
+	ld.Header.Flags = ovrLayerFlag_TextureOriginAtBottomLeft;   // Because OpenGL. TODO wait, what about DirectX?
 
 	for (int eye = 0; eye < 2; ++eye) {
 		ld.ColorTexture[eye] = chains[eye];
@@ -89,10 +129,42 @@ void BaseCompositor::SubmitFrames() {
 	frameIndex++;
 }
 
+#include "subhook/subhook.h"
+subhook::Hook *foo_hook;
+typedef LONG (WINAPI *exception_handler_func_t)(EXCEPTION_POINTERS *ptr);
+exception_handler_func_t exception_setup_func = (exception_handler_func_t)0x0073D0A0;
+LONG WINAPI setup_exception_handler(EXCEPTION_POINTERS *arg) {
+	MessageBoxA(NULL, "setup_exception_handler", "setup_exception_handler", MB_OK);
+	GetStackWalk();
+	subhook::ScopedHookRemove remove(foo_hook);
+
+	int a = EXCEPTION_ACCESS_VIOLATION;
+
+	// Write debug info into the log
+	EXCEPTION_RECORD *rec = arg->ExceptionRecord;
+
+	std::stringstream stream;
+	stream << "Exception info:" << endl;
+	stream << "Code: 0x" << std::hex << rec->ExceptionCode << endl;
+	stream << "Address: 0x" << std::hex << rec->ExceptionAddress << endl;
+	std::string result(stream.str());
+	OOVR_LOG(result.c_str());
+
+	// Return:
+	//return exception_setup_func(arg); // writes crash.txt
+	return 1;
+}
+
 BaseCompositor::BaseCompositor() {
 	memset(&trackingState, 0, sizeof(ovrTrackingState));
 	chains[0] = NULL;
 	chains[1] = NULL;
+
+	// Debugging code, please remove
+	//void *exception_setup_func = (void*)0x0073D0A0; // 0x00A21C20;
+	//void *exception_setup_func = (void*)0x00846E40; // frame_timing_thing
+	//foo_hook = new subhook::Hook();
+	//foo_hook->Install(exception_setup_func, setup_exception_handler);
 }
 
 BaseCompositor::~BaseCompositor() {
@@ -126,39 +198,52 @@ ovr_enum_t BaseCompositor::WaitGetPoses(TrackedDevicePose_t * renderPoseArray, u
 	return GetLastPoses(renderPoseArray, renderPoseArrayCount, gamePoseArray, gamePoseArrayCount);
 }
 
+void BaseCompositor::GetSinglePose(vr::TrackedDeviceIndex_t index, vr::TrackedDevicePose_t* pose) {
+	memset(pose, 0, sizeof(TrackedDevicePose_t));
+
+	if (index == k_unTrackedDeviceIndex_Hmd) {
+		pose->bPoseIsValid = true;
+
+		// TODO deal with the HMD not being connected
+		pose->bDeviceIsConnected = true;
+
+		// TODO
+		pose->eTrackingResult = TrackingResult_Running_OK;
+
+		ovrPoseStatef &hmdPose = trackingState.HeadPose;
+
+		O2S_v3f(hmdPose.LinearVelocity, pose->vVelocity);
+		O2S_v3f(hmdPose.AngularVelocity, pose->vAngularVelocity);
+
+		Posef ovrPose(hmdPose.ThePose);
+		Matrix4f hmdTransform(ovrPose);
+
+		O2S_om34(hmdTransform, pose->mDeviceToAbsoluteTracking);
+	}
+	else {
+		pose->bPoseIsValid = false;
+		pose->bDeviceIsConnected = false;
+	}
+}
+
 ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t * renderPoseArray, uint32_t renderPoseArrayCount,
 	TrackedDevicePose_t * gamePoseArray, uint32_t gamePoseArrayCount) {
 
-	if (gamePoseArrayCount != 0)
-		throw "Game poses not yet supported!";
+	for (size_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
+		TrackedDevicePose_t *renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
+		TrackedDevicePose_t *gamePose = i < gamePoseArrayCount ? gamePoseArray + i : NULL;
 
-	for (size_t i = 0; i < renderPoseArrayCount; i++) {
-		TrackedDevicePose_t *pose = renderPoseArray + i;
-
-		memset(pose, 0, sizeof(TrackedDevicePose_t));
-
-		if (i == k_unTrackedDeviceIndex_Hmd) {
-			pose->bPoseIsValid = true;
-
-			// TODO deal with the HMD not being connected
-			pose->bDeviceIsConnected = true;
-
-			// TODO
-			pose->eTrackingResult = TrackingResult_Running_OK;
-
-			ovrPoseStatef &hmdPose = trackingState.HeadPose;
-
-			O2S_v3f(hmdPose.LinearVelocity, pose->vVelocity);
-			O2S_v3f(hmdPose.AngularVelocity, pose->vAngularVelocity);
-
-			Posef ovrPose(hmdPose.ThePose);
-			Matrix4f hmdTransform(ovrPose);
-
-			O2S_om34(hmdTransform, pose->mDeviceToAbsoluteTracking);
+		if (renderPose) {
+			GetSinglePose(i, renderPose);
 		}
-		else {
-			pose->bPoseIsValid = false;
-			pose->bDeviceIsConnected = false;
+
+		if (gamePose) {
+			if (renderPose) {
+				*gamePose = *renderPose;
+			}
+			else {
+				GetSinglePose(i, gamePose);
+			}
 		}
 	}
 
@@ -261,13 +346,69 @@ void BaseCompositor::PostPresentHandoff() {
 	STUBBED();
 }
 
-//bool BaseCompositor::GetFrameTiming(Compositor_FrameTiming * pTiming, uint32_t unFramesAgo) {
-//	STUBBED();
-//}
+LONG __stdcall my_filter(struct _EXCEPTION_POINTERS *ExceptionInfo) {
+	MessageBoxA(NULL, "exception!", "Exception Handler", MB_OK);
+	return 0;
+}
 
-//uint32_t BaseCompositor::GetFrameTimings(Compositor_FrameTiming * pTiming, uint32_t nFrames) {
-//	STUBBED();
-//}
+bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint32_t unFramesAgo) {
+	//if (pTiming->m_nSize != sizeof(OOVR_Compositor_FrameTiming)) {
+	//	STUBBED();
+	//}
+
+	static int framenum = 0; // TODO do this properly
+
+	memset(pTiming, 0, sizeof(OOVR_Compositor_FrameTiming));
+
+	pTiming->m_nSize = sizeof(OOVR_Compositor_FrameTiming); // Set to sizeof( Compositor_FrameTiming ) // TODO in methods calling this
+	pTiming->m_nFrameIndex = framenum++; // TODO
+	pTiming->m_nNumFramePresents = 1; // number of times this frame was presented
+	pTiming->m_nNumMisPresented = 0; // number of times this frame was presented on a vsync other than it was originally predicted to
+	pTiming->m_nNumDroppedFrames = 0; // number of additional times previous frame was scanned out
+	pTiming->m_nReprojectionFlags = 0;
+
+	/** Absolute time reference for comparing frames.  This aligns with the vsync that running start is relative to. */
+	pTiming->m_flSystemTimeInSeconds = 0;
+
+	/*
+	/ ** These times may include work from other processes due to OS scheduling.
+	* The fewer packets of work these are broken up into, the less likely this will happen.
+	* GPU work can be broken up by calling Flush.  This can sometimes be useful to get the GPU started
+	* processing that work earlier in the frame. * /
+	pTiming.m_flPreSubmitGpuMs; // time spent rendering the scene (gpu work submitted between WaitGetPoses and second Submit)
+	pTiming.m_flPostSubmitGpuMs; // additional time spent rendering by application (e.g. companion window)
+	*/
+	pTiming->m_flTotalRenderGpuMs = 5; // TODO // time between work submitted immediately after present (ideally vsync) until the end of compositor submitted work
+	/*
+	pTiming.m_flCompositorRenderGpuMs; // time spend performing distortion correction, rendering chaperone, overlays, etc.
+	pTiming.m_flCompositorRenderCpuMs; // time spent on cpu submitting the above work for this frame
+	pTiming.m_flCompositorIdleCpuMs; // time spent waiting for running start (application could have used this much more time)
+
+								   / ** Miscellaneous measured intervals. * /
+	pTiming.m_flClientFrameIntervalMs; // time between calls to WaitGetPoses
+	pTiming.m_flPresentCallCpuMs; // time blocked on call to present (usually 0.0, but can go long)
+	pTiming.m_flWaitForPresentCpuMs; // time spent spin-waiting for frame index to change (not near-zero indicates wait object failure)
+	pTiming.m_flSubmitFrameMs; // time spent in IVRCompositor::Submit (not near-zero indicates driver issue)
+
+							 / ** The following are all relative to this frame's SystemTimeInSeconds * /
+	pTiming.m_flWaitGetPosesCalledMs;
+	pTiming.m_flNewPosesReadyMs;
+	pTiming.m_flNewFrameReadyMs; // second call to IVRCompositor::Submit
+	pTiming.m_flCompositorUpdateStartMs;
+	pTiming.m_flCompositorUpdateEndMs;
+	pTiming.m_flCompositorRenderStartMs;
+	*/
+
+	GetSinglePose(k_unTrackedDeviceIndex_Hmd, &pTiming->m_HmdPose); // pose used by app to render this frame
+
+	SetUnhandledExceptionFilter(my_filter);
+
+	return true;
+}
+
+uint32_t BaseCompositor::GetFrameTimings(OOVR_Compositor_FrameTiming * pTiming, uint32_t nFrames) {
+	STUBBED();
+}
 
 float BaseCompositor::GetFrameTimeRemaining() {
 	STUBBED();
@@ -278,11 +419,17 @@ float BaseCompositor::GetFrameTimeRemaining() {
 //}
 
 void BaseCompositor::FadeToColor(float fSeconds, float fRed, float fGreen, float fBlue, float fAlpha, bool bBackground) {
-	STUBBED();
+	fadeTime = fSeconds;
+	fadeColour.r = fRed;
+	fadeColour.g = fGreen;
+	fadeColour.b = fBlue;
+	fadeColour.a = fAlpha;
+
+	// TODO what dose background do?
 }
 
 HmdColor_t BaseCompositor::GetCurrentFadeColor(bool bBackground) {
-	STUBBED();
+	return fadeColour;
 }
 
 void BaseCompositor::FadeGrid(float fSeconds, bool bFadeIn) {
@@ -294,11 +441,14 @@ float BaseCompositor::GetCurrentGridAlpha() {
 }
 
 ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t * pTextures, uint32_t unTextureCount) {
-	STUBBED();
+	// TODO!
+	//STUBBED();
+	return VRCompositorError_None;
 }
 
 void BaseCompositor::ClearSkyboxOverride() {
-	STUBBED();
+	// TODO
+	//STUBBED();
 }
 
 void BaseCompositor::CompositorBringToFront() {
@@ -358,7 +508,10 @@ void BaseCompositor::ForceReconnectProcess() {
 }
 
 void BaseCompositor::SuspendRendering(bool bSuspend) {
-	STUBBED();
+	// TODO
+	// I'm not sure what the purpose of this function is. If you know, please tell me.
+	// - ZNix
+	//STUBBED();
 }
 
 ovr_enum_t BaseCompositor::GetMirrorTextureD3D11(EVREye eEye, void * pD3D11DeviceOrResource, void ** ppD3D11ShaderResourceView) {

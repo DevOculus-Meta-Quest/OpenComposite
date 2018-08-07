@@ -57,6 +57,17 @@ VR_INTERFACE void *VR_CALLTYPE VR_GetGenericInterface(const char * interfaceVers
 		return val; \
 	}
 
+	if (!strcmp(vr::IVRCompositor_022::IVRCompositor_Version, interfaceVersion)) {
+		//return NULL;
+	}
+
+	static bool shown_message = false;
+	if(!shown_message)
+		//MessageBoxA(NULL, "OpenOVR Loaded", "OpenOVR Message", MB_OK);
+	shown_message = true;
+
+	//MessageBoxA(NULL, interfaceVersion, "OpenOVR Debug", MB_OK);
+
 	INTERFACE(017, System);
 	INTERFACE(015, System);
 	INTERFACE(005, RenderModels);
@@ -123,5 +134,6 @@ VR_INTERFACE const char *VR_CALLTYPE VR_RuntimePath() {
 }
 
 VR_INTERFACE void VR_CALLTYPE VR_ShutdownInternal() {
-	throw "stub";
+	// TODO cleanup
+	//throw "stub";
 }

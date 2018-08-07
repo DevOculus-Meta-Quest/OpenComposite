@@ -29,18 +29,23 @@ void BaseSystem::GetRecommendedRenderTargetSize(uint32_t * width, uint32_t * hei
 
 	*width = size.w;
 	*height = size.h;
+
+	char msg[1024];
+	snprintf(msg, sizeof(msg), "Render size: %d, %d", *width, *height);
+	//MessageBoxA(NULL, msg, "Render Size", MB_OK);
 }
 
 HmdMatrix44_t BaseSystem::GetProjectionMatrix(EVREye eye, float znear, float zfar) {
 	ovrMatrix4f matrix = ovrMatrix4f_Projection(
 		ovr::hmdDesc.DefaultEyeFov[S2O_eye(eye)],
 		znear, zfar,
-		ovrProjection_None | ovrProjection_ClipRangeOpenGL // TODO API independent
+		ovrProjection_None // | ovrProjection_ClipRangeOpenGL // TODO API independent
 	);
 
 	return O2S_m4(matrix);
 }
 
+void GetStackWalk();
 void BaseSystem::GetProjectionRaw(EVREye eye, float * pfLeft, float * pfRight, float * pfTop, float * pfBottom) {
 	/**
 	* With a straight passthrough:
@@ -59,13 +64,14 @@ void BaseSystem::GetProjectionRaw(EVREye eye, float * pfLeft, float * pfRight, f
 	*/
 
 	ovrFovPort fov = ovr::hmdDesc.DefaultEyeFov[S2O_eye(eye)];
-	*pfTop = -fov.UpTan; // negate
-	*pfBottom = fov.DownTan;
+	*pfTop = -fov.DownTan; // negate, and for some reason the up and down have to be switched
+	*pfBottom = fov.UpTan;
 	*pfLeft = -fov.LeftTan; // negate
 	*pfRight = fov.RightTan;
 }
 
 bool BaseSystem::ComputeDistortion(EVREye eEye, float fU, float fV, DistortionCoordinates_t * pDistortionCoordinates) {
+	STUBBED();
 	return false;
 }
 
@@ -78,8 +84,14 @@ HmdMatrix34_t BaseSystem::GetEyeToHeadTransform(EVREye ovr_eye) {
 	// to eye->hmd) breaks the view, and it's fine without it. That or I'm misunderstanding
 	// what exactly this method is supposed to return.
 
-	HmdMatrix34_t result;
-	O2S_om34(transform, result);
+	HmdMatrix34_t result = { 0 };
+	//for (int i = 0; i < 3; i++)
+	//	result.m[i][i] = 1;
+	//for (int x = 0; x < 3; x++)
+	//	for (int y = 0; y < 4; y++)
+	//		result.m[x][y] = 0.1;
+	//if (ovr_eye == vr::Eye_Left)
+		O2S_om34(transform, result);
 	return result;
 }
 
@@ -325,6 +337,16 @@ const char * BaseSystem::GetPropErrorNameFromEnum(ETrackedPropertyError error) {
 }
 
 bool BaseSystem::PollNextEvent(VREvent_t * pEvent, uint32_t uncbVREvent) {
+	/*static int counter = 0;
+	if (counter++ >= 2) {
+		pEvent->eventType = VREvent_IpdChanged;
+		pEvent->trackedDeviceIndex = 0;
+		pEvent->eventAgeSeconds = 0;
+		pEvent->data.ipd.ipdMeters = 1000;
+
+		counter = 0;
+		return true;
+	}*/
 	return false; // TODO
 }
 

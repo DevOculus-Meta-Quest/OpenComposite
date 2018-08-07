@@ -23,10 +23,14 @@ EVROverlayError BaseOverlay::FindOverlay(const char *pchOverlayKey, VROverlayHan
 	STUBBED();
 }
 EVROverlayError BaseOverlay::CreateOverlay(const char *pchOverlayKey, const char *pchOverlayName, VROverlayHandle_t * pOverlayHandle) {
-	STUBBED();
+	//MessageBoxA(NULL, pchOverlayKey, "Stubbed func!", MB_OK);
+	//MessageBoxA(NULL, pchOverlayName, "Stubbed func!", MB_OK);
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::DestroyOverlay(VROverlayHandle_t ulOverlayHandle) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::SetHighQualityOverlay(VROverlayHandle_t ulOverlayHandle) {
 	STUBBED();
@@ -62,13 +66,15 @@ EVROverlayError BaseOverlay::GetOverlayFlag(VROverlayHandle_t ulOverlayHandle, V
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayColor(VROverlayHandle_t ulOverlayHandle, float fRed, float fGreen, float fBlue) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::GetOverlayColor(VROverlayHandle_t ulOverlayHandle, float *pfRed, float *pfGreen, float *pfBlue) {
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayAlpha(VROverlayHandle_t ulOverlayHandle, float fAlpha) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::GetOverlayAlpha(VROverlayHandle_t ulOverlayHandle, float *pfAlpha) {
 	STUBBED();
@@ -80,13 +86,15 @@ EVROverlayError BaseOverlay::GetOverlayTexelAspect(VROverlayHandle_t ulOverlayHa
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlaySortOrder(VROverlayHandle_t ulOverlayHandle, uint32_t unSortOrder) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::GetOverlaySortOrder(VROverlayHandle_t ulOverlayHandle, uint32_t *punSortOrder) {
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayWidthInMeters(VROverlayHandle_t ulOverlayHandle, float fWidthInMeters) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::GetOverlayWidthInMeters(VROverlayHandle_t ulOverlayHandle, float *pfWidthInMeters) {
 	STUBBED();
@@ -119,7 +127,7 @@ EVROverlayError BaseOverlay::GetOverlayTransformType(VROverlayHandle_t ulOverlay
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayTransformAbsolute(VROverlayHandle_t ulOverlayHandle, ETrackingUniverseOrigin eTrackingOrigin, const HmdMatrix34_t *pmatTrackingOriginToOverlayTransform) {
-	STUBBED();
+	return VROverlayError_None; // TODO
 }
 EVROverlayError BaseOverlay::GetOverlayTransformAbsolute(VROverlayHandle_t ulOverlayHandle, ETrackingUniverseOrigin *peTrackingOrigin, HmdMatrix34_t *pmatTrackingOriginToOverlayTransform) {
 	STUBBED();
@@ -140,13 +148,16 @@ EVROverlayError BaseOverlay::GetOverlayTransformOverlayRelative(VROverlayHandle_
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayTransformOverlayRelative(VROverlayHandle_t ulOverlayHandle, VROverlayHandle_t ulOverlayHandleParent, const HmdMatrix34_t *pmatParentOverlayToOverlayTransform) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::ShowOverlay(VROverlayHandle_t ulOverlayHandle) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::HideOverlay(VROverlayHandle_t ulOverlayHandle) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 bool BaseOverlay::IsOverlayVisible(VROverlayHandle_t ulOverlayHandle) {
 	STUBBED();
@@ -197,7 +208,8 @@ EVROverlayError BaseOverlay::GetOverlayDualAnalogTransform(VROverlayHandle_t ulO
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle, const Texture_t *pTexture) {
-	STUBBED();
+	//STUBBED();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::ClearOverlayTexture(VROverlayHandle_t ulOverlayHandle) {
 	STUBBED();

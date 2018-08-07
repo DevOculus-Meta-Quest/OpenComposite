@@ -28,6 +28,12 @@
     <Filter Include="Header Files\OpenVR">
       <UniqueIdentifier>{12eb05f6-fbdd-4b99-b1ce-d61859037ef7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Subhook">
+      <UniqueIdentifier>{52e54e4e-9449-4437-8126-cccd58f5dc2c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Subhook">
+      <UniqueIdentifier>{cc212900-9fd0-4b72-a807-0c06de582c0a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -141,6 +147,12 @@
     <ClInclude Include="logging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="subhook\subhook.h">
+      <Filter>Header Files\Subhook</Filter>
+    </ClInclude>
+    <ClInclude Include="subhook\subhook_private.h">
+      <Filter>Header Files\Subhook</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -202,6 +214,9 @@
     </ClCompile>
     <ClCompile Include="logging.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="subhook\subhook.c">
+      <Filter>Source Files\Subhook</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

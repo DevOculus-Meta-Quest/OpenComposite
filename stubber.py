@@ -28,6 +28,7 @@ for line in fileinput.input():
 			#print("\ttype=%s, name=%s" % (atype, aname))
 			argnames.append(aname)
 			argnodefaults.append(atype + " " + aname)
-		print("%s %s::%s(%s) {\n\treturn base.%s(%s);\n}" % (ret, cname, name, ", ".join(argnodefaults), name, ", ".join(argnames)))
+		#print("%s %s::%s(%s) {\n\treturn base.%s(%s);\n}" % (ret, cname, name, ", ".join(argnodefaults), name, ", ".join(argnames)))
 		#print("%s %s::%s(%s) {\n\tSTUBBED();\n}" % (ret, cname, name, args_str))
+		print("%s (*%s)(%s);" % (ret, name, args_str))
 
