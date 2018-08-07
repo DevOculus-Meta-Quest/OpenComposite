@@ -74,6 +74,9 @@ private:
 	ID3D11VertexShader *pVS;
 	ID3D11PixelShader *pPS;
 	ID3D11Buffer *pVBuffer;
+	ID3D11Buffer *constantsBuffer;
+
+	ID3D11SamplerState *sampler;
 
 	std::vector<ID3D11RenderTargetView*> renderTargets[2];
 };
