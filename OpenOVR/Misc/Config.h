@@ -15,6 +15,7 @@ public:
 	inline bool UseViewportStencil() const { return useViewportStencil; }
 	inline bool ForceConnectedTouch() const { return forceConnectedTouch; }
 	inline bool LogGetTrackedProperty() const { return logGetTrackedProperty; }
+	inline bool DX10Mode() const { return dx10Mode; }
 
 private:
 	static int ini_handler(
@@ -32,7 +33,7 @@ private:
 	bool useViewportStencil = false;
 	bool forceConnectedTouch = true;
 	bool logGetTrackedProperty = false;
-
+	bool dx10Mode = false;
 };
 
 extern Config oovr_global_configuration;

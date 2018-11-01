@@ -3,7 +3,7 @@
 
 using namespace vr;
 
-HmdMatrix44_t O2S_m4(ovrMatrix4f input) {
+HmdMatrix44_t O2S_m4(const ovrMatrix4f & input) {
 	HmdMatrix44_t output;
 
 	memcpy_s(output.m, sizeof(float[4][4]), input.M, sizeof(float[4][4]));
@@ -25,6 +25,15 @@ void O2S_om34(const OVR::Matrix4f & in, HmdMatrix34_t & out) {
 	for (size_t y = 0; y < 3; y++) {
 		for (size_t x = 0; x < 4; x++) {
 			out.m[y][x] = in.M[y][x];
+		}
+	}
+}
+
+// out should be an Identity matrix.
+void S2O_om44(const HmdMatrix34_t & in, OVR::Matrix4f & out) {
+	for (size_t y = 0; y < 3; y++) {
+		for (size_t x = 0; x < 4; x++) {
+			out.M[y][x] = in.m[y][x];
 		}
 	}
 }

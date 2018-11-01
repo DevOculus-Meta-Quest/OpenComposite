@@ -192,9 +192,9 @@ EVRRenderModelError BaseRenderModels::LoadRenderModel_Async(const char * pchRend
 			// Transform from the OVR pose to the SteamVR pose, and rotate the hand model at the same time
 			v = transform.Transform(v);
 
-			vr::HmdVector3_t res;
-			O2S_v3f(v, res);
-			verts.push_back(res);
+			vr::HmdVector3_t resv;
+			O2S_v3f(v, resv);
+			verts.push_back(resv);
 		}
 		else if (op == "vt") {
 			// UV
@@ -211,9 +211,9 @@ EVRRenderModelError BaseRenderModels::LoadRenderModel_Async(const char * pchRend
 			// Don't translate it though, since it's a normal
 			v = rotate * v;
 
-			vr::HmdVector3_t res;
-			O2S_v3f(v, res);
-			normals.push_back(res);
+			vr::HmdVector3_t resv;
+			O2S_v3f(v, resv);
+			normals.push_back(resv);
 		}
 		else if (op == "f") {
 			// Face
@@ -316,7 +316,8 @@ EVRRenderModelError BaseRenderModels::LoadIntoTextureD3D11_Async(TextureID_t tex
 	}
 
 	ID3D11Texture2D *tempTex;
-	HRESULT hr = device->CreateTexture2D(&desc, init, &tempTex);
+	HRESULT hr = S_OK;
+	OOVR_FAILED_DX_LOG(device->CreateTexture2D(&desc, init, &tempTex));
 
 	// Copy over the texture
 	context->CopyResource(output, tempTex);

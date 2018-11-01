@@ -13,7 +13,13 @@
 // Let's really hope noone tries to use DX10
 #include "d3d11.h"
 #include "d3d12.h"
+
+#pragma warning(push)
+#pragma warning(disable : 4324)   // structure padded due to alignment specifier.
 #include "d3dx12.h"
+#pragma warning(pop)
+
+
 #endif
 
 typedef unsigned int GLuint;
@@ -154,6 +160,9 @@ public:
 	* Returns VRCompositorError_IndexOutOfRange if unDeviceIndex not less than k_unMaxTrackedDeviceCount otherwise VRCompositorError_None.
 	* It is okay to pass NULL for either pose if you only want one of the values. */
 	virtual ovr_enum_t GetLastPoseForTrackedDeviceIndex(vr::TrackedDeviceIndex_t unDeviceIndex, vr::TrackedDevicePose_t *pOutputPose, vr::TrackedDevicePose_t *pOutputGamePose);
+
+	/** Creates API specific Compositor**/
+	virtual Compositor* CreateCompositorAPI(const vr::Texture_t* texture, const OVR::Sizei& fovTextureSize) const;
 
 	/** Updated scene texture to display. If pBounds is NULL the entire texture will be used.  If called from an OpenGL app, consider adding a glFlush after
 	* Submitting both frames to signal the driver to start processing, otherwise it may wait until the command buffer fills up, causing the app to miss frames.

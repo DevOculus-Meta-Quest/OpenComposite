@@ -23,7 +23,7 @@ void Haptics::StartSimplePulse(ovrControllerType ctrl, unsigned int durationMicr
 		OOVR_ABORT("invalid controller");
 	}
 
-	int numSamples = durationMicroseconds * 320.0f / 1000000.0f;
+	int numSamples = static_cast<int>((durationMicroseconds * 320.0f / 1000000.0f) + 0.5f /*round*/);
 
 	if (numSamples > OVR_HAPTICS_BUFFER_SAMPLES_MAX)
 		numSamples = OVR_HAPTICS_BUFFER_SAMPLES_MAX;

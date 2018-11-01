@@ -29,12 +29,13 @@ bool BaseChaperoneSetup::GetLiveCollisionBoundsInfo(VR_OUT_ARRAY_COUNT(punQuadsC
 	ovrVector3f points[4];
 	int pointsCount;
 
-	ovrResult status = ovr_GetBoundaryGeometry(
+	ovrResult result = ovrSuccess;
+	OOVR_FAILED_OVR_LOG(ovr_GetBoundaryGeometry(
 		*ovr::session,
 		ovrBoundary_PlayArea,
 		points,
 		&pointsCount
-	);
+	));
 
 	// Lifted from ReVive
 	// TODO add ReVive (MIT) licence to repo

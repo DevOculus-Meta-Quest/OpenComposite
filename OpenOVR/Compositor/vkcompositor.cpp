@@ -22,8 +22,6 @@ ovrTextureFormat vkToOvrFormat(VkFormat vk, vr::EColorSpace colourSpace) {
 	// TODO is this really how it should work?
 	// No idea why or how or what, but for now just force SRGB on as otherwise
 	// it causes trouble.
-	bool useSrgb = true; // colourSpace != vr::ColorSpace_Auto;
-
 	switch (vk) {
 
 	case VK_FORMAT_R8G8B8A8_SRGB:
@@ -208,7 +206,7 @@ void VkCompositor::Invoke(const vr::Texture_t * texture) {
 			0,
 			0, nullptr,
 			0, nullptr,
-			barriers.size(), barriers.data()
+			static_cast<uint32_t>(barriers.size()), barriers.data()
 		);
 
 		endSingleTimeCommands(tex->m_pDevice, (VkCommandPool)commandPool, commandBuffer, graphicsQueueFamilyId);
@@ -287,20 +285,20 @@ void VkCompositor::Invoke(ovrEyeType eye, const vr::Texture_t * texture, const v
 	}
 }
 
-bool VkCompositor::CheckChainCompatible(const vr::VRVulkanTextureData_t &tex, const ovrTextureSwapChainDesc &chainDesc, vr::EColorSpace colourSpace) {
+bool VkCompositor::CheckChainCompatible(const vr::VRVulkanTextureData_t &tex, const ovrTextureSwapChainDesc &chainDsc, vr::EColorSpace colourSpace) {
 	bool usable = true;
 #define FAIL(name) { \
 	usable = false; \
 	OOVR_LOG("Resource mismatch: " #name); \
 }
 #define CHECK(name, chainName) \
-if(tex.name != chainDesc.chainName) FAIL(name);
+if (static_cast<int>(tex.name) != chainDsc.chainName) FAIL(name);
 
 	CHECK(m_nWidth, Width);
 	CHECK(m_nHeight, Height);
 	CHECK(m_nSampleCount, SampleCount);
 
-	if (chainDesc.Format != vkToOvrFormat((VkFormat)tex.m_nFormat, colourSpace)) FAIL(Format);
+	if (chainDsc.Format != vkToOvrFormat((VkFormat)tex.m_nFormat, colourSpace)) FAIL(Format);
 #undef CHECK
 #undef FAIL
 

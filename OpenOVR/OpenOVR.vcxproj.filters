@@ -291,6 +291,9 @@
     <ClInclude Include="OpenVR\interfaces\IVROverlay_012.h">
       <Filter>Header Files\OpenVR</Filter>
     </ClInclude>
+    <ClInclude Include="Misc\ScopeGuard.h">
+      <Filter>Source Files\Misc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -420,6 +423,9 @@
       <Filter>Source Files\Compositor</Filter>
     </ClCompile>
     <ClCompile Include="Compositor\vkcompositor.cpp">
+      <Filter>Source Files\Compositor</Filter>
+    </ClCompile>
+    <ClCompile Include="Compositor\dx11hybridcompositor.cpp">
       <Filter>Source Files\Compositor</Filter>
     </ClCompile>
   </ItemGroup>

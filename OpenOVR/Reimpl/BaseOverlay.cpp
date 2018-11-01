@@ -3,6 +3,11 @@
 #include "BaseOverlay.h"
 #include "OVR_CAPI.h"
 #include <string>
+#include "Compositor/compositor.h"
+#include "libovr_wrapper.h"
+#include "convert.h"
+#include "BaseCompositor.h"
+#include "static_bases.gen.h"
 
 using namespace std;
 
@@ -12,7 +17,9 @@ public:
 	const string key;
 	string name;
 	HmdColor_t colour;
-	float widthMeters = 1; // default 1 meter
+
+	float widthMeters = 1; // default 1 meter  
+
 	float autoCurveDistanceRangeMin, autoCurveDistanceRangeMax; // WTF does this do?
 	EColorSpace colourSpace = ColorSpace_Auto;
 	bool visible = false; // TODO check against SteamVR
@@ -21,6 +28,9 @@ public:
 	HmdVector2_t mouseScale = { 1.0f, 1.0f };
 	bool highQuality = false;
 	uint64_t flags = 0;
+	Texture_t texture = {};
+	ovrLayerQuad layerQuad = {};
+	std::unique_ptr<Compositor> compositor;
 
 	OverlayData(string key, string name) : key(key), name(name) {
 	}
@@ -35,6 +45,12 @@ if (!overlay || !overlays.count(overlay->key)) { \
 	return VROverlayError_InvalidHandle; \
 }
 
+#define USEHB() \
+OverlayData *overlay = (OverlayData*)ulOverlayHandle; \
+if (!overlay || !overlays.count(overlay->key)) { \
+	return false; \
+}
+
 BaseOverlay::~BaseOverlay() {
 	for (const auto &kv : overlays) {
 		if (kv.second) {
@@ -43,17 +59,54 @@ BaseOverlay::~BaseOverlay() {
 	}
 }
 
-int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ const* const*& result) {
+int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ const* const*& layers) {
 	// Note that at least on MSVC, this shouldn't be doing any memory allocations
 	//  unless the list is expanding from new layers.
 	layerHeaders.clear();
 	layerHeaders.push_back(sceneLayer);
 
-	// TODO add all layers here
-	// eg layerHeaders.push_back(&someOverlayData->layer.Header);
+	for (const auto &kv : overlays) {
+		if (kv.second) {
+			const auto &od = kv.second;
+			
+			// Skip hiddden overlays.
+			if (!od->visible
+				|| od->texture.handle == nullptr)
+				continue;
 
-	result = layerHeaders.data();
-	return layerHeaders.size();
+			if (od->compositor.get() == nullptr) {
+				const auto& texture = od->texture;
+				if (texture.handle == nullptr) {
+					OOVR_LOG("[BaseOverlay::_BuildLayers] no handle");
+					continue;
+				}
+
+				const auto size = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
+				od->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(&texture, size));
+			}
+
+			od->compositor->Invoke(&(od->texture));
+
+			const auto srcSize = od->compositor->GetSrcSize();
+			od->layerQuad.Viewport.Size.w = srcSize.w;
+			od->layerQuad.Viewport.Size.h = srcSize.h;
+
+			const auto aspect = srcSize.h > 0 ? static_cast<float>(srcSize.w) / srcSize.h : 1.0f;
+
+			od->layerQuad.QuadSize.x = od->widthMeters;
+			od->layerQuad.QuadSize.y = static_cast<float>(od->widthMeters) / aspect;
+
+			od->layerQuad.ColorTexture = od->compositor->GetSwapChain();
+
+			ovrResult result = ovrSuccess;
+			OOVR_FAILED_OVR_LOG(ovr_CommitTextureSwapChain(*(ovr::session), od->layerQuad.ColorTexture));
+
+			layerHeaders.push_back(&(od->layerQuad.Header));
+		}
+	}
+
+	layers = layerHeaders.data();
+	return static_cast<int>(layerHeaders.size());
 }
 
 EVROverlayError BaseOverlay::FindOverlay(const char *pchOverlayKey, VROverlayHandle_t * pOverlayHandle) {
@@ -72,6 +125,26 @@ EVROverlayError BaseOverlay::CreateOverlay(const char *pchOverlayKey, const char
 
 	OverlayData *data = new OverlayData(pchOverlayKey, pchOverlayName);
 	OVL = data;
+
+	// For now, assume it is all Quads:
+	OOVR_LOGF(R"(New texture overlay created "%s" "%s")", pchOverlayKey, pchOverlayName);
+	data->layerQuad.Header.Type = ovrLayerType_Quad;
+	data->layerQuad.Header.Flags = ovrLayerFlag_HighQuality;
+
+	// 50cm in front from the player's nose,
+	data->layerQuad.QuadPoseCenter.Position.x = 0.00f;
+	data->layerQuad.QuadPoseCenter.Position.y = 0.00f;
+	data->layerQuad.QuadPoseCenter.Position.z = -0.50f;
+	data->layerQuad.QuadPoseCenter.Orientation.x = 0;
+	data->layerQuad.QuadPoseCenter.Orientation.y = 0;
+	data->layerQuad.QuadPoseCenter.Orientation.z = 0;
+	data->layerQuad.QuadPoseCenter.Orientation.w = 1;
+	
+	data->layerQuad.QuadSize.x = 1.0f;
+	data->layerQuad.QuadSize.y = 1.0f;
+
+	data->layerQuad.Viewport.Pos.x = 0;
+	data->layerQuad.Viewport.Pos.y = 0;
 
 	overlays[pchOverlayKey] = data;
 
@@ -123,7 +196,7 @@ uint32_t BaseOverlay::GetOverlayKey(VROverlayHandle_t ulOverlayHandle, char *pch
 
 	// Is this supposed to include the NULL or not?
 	// TODO test, this could cause some very nasty bugs
-	return strlen(pchValue) + 1;
+	return static_cast<uint32_t>(strlen(pchValue) + 1);
 }
 uint32_t BaseOverlay::GetOverlayName(VROverlayHandle_t ulOverlayHandle, VR_OUT_STRING() char *pchValue, uint32_t unBufferSize, EVROverlayError *pError) {
 	if (pError)
@@ -147,7 +220,7 @@ uint32_t BaseOverlay::GetOverlayName(VROverlayHandle_t ulOverlayHandle, VR_OUT_S
 
 	// Is this supposed to include the NULL or not?
 	// TODO test, this could cause some very nasty bugs
-	return strlen(pchValue) + 1;
+	return static_cast<uint32_t>(strlen(pchValue) + 1);
 }
 EVROverlayError BaseOverlay::SetOverlayName(VROverlayHandle_t ulOverlayHandle, const char *pchName) {
 	USEH();
@@ -201,10 +274,10 @@ EVROverlayError BaseOverlay::SetOverlayFlag(VROverlayHandle_t ulOverlayHandle, V
 	USEH();
 
 	if (bEnabled) {
-		overlay->flags |= 1 << eOverlayFlag;
+		overlay->flags |= 1uLL << eOverlayFlag;
 	}
 	else {
-		overlay->flags &= ~(1 << eOverlayFlag);
+		overlay->flags &= ~(1uLL << eOverlayFlag);
 	}
 
 	return VROverlayError_None;
@@ -212,7 +285,7 @@ EVROverlayError BaseOverlay::SetOverlayFlag(VROverlayHandle_t ulOverlayHandle, V
 EVROverlayError BaseOverlay::GetOverlayFlag(VROverlayHandle_t ulOverlayHandle, VROverlayFlags eOverlayFlag, bool *pbEnabled) {
 	USEH();
 
-	*pbEnabled = (overlay->flags & (1 << eOverlayFlag)) != 0;
+	*pbEnabled = (overlay->flags & (1uLL << eOverlayFlag)) != 0uLL;
 
 	return VROverlayError_None;
 }
@@ -335,7 +408,27 @@ EVROverlayError BaseOverlay::GetOverlayTransformType(VROverlayHandle_t ulOverlay
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayTransformAbsolute(VROverlayHandle_t ulOverlayHandle, ETrackingUniverseOrigin eTrackingOrigin, const HmdMatrix34_t *pmatTrackingOriginToOverlayTransform) {
-	return VROverlayError_None; // TODO
+	// NOTE: tracking origin likely doesn't matter on Rift, it is always around Zero point.
+	USEH();
+
+	OVR::Matrix4f otm;
+	S2O_om44(*pmatTrackingOriginToOverlayTransform, otm);
+
+#ifdef DEBUG
+	for (int i = 0; i < 3; ++i)
+		OOVR_LOGF("Layer transform row%d: %f %f %f %f", i, pmatTrackingOriginToOverlayTransform->m[i][0], pmatTrackingOriginToOverlayTransform->m[i][1], pmatTrackingOriginToOverlayTransform->m[i][2], pmatTrackingOriginToOverlayTransform->m[i][3]);
+
+	for (int i = 0; i < 4; ++i)
+		OOVR_LOGF("Converted transform row%d: %f %f %f %f", i, otm.M[i][0], otm.M[i][1], otm.M[i][2], otm.M[i][3]);
+	
+	OOVR_LOGF("Converted pos: %f %f %f", overlay->layerQuad.QuadPoseCenter.Position.x, overlay->layerQuad.QuadPoseCenter.Position.y, overlay->layerQuad.QuadPoseCenter.Position.z);
+	OOVR_LOGF("Converted rot: %f %f %f %f", overlay->layerQuad.QuadPoseCenter.Orientation.x, overlay->layerQuad.QuadPoseCenter.Orientation.y, overlay->layerQuad.QuadPoseCenter.Orientation.z, overlay->layerQuad.QuadPoseCenter.Orientation.w);
+#endif
+
+	overlay->layerQuad.QuadPoseCenter.Position = otm.GetTranslation();
+	overlay->layerQuad.QuadPoseCenter.Orientation = OVR::Quat<float>(otm);
+
+	return VROverlayError_None; 
 }
 EVROverlayError BaseOverlay::GetOverlayTransformAbsolute(VROverlayHandle_t ulOverlayHandle, ETrackingUniverseOrigin *peTrackingOrigin, HmdMatrix34_t *pmatTrackingOriginToOverlayTransform) {
 	STUBBED();
@@ -370,7 +463,7 @@ EVROverlayError BaseOverlay::HideOverlay(VROverlayHandle_t ulOverlayHandle) {
 	return VROverlayError_None;
 }
 bool BaseOverlay::IsOverlayVisible(VROverlayHandle_t ulOverlayHandle) {
-	USEH();
+	USEHB();
 	return overlay->visible;
 }
 EVROverlayError BaseOverlay::GetTransformForOverlayCoordinates(VROverlayHandle_t ulOverlayHandle, ETrackingUniverseOrigin eTrackingOrigin, HmdVector2_t coordinatesInOverlay, HmdMatrix34_t *pmatTransform) {
@@ -394,16 +487,23 @@ EVROverlayError BaseOverlay::GetOverlayInputMethod(VROverlayHandle_t ulOverlayHa
 
 	if (peInputMethod)
 		*peInputMethod = overlay->inputMethod;
+
+	return VROverlayError_None;
 }
+
 EVROverlayError BaseOverlay::SetOverlayInputMethod(VROverlayHandle_t ulOverlayHandle, VROverlayInputMethod eInputMethod) {
 	USEH();
 
 	overlay->inputMethod = eInputMethod;
+
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::GetOverlayMouseScale(VROverlayHandle_t ulOverlayHandle, HmdVector2_t *pvecMouseScale) {
 	USEH();
 
 	*pvecMouseScale = overlay->mouseScale;
+
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::SetOverlayMouseScale(VROverlayHandle_t ulOverlayHandle, const HmdVector2_t *pvecMouseScale) {
 	USEH();
@@ -412,6 +512,8 @@ EVROverlayError BaseOverlay::SetOverlayMouseScale(VROverlayHandle_t ulOverlayHan
 		overlay->mouseScale = *pvecMouseScale;
 	else
 		overlay->mouseScale = HmdVector2_t{ 1.0f, 1.0f };
+
+	return VROverlayError_None;
 }
 bool BaseOverlay::ComputeOverlayIntersection(VROverlayHandle_t ulOverlayHandle, const OOVR_VROverlayIntersectionParams_t *pParams, OOVR_VROverlayIntersectionResults_t *pResults) {
 	STUBBED();
@@ -441,11 +543,17 @@ EVROverlayError BaseOverlay::GetOverlayDualAnalogTransform(VROverlayHandle_t ulO
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle, const Texture_t *pTexture) {
-	// TODO
+	USEH();
+	overlay->texture = *pTexture;
+
 	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::ClearOverlayTexture(VROverlayHandle_t ulOverlayHandle) {
-	STUBBED();
+	USEH();
+	overlay->texture = {};
+
+	overlay->compositor.reset();
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::SetOverlayRaw(VROverlayHandle_t ulOverlayHandle, void *pvBuffer, uint32_t unWidth, uint32_t unHeight, uint32_t unDepth) {
 	STUBBED();

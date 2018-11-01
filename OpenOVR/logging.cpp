@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "logging.h"
 #include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -12,7 +13,14 @@ void oovr_log_raw(const char *file, long line, const char *func, const char *msg
 	}
 
 	//stream << file << ":" << line << ":" << func << "\t- " << msg << endl;
+	// Why no line nr#?
 	stream << func << "\t- " << (msg ? msg : "NULL") << endl;
+#ifdef _DEBUG
+	std::stringstream str;
+	str << func << " line: " << line << "\t- " << (msg ? msg : "NULL") << endl;
+	::OutputDebugStringA(str.str().c_str());
+#endif
+	//stream.flush();  // Uncomment if need to not lose fewer messages on crash, generally don't use - harms perf.
 
 	// Do we need to close the stream or something? What about multiple threads?
 }
@@ -30,7 +38,7 @@ void oovr_log_raw_format(const char *file, long line, const char *func, const ch
 }
 
 void oovr_abort_raw(const char * file, long line, const char * func, const char * msg, const char *title) {
-	if (title == NULL) {
+	if (title == nullptr) {
 		title = "OpenComposite Error - info in log";
 		OOVR_LOG("Abort!");
 	}

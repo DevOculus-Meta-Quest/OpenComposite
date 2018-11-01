@@ -7,7 +7,10 @@
 
 #include <string>
 
+#pragma warning(push)
+#pragma warning(disable : 4838)   // int to UINT truncation.
 #include <atlbase.h>
+#pragma warning(pop)
 
 #include "OVR_CAPI_D3D.h"
 

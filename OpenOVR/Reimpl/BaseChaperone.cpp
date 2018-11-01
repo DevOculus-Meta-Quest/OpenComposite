@@ -14,12 +14,13 @@ bool BaseChaperone::GetPlayAreaSize(float *pSizeX, float *pSizeZ) {
 	ovrVector3f points[4];
 	int pointsCount;
 
-	ovrResult status = ovr_GetBoundaryGeometry(
+	ovrResult result = ovrSuccess;
+	OOVR_FAILED_OVR_LOG(ovr_GetBoundaryGeometry(
 		*ovr::session,
 		ovrBoundary_PlayArea,
 		points,
 		&pointsCount
-	);
+	));
 
 	float xmin = points[0].x, xmax = points[0].x;
 	float zmin = points[0].z, zmax = points[0].z;
@@ -48,12 +49,13 @@ bool BaseChaperone::GetPlayAreaRect(HmdQuad_t *rect) {
 	ovrVector3f points[4];
 	int pointsCount;
 
-	ovrResult status = ovr_GetBoundaryGeometry(
+	ovrResult result = ovrSuccess;
+	OOVR_FAILED_OVR_LOG(ovr_GetBoundaryGeometry(
 		*ovr::session,
 		ovrBoundary_PlayArea,
 		points,
 		&pointsCount
-	);
+	));
 
 	// Lifted from ReVive
 	// TODO add ReVive (MIT) licence to repo
@@ -78,7 +80,8 @@ bool BaseChaperone::AreBoundsVisible() {
 	ovrBool out;
 
 	// Ignore the result, which could tell us the boundraries are not set up.
-	ovrResult res = ovr_GetBoundaryVisible(*ovr::session, &out);
+	ovrResult result = ovrSuccess;
+	OOVR_FAILED_OVR_LOG(ovr_GetBoundaryVisible(*ovr::session, &out));
 
 	return out;
 }

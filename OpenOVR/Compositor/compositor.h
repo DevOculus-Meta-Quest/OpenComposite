@@ -1,14 +1,25 @@
 #pragma once
 
 #include "OpenVR/interfaces/vrtypes.h"
+
+#pragma warning(push)
+#pragma warning(disable : 4324)   // structure padded due to alignment specifier.
 #include "d3dx12.h"
+#pragma warning(pop)
+
 #include <d3d11.h>
+#include <d3d11_1.h>
 #include <wrl/client.h>
 
 #include <Extras/OVR_Math.h>
 
 #include <vector>
 #include <memory>
+
+#pragma warning(push)
+#pragma warning(disable : 4838)   // int to UINT truncation.
+#include <atlbase.h>
+#pragma warning(pop)
 
 using Microsoft::WRL::ComPtr;
 
@@ -27,9 +38,16 @@ public:
 	virtual ovrTextureSwapChain GetSwapChain() { return chain; };
 
 	virtual unsigned int GetFlags() { return 0; }
+
+	virtual OVR::Sizei GetSrcSize() { return srcSize; };
+
+	virtual void SetSupportedContext() {};
+	virtual void ResetSupportedContext() {};
+
 protected:
 	ovrTextureSwapChain chain;
 	OVR::Sizei singleScreenSize;
+	OVR::Sizei srcSize;
 };
 
 class DX12Compositor : public Compositor {
@@ -82,6 +100,40 @@ private:
 
 	ID3D11Device *device;
 	ID3D11DeviceContext *context;
+
+	ovrTextureSwapChainDesc chainDesc;
+
+	bool submitVerticallyFlipped;
+};
+
+class DX11HybridCompositor : public Compositor {
+public:
+	DX11HybridCompositor(ID3D10Texture2D* td);
+
+	virtual ~DX11HybridCompositor() override;
+
+	// Override
+	virtual void Invoke(const vr::Texture_t * texture) override;
+
+	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
+		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;
+
+	unsigned int GetFlags() override;
+
+	virtual void SetSupportedContext() override;
+	virtual void ResetSupportedContext() override;
+
+private:
+	void ThrowIfFailed(HRESULT test);
+
+	bool CheckChainCompatible(D3D11_TEXTURE2D_DESC & inputDesc, ovrTextureSwapChainDesc & chainDesc, vr::EColorSpace colourSpace);
+
+	CComPtr<ID3D11Device> device;
+	CComQIPtr<ID3D11Device1> device1;
+	CComQIPtr<ID3D11DeviceContext> context;
+	CComQIPtr<ID3D11DeviceContext1> context1;
+	CComPtr<ID3DDeviceContextState> customContextState;
+	CComPtr<ID3DDeviceContextState> originalContextState;
 
 	ovrTextureSwapChainDesc chainDesc;
 

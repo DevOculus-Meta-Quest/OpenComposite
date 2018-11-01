@@ -14,7 +14,12 @@
 #include <functiondiscoverykeys_devpkey.h>
 #include <string>
 #include <cassert>
+
+#pragma warning(push)
+#pragma warning(disable : 4838)   // int to UINT truncation.
 #include <atlbase.h>
+#pragma warning(pop)
+
 #include <Mmsystem.h>
 
 #pragma comment(lib, "uuid.lib")
@@ -189,7 +194,6 @@ HRESULT find_basic_rift_output_device(std::wstring &output) {
 	if (hr)
 		return hr;
 
-	bool endpoint_found = false;
 	for (ULONG i = 0; i < count; i++) {
 		CComPtr<IMMDevice> dev;
 		group->Item(i, &dev);
@@ -212,7 +216,7 @@ HRESULT find_basic_rift_output_device(std::wstring &output) {
 		PropVariantClear(&varName);
 
 		for (std::wstring::iterator it = friendlyName.begin(); it != friendlyName.end(); ++it)
-			*it = tolower(*it);
+			*it = static_cast<wchar_t>(tolower(*it));
 
 		// IDK if the friendly name is localised, so search for just 'rift'
 		//  which should hopefully work
@@ -291,7 +295,6 @@ static HRESULT is_device_in_group(IMMDevice *dev, IMMDeviceCollection *group, bo
 	if (!dev_id)
 		return 0;
 
-	bool endpoint_found = false;
 	for (ULONG i = 0; i < count; i++) {
 		CComPtr<IMMDevice> pEndpoint;
 		LPWSTR pwszID;
