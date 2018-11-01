@@ -372,43 +372,6 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t * texture, const V
 	if (comp == nullptr) {
 		size = ovr_GetFovTextureSize(SESS, ovrEye_Left, DESC.DefaultEyeFov[ovrEye_Left], 1);
 		comp = CreateCompositorAPI(texture, size);
-/*		size = ovr_GetFovTextureSize(SESS, ovrEye_Left, DESC.DefaultEyeFov[ovrEye_Left], 1);
-
-		switch (texture->eType) {
-#ifdef SUPPORT_GL
-		case TextureType_OpenGL: {
-			comp = new GLCompositor(size);
-			break;
-		}
-#endif
-#ifdef SUPPORT_DX
-		case TextureType_DirectX: {
-			comp = new DX11HybridCompositor((ID3D10Texture2D*)texture->handle);
-			break;
-		}
-#endif
-#if defined(SUPPORT_VK)
-		case TextureType_Vulkan: {
-			comp = new VkCompositor(texture);
-			break;
-		}
-#endif
-#if defined(SUPPORT_DX12)
-		case TextureType_DirectX12: {
-			compositor = new DX12Compositor((D3D12TextureData_t*)texture->handle, size, chains);
-			break;
-		}
-#endif
-		default:
-			string err = "[BaseCompositor::Submit] Unsupported texture type: " + to_string(texture->eType);
-			OOVR_ABORT(err.c_str());
-		}
-
-		for (int ieye = 0; ieye < 2; ++ieye) {
-			if (comp->GetSwapChain() == NULL && texture->eType != TextureType_DirectX && texture->eType != TextureType_Vulkan) {
-				OOVR_ABORT("Failed to create texture.");
-			}
-		}*/
 	}
 
 	comp->SetSupportedContext();

@@ -128,6 +128,7 @@ private:
 
 	bool CheckChainCompatible(D3D11_TEXTURE2D_DESC & inputDesc, ovrTextureSwapChainDesc & chainDesc, vr::EColorSpace colourSpace);
 
+	// TODO: make sure all of below are indeed needed.
 	CComPtr<ID3D11Device> device;
 	CComQIPtr<ID3D11Device1> device1;
 	CComQIPtr<ID3D11DeviceContext> context;
