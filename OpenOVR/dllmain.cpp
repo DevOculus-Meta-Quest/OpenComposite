@@ -193,7 +193,6 @@ VR_INTERFACE void *VR_CALLTYPE VR_GetGenericInterface(const char * interfaceVers
 	}
 
 	CVRCorrectLayout *impl = (CVRCorrectLayout*) CreateInterfaceByName(interfaceVersion);
-	OOVR_LOG(interfaceVersion);
 	if (impl) {
 		unique_ptr<CVRCorrectLayout> ptr(impl);
 		interfaces[interfaceVersion] = move(ptr);
@@ -210,15 +209,10 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_GetInitToken() {
 	return current_init_token;
 }
 
-#pragma warning(push)
-#pragma warning(disable : 4297)   // function throws when it shouldn't.  Maybe different flavor of OOVR_ABORT is needed?
 VR_INTERFACE char * VR_GetStringForHmdError(int err) {
 	OOVR_ABORT("Stub");
 }
-#pragma warning(pop)
 
-#pragma warning(push)
-#pragma warning(disable : 4297)   // function throws when it shouldn't.  Maybe different flavor of OOVR_ABORT is needed?
 VR_INTERFACE const char *VR_CALLTYPE VR_GetVRInitErrorAsEnglishDescription(EVRInitError error) {
 	switch (error) {
 	case VRInitError_None:
@@ -226,14 +220,10 @@ VR_INTERFACE const char *VR_CALLTYPE VR_GetVRInitErrorAsEnglishDescription(EVRIn
 	}
 	OOVR_ABORT(("Init desc: Unknown value " + to_string(error)).c_str());
 }
-#pragma warning(pop)
 
-#pragma warning(push)
-#pragma warning(disable : 4297)   // function throws when it shouldn't.  Maybe different flavor of OOVR_ABORT is needed?
 VR_INTERFACE const char *VR_CALLTYPE VR_GetVRInitErrorAsSymbol(EVRInitError error) {
 	OOVR_ABORT("Stub");
 }
-#pragma warning(pop)
 
 VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal(EVRInitError * peError, EVRApplicationType eApplicationType) {
 	return VR_InitInternal2(peError, eApplicationType, NULL);
@@ -256,36 +246,27 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal2(EVRInitError * peError, EVRAp
 
 	*peError = VRInitError_None;
 
-	OOVR_LOGF("[INFO] Init succeeded");
 	return current_init_token;
 }
 
 VR_INTERFACE bool VR_CALLTYPE VR_IsHmdPresent() {
-	OOVR_LOGF("[INFO]");
 	return ovr::IsAvailable();
 }
 
 VR_INTERFACE bool VR_CALLTYPE VR_IsInterfaceVersionValid(const char * pchInterfaceVersion) {
-	OOVR_LOGF("[INFO] %s", pchInterfaceVersion);
 	return true; // Kinda dodgy
 }
 
 VR_INTERFACE bool VR_CALLTYPE VR_IsRuntimeInstalled() {
 	// TODO in future check that the Oculus Runtime is installed
-	OOVR_LOGF("[INFO]");
 	return true;
 }
 
-#pragma warning(push)
-#pragma warning(disable : 4297)   // function throws when it shouldn't.  Maybe different flavor of OOVR_ABORT is needed?
 VR_INTERFACE const char *VR_CALLTYPE VR_RuntimePath() {
-	OOVR_LOGF("[INFO]");
 	OOVR_ABORT("Stub");
 }
-#pragma warning(pop)
 
 VR_INTERFACE void VR_CALLTYPE VR_ShutdownInternal() {
-	OOVR_LOGF("[INFO]");
 	// Reset interfaces
 	// Do this first, while the OVR session is still available in case they
 	//  need to use it for cleanup.
@@ -301,7 +282,6 @@ VR_INTERFACE void * VRClientCoreFactory(const char * pInterfaceName, int * pRetu
 
 	string name = pInterfaceName;
 
-	OOVR_LOGF("[INFO] Interface requested: %s", pInterfaceName);
 #define CLIENT_VER(ver) \
 	if(IVRClientCore_ ## ver::IVRClientCore_Version == name) { \
 		static CVRClientCore_ ## ver inst; \
@@ -323,7 +303,7 @@ VR_INTERFACE void * VRClientCoreFactory(const char * pInterfaceName, int * pRetu
 void init_audio() {
 	if (!oovr_global_configuration.EnableAudio())
 		return;
-	OOVR_LOGF("[INFO]");
+
 	std::wstring dev;
 	HRESULT hr = find_basic_rift_output_device(dev);
 
@@ -342,7 +322,7 @@ void init_audio() {
 void setup_audio() {
 	if (!oovr_global_configuration.EnableAudio())
 		return;
-	OOVR_LOGF("[INFO]");
+
 	WCHAR deviceOutStrBuffer[OVR_AUDIO_MAX_DEVICE_STR_SIZE];
 	ovrResult r = ovr_GetAudioDeviceOutGuidStr(deviceOutStrBuffer);
 	if (r == ovrSuccess)
