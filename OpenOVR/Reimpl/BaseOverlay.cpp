@@ -9,6 +9,7 @@
 #include "BaseCompositor.h"
 #include "static_bases.gen.h"
 #include "Misc/Config.h"
+#include "Misc/ScopeGuard.h"
 
 using namespace std;
 
@@ -79,33 +80,7 @@ int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ cons
 				|| od->texture.handle == nullptr)
 				continue;
 
-			if (od->compositor.get() == nullptr) {
-				const auto& texture = od->texture;
-				if (texture.handle == nullptr) {
-					OOVR_LOG("[BaseOverlay::_BuildLayers] no handle");
-					continue;
-				}
-
-				const auto size = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
-				od->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(&texture, size));
-			}
-
-			od->compositor->Invoke(&(od->texture));
-
-			const auto srcSize = od->compositor->GetSrcSize();
-			od->layerQuad.Viewport.Size.w = srcSize.w;
-			od->layerQuad.Viewport.Size.h = srcSize.h;
-
-			const auto aspect = srcSize.h > 0 ? static_cast<float>(srcSize.w) / srcSize.h : 1.0f;
-
-			od->layerQuad.QuadSize.x = od->widthMeters;
-			od->layerQuad.QuadSize.y = static_cast<float>(od->widthMeters) / aspect;
-
-			od->layerQuad.ColorTexture = od->compositor->GetSwapChain();
-
-			ovrResult result = ovrSuccess;
-			OOVR_FAILED_OVR_LOG(ovr_CommitTextureSwapChain(*(ovr::session), od->layerQuad.ColorTexture));
-
+			// Probably can be written in one line.
 			layerHeaders.push_back(&(od->layerQuad.Header));
 		}
 	}
@@ -553,10 +528,44 @@ EVROverlayError BaseOverlay::GetOverlayDualAnalogTransform(VROverlayHandle_t ulO
 }
 EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle, const Texture_t *pTexture) {
 	USEH();
+
 	overlay->texture = *pTexture;
+
+	if (overlay->compositor.get() == nullptr) {
+		const auto& texture = overlay->texture;
+		if (texture.handle == nullptr) {
+			OOVR_LOG("[BaseOverlay::SetOverlayTexture] no handle");
+			return VROverlayError_None;
+		}
+
+		const auto size = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
+		overlay->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(&texture, size));
+	}
+
+	overlay->compositor->SetSupportedContext();
+	auto revertToCallerContext = MakeScopeGuard([&]() {
+		overlay->compositor->ResetSupportedContext();
+	});
+
+	overlay->compositor->Invoke(&(overlay->texture));
+
+	const auto srcSize = overlay->compositor->GetSrcSize();
+	overlay->layerQuad.Viewport.Size.w = srcSize.w;
+	overlay->layerQuad.Viewport.Size.h = srcSize.h;
+
+	const auto aspect = srcSize.h > 0 ? static_cast<float>(srcSize.w) / srcSize.h : 1.0f;
+
+	overlay->layerQuad.QuadSize.x = overlay->widthMeters;
+	overlay->layerQuad.QuadSize.y = static_cast<float>(overlay->widthMeters) / aspect;
+
+	overlay->layerQuad.ColorTexture = overlay->compositor->GetSwapChain();
+
+	ovrResult result = ovrSuccess;
+	OOVR_FAILED_OVR_LOG(ovr_CommitTextureSwapChain(*(ovr::session), overlay->layerQuad.ColorTexture));
 
 	return VROverlayError_None;
 }
+
 EVROverlayError BaseOverlay::ClearOverlayTexture(VROverlayHandle_t ulOverlayHandle) {
 	USEH();
 	overlay->texture = {};
