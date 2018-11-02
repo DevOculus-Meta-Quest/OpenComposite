@@ -8,6 +8,7 @@
 #include "convert.h"
 #include "BaseCompositor.h"
 #include "static_bases.gen.h"
+#include "Misc/Config.h"
 
 using namespace std;
 
@@ -65,6 +66,10 @@ int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ cons
 	layerHeaders.clear();
 	layerHeaders.push_back(sceneLayer);
 
+	if (!oovr_global_configuration.EnableLayers()) {
+		return 1;
+	}
+
 	for (const auto &kv : overlays) {
 		if (kv.second) {
 			const auto &od = kv.second;
@@ -119,6 +124,10 @@ EVROverlayError BaseOverlay::FindOverlay(const char *pchOverlayKey, VROverlayHan
 	return VROverlayError_InvalidParameter;
 }
 EVROverlayError BaseOverlay::CreateOverlay(const char *pchOverlayKey, const char *pchOverlayName, VROverlayHandle_t * pOverlayHandle) {
+	if (!oovr_global_configuration.EnableLayers()) {
+		return VROverlayError_None;
+	}
+
 	if (overlays.count(pchOverlayKey)) {
 		return VROverlayError_KeyInUse;
 	}
