@@ -32,6 +32,9 @@ public:
 	// Only copy a texture - this can be used for overlays and such
 	virtual void Invoke(const vr::Texture_t * texture) = 0;
 
+	// 
+	virtual void InvokeCubemap(const vr::Texture_t * textures) {};
+
 	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
 		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) = 0;
 
@@ -87,6 +90,8 @@ public:
 
 	// Override
 	virtual void Invoke(const vr::Texture_t * texture) override;
+
+	virtual void InvokeCubemap(const vr::Texture_t * textures) override;
 
 	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
 		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;

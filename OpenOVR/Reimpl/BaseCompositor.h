@@ -97,7 +97,7 @@ enum OOVR_EVRCompositorTimingMode {
 };
 
 class BaseCompositor {
-private:
+public:
 	enum RenderState {
 		RS_NOT_STARTED,
 		RS_WAIT_BEGIN,
@@ -106,6 +106,7 @@ private:
 
 	bool leftEyeSubmitted = false, rightEyeSubmitted = false;
 	void SubmitFrames();
+	void SubmitSkyboxFrames();
 	long long frameIndex = 0;
 
 	OVR::Sizei size;
@@ -113,6 +114,7 @@ private:
 	Compositor * compositors[2] = { NULL, NULL };
 
 	ovrLayerEyeFov layer;
+	ovrLayerCube skyboxLayer;
 	vr::HmdColor_t fadeColour = { 0, 0, 0, 0 };
 	float fadeTime = 0;
 
@@ -122,6 +124,8 @@ private:
 	ovrSessionStatus sessionStatus;
 
 	RenderState state = RS_NOT_STARTED;
+
+	std::unique_ptr<Compositor> skyboxCompositor;
 
 public:
 	typedef int ovr_enum_t;

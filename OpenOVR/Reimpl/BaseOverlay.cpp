@@ -61,7 +61,7 @@ BaseOverlay::~BaseOverlay() {
 	}
 }
 
-int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ const* const*& layers) {
+int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, /*optionally pass skybox*/ ovrLayerHeader_ const* const*& layers) {
 	// Note that at least on MSVC, this shouldn't be doing any memory allocations
 	//  unless the list is expanding from new layers.
 	layerHeaders.clear();
@@ -83,6 +83,9 @@ int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ cons
 			}
 		}
 	}
+
+/*	if (GetUnsafeBaseCompositor()->skyboxCompositor.get() != nullptr)
+		layerHeaders.push_back(&(GetUnsafeBaseCompositor()->skyBoxLayer.Header));&*/
 
 	layers = layerHeaders.data();
 	return static_cast<int>(layerHeaders.size());

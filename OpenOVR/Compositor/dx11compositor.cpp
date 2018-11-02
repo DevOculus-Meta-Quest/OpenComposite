@@ -3,9 +3,14 @@
 #include "libovr_wrapper.h"
 
 #include "OVR_CAPI_D3D.h"
+#include <assert.h>
+#include <algorithm>
 
 using namespace std;
 #define OVSS (*ovr::session)
+
+#undef min
+#undef max
 
 static void XTrace(LPCSTR lpszFormat, ...) {
 	va_list args;
@@ -128,6 +133,90 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 	ID3D11Texture2D* tex = nullptr;
 	ovr_GetTextureSwapChainBufferDX(OVSS, chain, currentIndex, IID_PPV_ARGS(&tex));
 	context->CopyResource(tex, src);
+}
+
+void DX11Compositor::InvokeCubemap(const vr::Texture_t * textures)
+{
+	ovrTextureSwapChainDesc &desc = chainDesc;
+
+	int currentIndex = 0;
+	if (chain)
+		ovr_GetTextureSwapChainCurrentIndex(OVSS, chain, &currentIndex);
+
+	ID3D11Texture2D *src = (ID3D11Texture2D*)textures->handle;
+
+	D3D11_TEXTURE2D_DESC srcDesc;
+	src->GetDesc(&srcDesc);
+
+	srcDesc.Height = srcDesc.Width = std::min(srcDesc.Height, srcDesc.Width);
+
+	bool usable = chain == NULL ? false : CheckChainCompatible(srcDesc, desc, textures->eColorSpace);
+
+	if (!usable) {
+		OOVR_LOG("Generating new swap chain");
+
+		// First, delete the old chain if necessary
+		if (chain)
+			ovr_DestroyTextureSwapChain(OVSS, chain);
+
+		// Make eye render buffer
+		desc = {};
+		desc.Type = ovrTexture_Cube;
+		desc.ArraySize = 6;
+		//desc.Width = srcDesc.Width;
+
+		// Looks like width has to match height otherwise texture swap chain creation fails.
+		desc.Width = desc.Height = std::min(srcDesc.Height, srcDesc.Width);
+		desc.Format = dxgiToOvrFormat(srcDesc.Format, textures->eColorSpace);
+		desc.MipLevels = srcDesc.MipLevels;
+		desc.SampleCount = 1;
+		desc.StaticImage = ovrFalse;
+
+		desc.MiscFlags = ovrTextureMisc_DX_Typeless | ovrTextureMisc_AutoGenerateMips;
+		desc.BindFlags = ovrTextureBind_None; // ovrTextureBind_DX_RenderTarget;
+
+		srcSize.w = srcDesc.Width;
+		srcSize.h = srcDesc.Height;
+
+		OOVR_LOGF("Format %d  %d", desc.Format, textures->eColorSpace);
+
+		ovrResult result = ovr_CreateTextureSwapChainDX(OVSS, device, &desc, &chain);
+		if (!OVR_SUCCESS(result))
+			ERR("Cannot create DX texture swap chain " + to_string(result));
+	}
+
+	ID3D11Texture2D* tex = nullptr;
+	ovr_GetTextureSwapChainBufferDX(OVSS, chain, currentIndex, IID_PPV_ARGS(&tex));
+
+	// Front
+	ID3D11Texture2D *faceSrc = (ID3D11Texture2D*)textures->handle;
+	++textures;
+	context->CopySubresourceRegion(tex, 5, 0, 0, 0, faceSrc, 0, nullptr);
+
+	// Back
+	faceSrc = (ID3D11Texture2D*)textures->handle;
+	++textures;
+	context->CopySubresourceRegion(tex, 4, 0, 0, 0, faceSrc, 0, nullptr);
+
+	// Left
+	faceSrc = (ID3D11Texture2D*)textures->handle;
+	++textures;
+	context->CopySubresourceRegion(tex, 0, 0, 0, 0, faceSrc, 0, nullptr);
+
+	// Right
+	faceSrc = (ID3D11Texture2D*)textures->handle;
+	++textures;
+	context->CopySubresourceRegion(tex, 1, 0, 0, 0, faceSrc, 0, nullptr);
+
+	// Top
+	faceSrc = (ID3D11Texture2D*)textures->handle;
+	++textures;
+	context->CopySubresourceRegion(tex, 2, 0, 0, 0, faceSrc, 0, nullptr);
+
+	// Bottom
+	faceSrc = (ID3D11Texture2D*)textures->handle;
+	++textures;
+	context->CopySubresourceRegion(tex, 3, 0, 0, 0, faceSrc, 0, nullptr);
 }
 
 void DX11Compositor::Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * ptrBounds,

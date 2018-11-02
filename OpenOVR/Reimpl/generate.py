@@ -126,7 +126,7 @@ def gen_interface(interface, version, header, impl, basename, namespace="vr", ba
                     if namespace in func.return_type:
                         safereturn += " (%s)" % func.return_type
 
-                    impl.write("%s %s::%s(%s) { %s base->%s(%s); }\n" % ( func.return_type, cname, func.name, args, safereturn, func.name, nargs ))
+                    impl.write("%s %s::%s(%s) { OOVR_LOG(\"\"); %s base->%s(%s); }\n" % ( func.return_type, cname, func.name, args, safereturn, func.name, nargs ))
 
     header.write("};\n")
 
