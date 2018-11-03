@@ -67,21 +67,20 @@ int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ cons
 	layerHeaders.clear();
 	layerHeaders.push_back(sceneLayer);
 
-	if (!oovr_global_configuration.EnableLayers()) {
-		return 1;
-	}
+	if (oovr_global_configuration.EnableLayers()) {
 
-	for (const auto &kv : overlays) {
-		if (kv.second) {
-			const auto &od = kv.second;
-			
-			// Skip hiddden overlays.
-			if (!od->visible
-				|| od->texture.handle == nullptr)
-				continue;
+		for (const auto &kv : overlays) {
+			if (kv.second) {
+				const auto &od = kv.second;
 
-			// Probably can be written in one line.
-			layerHeaders.push_back(&(od->layerQuad.Header));
+				// Skip hiddden overlays.
+				if (!od->visible
+					|| od->texture.handle == nullptr)
+					continue;
+
+				// Probably can be written in one line.
+				layerHeaders.push_back(&(od->layerQuad.Header));
+			}
 		}
 	}
 
