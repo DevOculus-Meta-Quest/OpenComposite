@@ -110,6 +110,7 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, logGetTrackedProperty);
 		CFGOPT(bool, dx10Mode);
 		CFGOPT(bool, enableLayers);
+		CFGOPT(bool, enableCubemap);
 	}
 
 #undef CFGOPT

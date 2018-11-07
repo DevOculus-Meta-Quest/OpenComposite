@@ -632,7 +632,8 @@ float BaseCompositor::GetCurrentGridAlpha() {
 }
 
 ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t * pTextures, uint32_t unTextureCount) {
-	// TODO check if enabled
+	if (!oovr_global_configuration.EnableCubemap())
+		return VRCompositorError_None;
 	
 	// For now accept 6 face cube only.  In the future, we could accept 1 and 2, and fill rest of faces
 	// with pre-ready textures.
