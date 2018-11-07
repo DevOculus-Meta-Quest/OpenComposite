@@ -20,7 +20,7 @@ void oovr_log_raw(const char *file, long line, const char *func, const char *msg
 	str << func << " line: " << line << "\t- " << (msg ? msg : "NULL") << endl;
 	::OutputDebugStringA(str.str().c_str());
 #endif
-	stream.flush();  // Uncomment if need to not lose fewer messages on crash, generally don't use - harms perf.
+	//stream.flush();  // Uncomment if need to not lose fewer messages on crash, generally don't use - harms perf.
 
 	// Do we need to close the stream or something? What about multiple threads?
 }

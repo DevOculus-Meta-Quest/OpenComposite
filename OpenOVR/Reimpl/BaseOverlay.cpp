@@ -541,7 +541,7 @@ EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle
 		}
 
 		const auto size = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
-		overlay->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(&texture, size));
+		overlay->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(&texture, size, false /*cubemapMode*/));
 	}
 
 	overlay->compositor->SetSupportedContext();

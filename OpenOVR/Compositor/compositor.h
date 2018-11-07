@@ -32,9 +32,6 @@ public:
 	// Only copy a texture - this can be used for overlays and such
 	virtual void Invoke(const vr::Texture_t * texture) = 0;
 
-	// 
-	virtual void InvokeCubemap(const vr::Texture_t * textures) {};
-
 	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
 		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) = 0;
 
@@ -84,14 +81,12 @@ private:
 
 class DX11Compositor : public Compositor {
 public:
-	DX11Compositor(ID3D11Texture2D* td);
+	DX11Compositor(ID3D11Texture2D* td, bool skyboxMode);
 
 	virtual ~DX11Compositor() override;
 
 	// Override
 	virtual void Invoke(const vr::Texture_t * texture) override;
-
-	virtual void InvokeCubemap(const vr::Texture_t * textures) override;
 
 	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
 		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;
@@ -103,12 +98,27 @@ private:
 
 	bool CheckChainCompatible(D3D11_TEXTURE2D_DESC & inputDesc, ovrTextureSwapChainDesc & chainDesc, vr::EColorSpace colourSpace);
 
-	ID3D11Device *device;
-	ID3D11DeviceContext *context;
+	void RenderSourceToCubemapChain(ID3D11Texture2D* faceSrc, const D3D11_TEXTURE2D_DESC& faceSrcDesc, ID3D11Texture2D* hmdTexture, int subResourceDestIndex);
+
+	CComPtr<ID3D11Device> device;
+	CComPtr<ID3D11DeviceContext> context;
 
 	ovrTextureSwapChainDesc chainDesc;
 
 	bool submitVerticallyFlipped;
+
+	// Cubemap members:
+	const bool cubemapMode;
+	CComPtr<ID3D11VertexShader> vertexShader;
+	CComPtr<ID3D11PixelShader> pixelShader;
+	CComPtr<ID3D11InputLayout> inputLayout;
+	CComPtr<ID3D11Buffer> quadVertexBuffer;
+	CComPtr<ID3D11SamplerState> sampler;
+	CComPtr<ID3DDeviceContextState> cubemapTextureContextState;
+	CComQIPtr<ID3D11Device1> device1;
+	CComQIPtr<ID3D11DeviceContext1> context1;
+	CComPtr<ID3D11Texture2D> stagingTexture;
+	CComPtr<ID3D11RenderTargetView> stagingRenderTargetView;
 };
 
 class DX11HybridCompositor : public Compositor {

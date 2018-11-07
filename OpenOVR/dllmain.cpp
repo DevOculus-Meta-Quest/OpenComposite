@@ -29,7 +29,8 @@ HMODULE openovr_module_id;
 #include <Windows.h>
 #include <stdexcept> 
 
-#define OOVR_REDIRECT_CONSOLE
+// could be made an option too.
+// #define OOVR_REDIRECT_CONSOLE 
 #ifdef OOVR_REDIRECT_CONSOLE
 
 #pragma region console_redirect_credits

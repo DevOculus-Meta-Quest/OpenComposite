@@ -11,6 +11,7 @@ void oovr_abort_raw(const char *file, long line, const char *func, const char *m
 
 // DirectX API validation helpers
 #define OOVR_FAILED_DX_LOG(expression) hr = expression; if (FAILED(hr)) { OOVR_LOGF("DX Call failed with: 0x%08x", hr); }
+#define OOVR_FAILED_DX_ABORT(expression) hr = expression; if (FAILED(hr)) { OOVR_FAILED_DX_LOG(hr); OOVR_ABORT("DX Call failed"); }
 
 // General validation helpers
 #define OOVR_FALSE_LOG(expression) if (!(expression)) { OOVR_LOGF("Expression is false unexpectedly"); }

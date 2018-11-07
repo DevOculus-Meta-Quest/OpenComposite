@@ -131,91 +131,30 @@ void BaseCompositor::SubmitFrames() {
 	}
 }
 
-void BaseCompositor::SubmitSkyboxFrames() {
-	if (state == RS_RENDERING || !oovr_global_configuration.ThreePartSubmit()) {
+void BaseCompositor::SubmitCubemapFrames() {
+	// Don't do 3 part submit for Cubemaps.
+	if (cubemapState == RS_RENDERING) {
 		// We're in the correct state to submit frames
 	}
-	else if (state == RS_NOT_STARTED) {
+	else if (cubemapState == RS_NOT_STARTED) {
 		// This is our first frame, skip it as the swap chains won't have been created yet
 		// However, the swap chains should be available now, ready for the next frame.
-		state = RS_WAIT_BEGIN;
+		cubemapState = RS_WAIT_BEGIN;
 		return;
-	}
-	else if (state == RS_WAIT_BEGIN) {
-		OOVR_LOG("[WARN] Should not submit frames twice in a row without waiting");
-		WaitGetPoses(NULL, 0, NULL, 0);
 	}
 
 	ovrSession &session = *ovr::session;
-	/*ovrHmdDesc &hmdDesc = ovr::hmdDesc;
 
-	// Call ovr_GetRenderDesc each frame to get the ovrEyeRenderDesc, as the returned values (e.g. HmdToEyePose) may change at runtime.
-	ovrEyeRenderDesc *eyeRenderDesc = ovr::eyeRenderDesc;
-	eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, hmdDesc.DefaultEyeFov[0]);
-	eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, hmdDesc.DefaultEyeFov[1]);
-
-	// Get eye poses, feeding in correct IPD offset
-	ovrPosef EyeRenderPose[2];
-	ovrPosef *HmdToEyePose = ovr::hmdToEyeViewPose;
-	HmdToEyePose[0] = eyeRenderDesc[0].HmdToEyePose;
-	HmdToEyePose[1] = eyeRenderDesc[1].HmdToEyePose;
-
-	ovr_CalcEyePoses2(trackingState.HeadPose.ThePose, HmdToEyePose, EyeRenderPose);
-
-	//// Render Scene to Eye Buffers
-	//for (int eye = 0; eye < 2; ++eye) {
-	//	// Switch to eye render target
-	//	GLuint curTexId;
-	//	int curIndex;
-	//	ovr_GetTextureSwapChainCurrentIndex(session, chains[eye], &curIndex);
-	//	ovr_GetTextureSwapChainBufferGL(session, chains[eye], curIndex, &curTexId);
-
-	//	// Commit changes to the textures so they get picked up frame
-	//	ovr_CommitTextureSwapChain(session, chains[eye]);
-	//}
-
-	// Do distortion rendering, Present and flush/sync
-
-	skyBoxLayer.CubeMapTexture = skyboxCompositor->GetSwapChain();
-	/*layer.Header.Type = ovrLayerType_EyeFov;
-	layer.Header.Flags = compositors[0]->GetFlags();
-
-	for (int eye = 0; eye < 2; ++eye) {
-		layer.ColorTexture[eye] = compositors[eye]->GetSwapChain();
-		layer.Fov[eye] = hmdDesc.DefaultEyeFov[eye];
-		layer.RenderPose[eye] = EyeRenderPose[eye];
-		layer.SensorSampleTime = sensorSampleTime;
-	}*/
-
-	// If the overlay system is currently active, ask it for the list of layers
-	//  we should send to LibOVR. That way, it can add in layers from overlays,
-	//  the virtual keyboard, etc.
-	int layer_count;
-	ovrLayerHeader const* const* layers;
-	ovrLayerHeader* app_layer = &skyboxLayer.Header;
-
-	BaseOverlay *overlay = GetUnsafeBaseOverlay();
-	/*if (overlay) {
-		// Let the overlay system add in it's layers
-		layer_count = overlay->_BuildLayers(app_layer, layers);
-	}
-	else {*/
-		// Use the single layer, since the overlay system isn't in use
-		layer_count = 1;
-		layers = &app_layer;
-	//}
+	int layer_count = 1;
+	ovrLayerHeader* pCubemapLayer = &cubemapLayer.Header;
+	ovrLayerHeader const* const* layers = &pCubemapLayer;
 
 	// Submit the layers
 	ovrResult result = ovrSuccess;
 	// exit the rendering loop if submit returns an error, will retry on ovrError_DisplayLost
-	if (oovr_global_configuration.ThreePartSubmit()) {
-		OOVR_FAILED_OVR_ABORT(ovr_EndFrame(session, frameIndex, nullptr, layers, layer_count));
-	}
-	else {
-		OOVR_FAILED_OVR_ABORT(ovr_SubmitFrame(session, frameIndex, nullptr, layers, layer_count));
-	}
+	OOVR_FAILED_OVR_ABORT(ovr_SubmitFrame(session, frameIndex, nullptr, layers, layer_count));
 
-	state = RS_WAIT_BEGIN;
+	cubemapState = RS_WAIT_BEGIN;
 
 	frameIndex++;
 
@@ -417,7 +356,7 @@ ovr_enum_t BaseCompositor::GetLastPoseForTrackedDeviceIndex(TrackedDeviceIndex_t
 	return VRCompositorError_None;
 }
 
-Compositor* BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture, const OVR::Sizei& fovTextureSize) const
+Compositor* BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture, const OVR::Sizei& fovTextureSize, bool cubemapMode) const
 {
 	Compositor* comp = nullptr;
 
@@ -431,7 +370,7 @@ Compositor* BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture, co
 #ifdef SUPPORT_DX
 	case TextureType_DirectX: {
 		if (!oovr_global_configuration.DX10Mode())
-			comp = new DX11Compositor((ID3D11Texture2D*)texture->handle);
+			comp = new DX11Compositor((ID3D11Texture2D*)texture->handle, cubemapMode);
 		else
 			comp = new DX11HybridCompositor((ID3D10Texture2D*)texture->handle);
 
@@ -469,7 +408,7 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t * texture, const V
 	Compositor* &comp = compositors[S2O_eye(eye)];
 	if (comp == nullptr) {
 		size = ovr_GetFovTextureSize(SESS, ovrEye_Left, DESC.DefaultEyeFov[ovrEye_Left], 1);
-		comp = CreateCompositorAPI(texture, size);
+		comp = CreateCompositorAPI(texture, size, false /*cubemapMode*/);
 	}
 
 	comp->SetSupportedContext();
@@ -705,22 +644,22 @@ ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t * pTextures, uint32
 	// See if this is the first time we're invoked.
 	if (skyboxCompositor.get() == nullptr) {
 		const auto size = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
-		skyboxCompositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(pTextures, size));
+		skyboxCompositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(pTextures, size, true /*cubemapMode*/));
 
-		skyboxLayer.Orientation = Quatf::Identity();
+		cubemapLayer.Orientation = Quatf::Identity();
 
-		skyboxLayer.Header.Type = ovrLayerType_Cube;
-		skyboxLayer.Header.Flags = ovrLayerFlag_HighQuality;
+		cubemapLayer.Header.Type = ovrLayerType_Cube;
+		cubemapLayer.Header.Flags = ovrLayerFlag_HighQuality;
 	}
 
-	skyboxCompositor->InvokeCubemap(pTextures);
-	skyboxLayer.CubeMapTexture = skyboxCompositor->GetSwapChain();
+	skyboxCompositor->Invoke(pTextures);
+	cubemapLayer.CubeMapTexture = skyboxCompositor->GetSwapChain();
 
 	ovrResult result = ovrSuccess;
-	OOVR_FAILED_OVR_LOG(ovr_CommitTextureSwapChain(*(ovr::session), skyboxLayer.CubeMapTexture));
+	OOVR_FAILED_OVR_LOG(ovr_CommitTextureSwapChain(*(ovr::session), cubemapLayer.CubeMapTexture));
 
 	// TODO: make it accept parameter, that this is skybox.
-	SubmitSkyboxFrames();
+	SubmitCubemapFrames();
 
 	return VRCompositorError_None;
 }

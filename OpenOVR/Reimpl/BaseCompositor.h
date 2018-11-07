@@ -106,7 +106,7 @@ public:
 
 	bool leftEyeSubmitted = false, rightEyeSubmitted = false;
 	void SubmitFrames();
-	void SubmitSkyboxFrames();
+	void SubmitCubemapFrames();
 	long long frameIndex = 0;
 
 	OVR::Sizei size;
@@ -114,7 +114,7 @@ public:
 	Compositor * compositors[2] = { NULL, NULL };
 
 	ovrLayerEyeFov layer;
-	ovrLayerCube skyboxLayer;
+	ovrLayerCube cubemapLayer;
 	vr::HmdColor_t fadeColour = { 0, 0, 0, 0 };
 	float fadeTime = 0;
 
@@ -124,6 +124,7 @@ public:
 	ovrSessionStatus sessionStatus;
 
 	RenderState state = RS_NOT_STARTED;
+	RenderState cubemapState = RS_NOT_STARTED;
 
 	std::unique_ptr<Compositor> skyboxCompositor;
 
@@ -166,7 +167,7 @@ public:
 	virtual ovr_enum_t GetLastPoseForTrackedDeviceIndex(vr::TrackedDeviceIndex_t unDeviceIndex, vr::TrackedDevicePose_t *pOutputPose, vr::TrackedDevicePose_t *pOutputGamePose);
 
 	/** Creates API specific Compositor**/
-	virtual Compositor* CreateCompositorAPI(const vr::Texture_t* texture, const OVR::Sizei& fovTextureSize) const;
+	virtual Compositor* CreateCompositorAPI(const vr::Texture_t* texture, const OVR::Sizei& fovTextureSize, bool cubemapMode) const;
 
 	/** Updated scene texture to display. If pBounds is NULL the entire texture will be used.  If called from an OpenGL app, consider adding a glFlush after
 	* Submitting both frames to signal the driver to start processing, otherwise it may wait until the command buffer fills up, causing the app to miss frames.
