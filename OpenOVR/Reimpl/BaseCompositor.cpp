@@ -101,9 +101,6 @@ void BaseCompositor::SubmitFrames() {
 	if (overlay) {
 		// Let the overlay system add in it's layers
 		layer_count = overlay->_BuildLayers(app_layer, layers);
-		/*if (skyboxCompositor.get() != nullptr) {
-			layers->
-		}*/
 	}
 	else {
 		// Use the single layer, since the overlay system isn't in use
