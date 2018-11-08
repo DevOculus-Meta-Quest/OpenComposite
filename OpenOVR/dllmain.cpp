@@ -11,6 +11,7 @@
 #include "Misc/debug_helper.h"
 #include "Misc/audio_override.h"
 #include "Misc/Config.h"
+#include "Misc/ScopeGuard.h"
 #include <map>
 #include <memory>
 
@@ -233,6 +234,34 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal(EVRInitError * peError, EVRApp
 	return VR_InitInternal2(peError, eApplicationType, NULL);
 }
 
+void RunPostInitCommands()
+{
+	if (oovr_global_configuration.PostInitCmd().empty())
+		return;
+
+	STARTUPINFOA si{};
+	PROCESS_INFORMATION pi{};
+	auto cleanupOnExit = MakeScopeGuard([&]() {
+		// Close process and thread handles. 
+		::CloseHandle(pi.hProcess);
+		::CloseHandle(pi.hThread);
+	});
+
+	if (!CreateProcessA(
+		nullptr, /*lpApplicationName*/
+		const_cast<char*>(oovr_global_configuration.PostInitCmd().c_str()),
+		nullptr, /*lpProcessAttributes*/
+		nullptr, /*lpThreadAttributes*/
+		FALSE, /*bInheritHandles*/
+		0u, /*dwCreationFlags*/
+		nullptr, /*lpEnvironment*/
+		nullptr, /*lpCurrentDirectory*/
+		&si,
+		&pi)) {
+		OOVR_LOGF("CreateProces for command \"%s\" failed (%d).\n", oovr_global_configuration.PostInitCmd().c_str(), ::GetLastError());
+		return;
+	}
+}
 
 VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal2(EVRInitError * peError, EVRApplicationType eApplicationType, const char * pStartupInfo) {
 	// TODO use peError
@@ -245,6 +274,8 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal2(EVRInitError * peError, EVRAp
 
 	ovr::Setup();
 	running = true;
+
+	RunPostInitCommands();
 
 	setup_audio();
 

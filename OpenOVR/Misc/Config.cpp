@@ -116,8 +116,6 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, enableLayers);
 		CFGOPT(bool, enableCubemap);
 		CFGOPT(string, postInitCmd);
-		CFGOPT(string, postInitWD);
-		CFGOPT(string, postInitArgs);
 	}
 
 #undef CFGOPT
