@@ -142,6 +142,7 @@ void BaseCompositor::SubmitCubemapFrames() {
 
 	ovrSession &session = *ovr::session;
 
+	// SVR supports layers while in SB.  If any game uses that, we could add it.
 	int layer_count = 1;
 	ovrLayerHeader* pCubemapLayer = &cubemapLayer.Header;
 	ovrLayerHeader const* const* layers = &pCubemapLayer;
@@ -656,7 +657,6 @@ ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t * pTextures, uint32
 	ovrResult result = ovrSuccess;
 	OOVR_FAILED_OVR_LOG(ovr_CommitTextureSwapChain(*(ovr::session), cubemapLayer.CubeMapTexture));
 
-	// TODO: make it accept parameter, that this is skybox.
 	SubmitCubemapFrames();
 
 	return VRCompositorError_None;

@@ -117,8 +117,6 @@ private:
 	CComPtr<ID3DDeviceContextState> cubemapTextureContextState;
 	CComQIPtr<ID3D11Device1> device1;
 	CComQIPtr<ID3D11DeviceContext1> context1;
-	CComPtr<ID3D11Texture2D> stagingTexture;
-	CComPtr<ID3D11RenderTargetView> stagingRenderTargetView;
 };
 
 class DX11HybridCompositor : public Compositor {

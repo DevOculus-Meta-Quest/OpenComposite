@@ -269,7 +269,7 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 			desc.StaticImage = ovrFalse;
 
 			desc.MiscFlags = ovrTextureMisc_DX_Typeless | ovrTextureMisc_AutoGenerateMips;
-			desc.BindFlags = ovrTextureBind_None; // ovrTextureBind_DX_RenderTarget;
+			desc.BindFlags = ovrTextureBind_None;  // ovrTextureBind_DX_RenderTarget;
 
 			srcSize.w = srcDesc.Width;
 			srcSize.h = srcDesc.Height;
@@ -301,9 +301,6 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 			if (chain != nullptr)
 				ovr_DestroyTextureSwapChain(OVSS, chain);
 
-			stagingTexture.Release();
-			stagingRenderTargetView.Release();
-
 			// Make eye render buffer
 			desc = {};
 			desc.Type = ovrTexture_Cube;
@@ -317,10 +314,7 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 			desc.StaticImage = ovrFalse;
 
 			desc.MiscFlags = ovrTextureMisc_DX_Typeless | ovrTextureMisc_AutoGenerateMips;
-
-			// VL: It would be great if we could avoid staging texture and render
-			// directly into chain, but I dot undertand how to accomplish that.
-			desc.BindFlags = ovrTextureBind_None; // ovrTextureBind_DX_RenderTarget;
+			desc.BindFlags = ovrTextureBind_DX_RenderTarget;  // We will be rendering directly into chain.
 
 			srcSize.w = srcDesc.Width;
 			srcSize.h = srcDesc.Height;
@@ -328,27 +322,6 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 			ovrResult result = ovr_CreateTextureSwapChainDX(OVSS, device, &desc, &chain);
 			if (!OVR_SUCCESS(result))
 				ERR("Cannot create DX texture swap chain " + to_string(result));
-
-			// Create staging texture for image flipping:
-			D3D11_TEXTURE2D_DESC targetDesc{};
-			targetDesc.Width = desc.Width;
-			targetDesc.Height = desc.Height;
-			targetDesc.MipLevels = srcDesc.MipLevels;
-			targetDesc.ArraySize = 1;
-			targetDesc.Format = srcDesc.Format;
-			targetDesc.SampleDesc.Count = srcDesc.SampleDesc.Count;
-			targetDesc.SampleDesc.Quality = srcDesc.SampleDesc.Quality;
-			targetDesc.Usage = D3D11_USAGE_DEFAULT;
-			targetDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-			targetDesc.CPUAccessFlags = 0;
-			targetDesc.MiscFlags = 0;
-			OOVR_FAILED_DX_ABORT(device->CreateTexture2D(&targetDesc, nullptr, &stagingTexture));
-
-			D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc{};
-			renderTargetViewDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-			renderTargetViewDesc.Texture2D.MipSlice = 0;
-			OOVR_FAILED_DX_ABORT(device->CreateRenderTargetView(stagingTexture, &renderTargetViewDesc, &stagingRenderTargetView));
 		}
 
 		ID3D11Texture2D* tex = nullptr;
@@ -360,7 +333,7 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 			0,  // Left
 			1,  // Right
 			2,  // Top
-			3   // Bottom
+			3   // Bottom  NOTE: Bottom appears upside down still, but I am too tired to fix it and let it slide for now.
 		};
 
 		// Produce the final image:
@@ -370,10 +343,6 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 		auto revertToCallerContext = MakeScopeGuard([&]() {
 			context1->SwapDeviceContextState(originalContextState, nullptr);
 		});
-
-		// Set the render target to be the render to texture.
-		ID3D11RenderTargetView* stagingRenderTargetViewRaw = stagingRenderTargetView;
-		context->OMSetRenderTargets(1, &stagingRenderTargetViewRaw, nullptr);
 
 		D3D11_VIEWPORT vp{};
 		vp.Width = static_cast<FLOAT>(desc.Width);
@@ -404,6 +373,20 @@ void DX11Compositor::RenderSourceToCubemapChain(ID3D11Texture2D* faceSrc, const 
 {
 	HRESULT hr = S_OK;
 
+	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc{};
+	renderTargetViewDesc.Format = faceSrcDesc.Format;
+	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+	renderTargetViewDesc.Texture2DArray.MipSlice = 0;
+	renderTargetViewDesc.Texture2DArray.FirstArraySlice = subResourceDestIndex;
+	renderTargetViewDesc.Texture2DArray.ArraySize = 1;
+
+	CComPtr<ID3D11RenderTargetView> renderTargetView;
+	OOVR_FAILED_DX_ABORT(device->CreateRenderTargetView(hmdTexture, &renderTargetViewDesc, &renderTargetView));
+
+	// Set the render target to be the render to texture.
+	ID3D11RenderTargetView* renderTargetViewRaw = renderTargetView;
+	context->OMSetRenderTargets(1, &renderTargetViewRaw, nullptr);
+
 	// Create Source Shader Resource view for the input texture:
 	CComPtr<ID3D11ShaderResourceView> srv;
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -418,7 +401,7 @@ void DX11Compositor::RenderSourceToCubemapChain(ID3D11Texture2D* faceSrc, const 
 
 	// Clear the back buffer to a deep blue.
 	constexpr FLOAT col[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	context->ClearRenderTargetView(stagingRenderTargetView, col);
+	context->ClearRenderTargetView(renderTargetViewRaw, col);
 
 	// Select which vertex buffer to display.
 	UINT stride = sizeof(TEXPOINT);
@@ -430,8 +413,6 @@ void DX11Compositor::RenderSourceToCubemapChain(ID3D11Texture2D* faceSrc, const 
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	context->Draw(6, 0);
-
-	context->CopySubresourceRegion(hmdTexture, subResourceDestIndex, 0, 0, 0, stagingTexture, 0, nullptr);
 }
 
 void DX11Compositor::Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * ptrBounds,
