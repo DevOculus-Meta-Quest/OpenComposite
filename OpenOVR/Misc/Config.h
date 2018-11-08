@@ -18,6 +18,9 @@ public:
 	inline bool DX10Mode() const { return dx10Mode; }
 	inline bool EnableLayers() const { return enableLayers; }
 	inline bool EnableCubemap() const { return enableCubemap; }
+	inline std::string PostInitCmd() const { return postInitCmd; }
+	inline std::string PostInitWD() const { return postInitWD; }
+	inline std::string PostInitArgs() const { return postInitArgs; }
 
 private:
 	static int ini_handler(
@@ -38,6 +41,9 @@ private:
 	bool dx10Mode = false;
 	bool enableLayers = true;
 	bool enableCubemap = false;
+	std::string postInitCmd;
+	std::string postInitWD;
+	std::string postInitArgs;
 };
 
 extern Config oovr_global_configuration;
