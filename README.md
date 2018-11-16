@@ -4,7 +4,7 @@ This project as a fork of the fantastic work by Cambel Suter, please see main pr
 This fork contains stripped down version of the Open Composite effort, with two goals in mind: 
 
 * Focus on rFactor 2 and Raceroom simulators
-* Focus on stable and predictable releases
+* Focus on stable, quality and predictable releases
 
 # Installation
 
