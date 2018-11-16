@@ -279,7 +279,7 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 				ERR("Cannot create DX texture swap chain " + to_string(result));
 		}
 
-		ID3D11Texture2D* tex = nullptr;
+		CComPtr<ID3D11Texture2D> tex;
 		ovr_GetTextureSwapChainBufferDX(OVSS, chain, currentIndex, IID_PPV_ARGS(&tex));
 		context->CopyResource(tex, src);
 	}
@@ -324,7 +324,7 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 				ERR("Cannot create DX texture swap chain " + to_string(result));
 		}
 
-		ID3D11Texture2D* tex = nullptr;
+		CComPtr<ID3D11Texture2D> tex;
 		ovr_GetTextureSwapChainBufferDX(OVSS, chain, currentIndex, IID_PPV_ARGS(&tex));
 
 		constexpr int svrToOvrCubemapIndexMap[] = {
