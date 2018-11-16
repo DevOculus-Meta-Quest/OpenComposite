@@ -15,6 +15,8 @@ public:
 	inline bool UseViewportStencil() const { return useViewportStencil; }
 	inline bool ForceConnectedTouch() const { return forceConnectedTouch; }
 	inline bool LogGetTrackedProperty() const { return logGetTrackedProperty; }
+	inline bool EnableLayers() const { return enableLayers; }
+	inline bool DX10Mode() const { return dx10Mode; }
 
 private:
 	static int ini_handler(
@@ -33,6 +35,11 @@ private:
 	bool forceConnectedTouch = true;
 	bool logGetTrackedProperty = false;
 
+	// Default to false since this was preventing PAYDAY 2 from starting, need to investigate to find out
+	//  if this is game-specific, or if it's a problem with the layer system
+	bool enableLayers = false;
+
+	bool dx10Mode = false;
 };
 
 extern Config oovr_global_configuration;

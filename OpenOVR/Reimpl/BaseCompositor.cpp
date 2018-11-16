@@ -24,6 +24,8 @@ using namespace std;
 #include "OVR_CAPI_Vk.h"
 #endif
 
+#include "Misc/ScopeGuard.h"
+
 using namespace vr;
 using namespace IVRCompositor_022;
 
@@ -48,7 +50,6 @@ void BaseCompositor::SubmitFrames() {
 	}
 
 	ovrSession &session = *ovr::session;
-	ovrGraphicsLuid &luid = *ovr::luid;
 	ovrHmdDesc &hmdDesc = ovr::hmdDesc;
 
 	// Call ovr_GetRenderDesc each frame to get the ovrEyeRenderDesc, as the returned values (e.g. HmdToEyePose) may change at runtime.
@@ -107,18 +108,11 @@ void BaseCompositor::SubmitFrames() {
 	}
 
 	// Submit the layers
-	ovrResult result;
 	if (oovr_global_configuration.ThreePartSubmit()) {
-		result = ovr_EndFrame(session, frameIndex, nullptr, layers, layer_count);
+		OOVR_FAILED_OVR_ABORT(ovr_EndFrame(session, frameIndex, nullptr, layers, layer_count));
 	}
 	else {
-		result = ovr_SubmitFrame(session, frameIndex, nullptr, layers, layer_count);
-	}
-
-	// exit the rendering loop if submit returns an error, will retry on ovrError_DisplayLost
-	if (!OVR_SUCCESS(result)) {
-		string err = "ovr_EndFrame: " + to_string(result);
-		OOVR_ABORT(err.c_str());
+		OOVR_FAILED_OVR_ABORT(ovr_SubmitFrame(session, frameIndex, nullptr, layers, layer_count));
 	}
 
 	state = RS_WAIT_BEGIN;
@@ -148,7 +142,7 @@ void BaseCompositor::SetTrackingSpace(ETrackingUniverseOrigin eOrigin) {
 		origin = ovrTrackingOrigin_EyeLevel;
 	}
 
-	ovr_SetTrackingOriginType(SESS, origin);
+	OOVR_FAILED_OVR_ABORT(ovr_SetTrackingOriginType(SESS, origin));
 }
 
 ETrackingUniverseOrigin BaseCompositor::GetTrackingSpace() {
@@ -171,19 +165,9 @@ ovr_enum_t BaseCompositor::WaitGetPoses(TrackedDevicePose_t * renderPoseArray, u
 		// Do nothing at this stage
 	}
 	else if (state == RS_WAIT_BEGIN) {
-		ovrResult result = ovr_WaitToBeginFrame(SESS, frameIndex);
-		if (!OVR_SUCCESS(result)) {
-			string msg = "ovr_WaitToBeginFrame: " + to_string(result);
-			OOVR_ABORT(msg.c_str());
-		}
+		OOVR_FAILED_OVR_ABORT(ovr_WaitToBeginFrame(SESS, frameIndex));
 
-		result = ovr_BeginFrame(SESS, frameIndex);
-		if (!OVR_SUCCESS(result)) {
-			ovrErrorInfo err;
-			ovr_GetLastErrorInfo(&err);
-			string msg = "ovr_BeginFrame: " + to_string(result) + ": " + err.ErrorString;
-			OOVR_ABORT(msg.c_str());
-		}
+		OOVR_FAILED_OVR_ABORT(ovr_BeginFrame(SESS, frameIndex));
 
 		state = RS_RENDERING;
 	}
@@ -281,7 +265,7 @@ Matrix4f BaseCompositor::GetHandTransform() {
 	// Controller offset
 	// Note this is about right, found by playing around in Unity until everything
 	//  roughly lines up. If you want to contribute better numbers, please go ahead!
-	transform.SetTranslation(Vector3f(0, 0.0353, -0.0451));
+	transform.SetTranslation(Vector3f(0.0f, 0.0353f, -0.0451f));
 
 	return transform;
 }
@@ -289,7 +273,7 @@ Matrix4f BaseCompositor::GetHandTransform() {
 ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t * renderPoseArray, uint32_t renderPoseArrayCount,
 	TrackedDevicePose_t * gamePoseArray, uint32_t gamePoseArrayCount) {
 
-	for (size_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
+	for (uint32_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
 		TrackedDevicePose_t *renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
 		TrackedDevicePose_t *gamePose = i < gamePoseArrayCount ? gamePoseArray + i : NULL;
 
@@ -331,52 +315,68 @@ ovr_enum_t BaseCompositor::GetLastPoseForTrackedDeviceIndex(TrackedDeviceIndex_t
 	return VRCompositorError_None;
 }
 
-ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t * texture, const VRTextureBounds_t * bounds, EVRSubmitFlags submitFlags) {
-	Compositor* &comp = compositors[S2O_eye(eye)];
-	if (comp == NULL) {
-		size = ovr_GetFovTextureSize(SESS, ovrEye_Left, DESC.DefaultEyeFov[ovrEye_Left], 1);
+Compositor* BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture, const OVR::Sizei& fovTextureSize)
+{
+	Compositor* comp = nullptr;
 
-		switch (texture->eType) {
+	switch (texture->eType) {
 #ifdef SUPPORT_GL
-		case TextureType_OpenGL: {
-			comp = new GLCompositor(size);
-			break;
-		}
+	case TextureType_OpenGL: {
+		comp = new GLCompositor(fovTextureSize);
+		break;
+	}
 #endif
 #ifdef SUPPORT_DX
-		case TextureType_DirectX: {
+	case TextureType_DirectX: {
+		if (!oovr_global_configuration.DX10Mode())
 			comp = new DX11Compositor((ID3D11Texture2D*)texture->handle);
-			break;
-		}
+		else
+			comp = new DX10Compositor((ID3D10Texture2D*)texture->handle);
+
+		break;
+	}
 #endif
 #if defined(SUPPORT_VK)
-		case TextureType_Vulkan: {
-			comp = new VkCompositor(texture);
-			break;
-		}
+	case TextureType_Vulkan: {
+		comp = new VkCompositor(texture);
+		break;
+	}
 #endif
 #if defined(SUPPORT_DX12)
-		case TextureType_DirectX12: {
-			compositor = new DX12Compositor((D3D12TextureData_t*)texture->handle, size, chains);
-			break;
-		}
-#endif
-		default:
-			string err = "[BaseCompositor::Submit] Unsupported texture type: " + to_string(texture->eType);
-			OOVR_ABORT(err.c_str());
-		}
-
-		for (int ieye = 0; ieye < 2; ++ieye) {
-			if (comp->GetSwapChain() == NULL && texture->eType != TextureType_DirectX && texture->eType != TextureType_Vulkan) {
-				OOVR_ABORT("Failed to create texture.");
-			}
-		}
+	case TextureType_DirectX12: {
+		compositor = new DX12Compositor((D3D12TextureData_t*)texture->handle, fovTextureSize, chains);
+		break;
 	}
+#endif
+	default:
+		string err = "[BaseCompositor::Submit] Unsupported texture type: " + to_string(texture->eType);
+		OOVR_ABORT(err.c_str());
+	}
+
+	if (comp->GetSwapChain() == NULL && texture->eType != TextureType_DirectX && texture->eType != TextureType_Vulkan) {
+		OOVR_ABORT("Failed to create texture.");
+	}
+
+	return comp;
+}
+
+ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t * texture, const VRTextureBounds_t * bounds, EVRSubmitFlags submitFlags) {
+	Compositor* &comp = compositors[S2O_eye(eye)];
+	if (comp == nullptr) {
+		size = ovr_GetFovTextureSize(SESS, ovrEye_Left, DESC.DefaultEyeFov[ovrEye_Left], 1);
+		comp = CreateCompositorAPI(texture, size);
+	}
+
+	comp->LoadSubmitContext();
+
+	auto revertToCallerContext = MakeScopeGuard([&]() {
+		comp->ResetSubmitContext();
+	});
 
 	if (!leftEyeSubmitted && !rightEyeSubmitted) {
 		// TODO call frame-start method
 
-		ovr_GetSessionStatus(SESS, &sessionStatus);
+		OOVR_FAILED_OVR_ABORT(ovr_GetSessionStatus(SESS, &sessionStatus));
 	}
 
 	// TODO make sure we don't start on the second eye.
@@ -403,7 +403,7 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t * texture, const V
 		OOVR_ABORT("Missing swapchain");
 	}
 
-	ovr_CommitTextureSwapChain(SESS, comp->GetSwapChain());
+	OOVR_FAILED_OVR_ABORT(ovr_CommitTextureSwapChain(SESS, comp->GetSwapChain()));
 
 	//{
 	//	int oeye = S2O_eye(eye);
@@ -417,13 +417,13 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t * texture, const V
 	//	ovr_CommitTextureSwapChain(SESS, chains[oeye]);
 	//}
 
-	bool state;
+	bool eyeState = false;
 	if (eye == Eye_Left)
-		state = leftEyeSubmitted;
+		eyeState = leftEyeSubmitted;
 	else
-		state = rightEyeSubmitted;
+		eyeState = rightEyeSubmitted;
 
-	if (state) {
+	if (eyeState) {
 		OOVR_ABORT("Eye already submitted!");
 	}
 
@@ -467,7 +467,7 @@ bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint3
 	// TODO implement unFramesAgo
 
 	ovrPerfStats stats;
-	ovr_GetPerfStats(*ovr::session, &stats);
+	OOVR_FAILED_OVR_ABORT(ovr_GetPerfStats(*ovr::session, &stats));
 	const ovrPerfStatsPerCompositorFrame &frame = stats.FrameStats[0];
 
 	memset(pTiming, 0, sizeof(OOVR_Compositor_FrameTiming));
@@ -686,7 +686,7 @@ void BaseCompositor::UnlockGLSharedTextureForAccess(glSharedTextureHandle_t glSh
 uint32_t BaseCompositor::GetVulkanInstanceExtensionsRequired(VR_OUT_STRING() char * pchValue, uint32_t unBufferSize) {
 #if defined(SUPPORT_VK)
 	// Whaddya know, the Oculus and Valve methods work almost identically...
-	ovr_GetInstanceExtensionsVk(*ovr::luid, pchValue, &unBufferSize);
+	OOVR_FAILED_OVR_ABORT(ovr_GetInstanceExtensionsVk(*ovr::luid, pchValue, &unBufferSize));
 	return unBufferSize;
 #else
 	STUBBED();
@@ -696,7 +696,7 @@ uint32_t BaseCompositor::GetVulkanInstanceExtensionsRequired(VR_OUT_STRING() cha
 uint32_t BaseCompositor::GetVulkanDeviceExtensionsRequired(VkPhysicalDevice_T * pPhysicalDevice, char * pchValue, uint32_t unBufferSize) {
 #if defined(SUPPORT_VK)
 	// Use the default LUID, even if another physical device is passed in. TODO.
-	ovr_GetDeviceExtensionsVk(*ovr::luid, pchValue, &unBufferSize);
+	OOVR_FAILED_OVR_ABORT(ovr_GetDeviceExtensionsVk(*ovr::luid, pchValue, &unBufferSize));
 	return unBufferSize;
 #else
 	STUBBED();

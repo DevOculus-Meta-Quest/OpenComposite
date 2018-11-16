@@ -63,7 +63,7 @@ ovrTextureFormat dxgiToOvrFormat(DXGI_FORMAT dxgi, vr::EColorSpace colourSpace) 
 
 void DX11Compositor::ThrowIfFailed(HRESULT test) {
 	if ((test) != S_OK) {
-		HRESULT remReason = device->GetDeviceRemovedReason();
+		OOVR_FAILED_DX_ABORT(device->GetDeviceRemovedReason());
 		throw "ThrowIfFailed err";
 	}
 }
@@ -80,9 +80,6 @@ DX11Compositor::~DX11Compositor() {
 
 void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 	ovrTextureSwapChainDesc &desc = chainDesc;
-
-	int currentIndex = 0;
-	ovr_GetTextureSwapChainCurrentIndex(OVSS, chain, &currentIndex);
 
 	ID3D11Texture2D *src = (ID3D11Texture2D*)texture->handle;
 
@@ -112,14 +109,21 @@ void DX11Compositor::Invoke(const vr::Texture_t * texture) {
 		desc.MiscFlags = ovrTextureMisc_DX_Typeless | ovrTextureMisc_AutoGenerateMips;
 		desc.BindFlags = ovrTextureBind_None; // ovrTextureBind_DX_RenderTarget;
 
+		srcSize.w = srcDesc.Width;
+		srcSize.h = srcDesc.Height;
+
 		ovrResult result = ovr_CreateTextureSwapChainDX(OVSS, device, &desc, &chain);
 		if (!OVR_SUCCESS(result))
 			ERR("Cannot create DX texture swap chain " + to_string(result));
 	}
 
+	int currentIndex = 0;
+	ovr_GetTextureSwapChainCurrentIndex(OVSS, chain, &currentIndex);
+
 	ID3D11Texture2D* tex = nullptr;
 	ovr_GetTextureSwapChainBufferDX(OVSS, chain, currentIndex, IID_PPV_ARGS(&tex));
 	context->CopyResource(tex, src);
+	tex->Release();
 }
 
 void DX11Compositor::Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * ptrBounds,
