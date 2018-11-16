@@ -171,8 +171,7 @@ void DX11HybridCompositor::Invoke(const vr::Texture_t * texture) {
 			ERR("Cannot create DX texture swap chain " + to_string(result));
 	}
 
-	// Does this leak?
-	ID3D11Texture2D* tex = nullptr;
+	CComPtr<ID3D11Texture2D> tex;
 	OOVR_FAILED_OVR_ABORT(ovr_GetTextureSwapChainBufferDX(OVSS, chain, currentIndex, IID_PPV_ARGS(&tex)));
 
 	context->CopyResource(tex, src);
