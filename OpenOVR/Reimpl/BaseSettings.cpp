@@ -12,14 +12,13 @@
 	OOVR_ABORT_T(str.c_str(), "Stubbed func!"); \
 }
 
-#ifndef STUBBED
+#undef STUBBED
 #define STUBBED() { \
 	string str = "Hit stubbed file at " __FILE__ " func "  " line " + to_string(__LINE__); \
 	str += "via " + string(pchSection) + "." + string(pchSettingsKey); \
 	OOVR_ABORT_T(str.c_str(), "Stubbed func!"); \
 	throw str; \
 }
-#endif
 
 #define UNSET_SETTING() { \
 	string str = "Hit undefined setting at " __FILE__ " func "  " line " + to_string(__LINE__); \
