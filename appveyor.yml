@@ -8,8 +8,8 @@ platform:
   - x86
   - x64
 install:
-  - ps: appveyor DownloadFile http://znix.xyz/random/ovr_sdk_win_1.26.0_public_nosamples.7z
-  - ps: appveyor DownloadFile https://znix.xyz/random/vulkan-1.1.85.0-minisdk.7z
+  - ps: appveyor DownloadFile http://thecrewchief.org/downloads/appveyor/ovr_sdk_win_1.26.0_public_nosamples.7z
+  - ps: appveyor DownloadFile http://thecrewchief.org/downloads/appveyor/vulkan-1.1.85.0-minisdk.7z
   - ps: 7z x -olibs/libovr ovr_sdk_win_1.26.0_public_nosamples.7z
   - ps: 7z x -olibs vulkan-1.1.85.0-minisdk.7z
   - ps: ./configure.cmd
