@@ -5,7 +5,6 @@ branches:
 image: Visual Studio 2017
 configuration: Release
 platform:
-  - x86
   - x64
 install:
   - ps: appveyor DownloadFile http://thecrewchief.org/downloads/appveyor/ovr_sdk_win_1.26.0_public_nosamples.7z
@@ -17,14 +16,10 @@ before_build:
   - nuget restore
 build:
   project: OpenOVR.sln
-  verbosity: detailed
+  verbosity: normal
 on_success:
 - ps: >-
-    If ($env:Platform -Match "x86") {
-        $effective_plat = "Win32"
-    } Else {
-        $effective_plat = $env:Platform
-    }
+    $effective_plat = $env:Platform
     Push-AppveyorArtifact "$effective_plat/$env:Configuration/openvr_api.dll" -FileName "$env:Platform/openvr_api.dll"
 
     7z a OpenComposite.zip "RuntimeSwitcher/bin/$env:Configuration"
