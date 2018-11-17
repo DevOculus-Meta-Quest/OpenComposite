@@ -1,10 +1,10 @@
 # About
-This project as a fork of the fantastic work by Cambel Suter, please see main project site here: https://gitlab.com/znixian/OpenOVR
+This project as a fork of a fantastic work by Campbell Suter, please see main project site here: https://gitlab.com/znixian/OpenOVR
 
 This fork contains stripped down version of the Open Composite effort, with two goals in mind: 
 
 * Focus on rFactor 2 and Raceroom simulators
-* Focus on stable, quality and predictable releases
+* Stable, quality and predictable releases
 
 # Installation
 
