@@ -1,7 +1,1 @@
 #include "resources.h"
-
-// Other resource statements...
-
-RES_O_HAND_LEFT		RES_T_OBJ	"../assets/LeftHand.obj"
-RES_O_HAND_RIGHT	RES_T_OBJ	"../assets/RightHand.obj"
-

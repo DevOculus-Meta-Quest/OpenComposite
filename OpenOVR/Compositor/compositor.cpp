@@ -4,8 +4,8 @@
 #include "libovr_wrapper.h"
 
 Compositor::~Compositor() {
-	if (chain) {
-		ovr_DestroyTextureSwapChain(*ovr::session, chain);
-		chain = NULL;
+	if (mOVRSwapChain) {
+		ovr_DestroyTextureSwapChain(*ovr::session, mOVRSwapChain);
+		mOVRSwapChain = NULL;
 	}
 }

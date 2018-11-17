@@ -1,193 +1,142 @@
 #pragma once
 
-#include "OpenVR/interfaces/vrtypes.h"
-
-#pragma warning(push)
-#pragma warning(disable : 4324)   // structure padded due to alignment specifier.
-#include "d3dx12.h"
-#pragma warning(pop)
-
-#include <d3d11.h>
-#include <d3d11_1.h>
-#include <wrl/client.h>
-
-#include <Extras/OVR_Math.h>
-
-#include <vector>
-#include <memory>
-
-#pragma warning(push)
-#pragma warning(disable : 4838)   // int to UINT truncation.
-#include <atlbase.h>
-#pragma warning(pop)
-
-using Microsoft::WRL::ComPtr;
-
 typedef unsigned int GLuint;
 
-class Compositor {
+class Compositor
+{
 public:
-	virtual ~Compositor();
+  virtual ~Compositor();
 
-	// Only copy a texture - this can be used for overlays and such
-	virtual void Invoke(const vr::Texture_t * texture) = 0;
+  // Only copy a texture - this can be used for overlays and such
+  virtual void Invoke(vr::Texture_t const* texture) = 0;
 
-	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
-		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) = 0;
+  virtual void Invoke(
+    ovrEyeType eye,
+    vr::Texture_t const* texture,
+    vr::VRTextureBounds_t const* bounds,
+    vr::EVRSubmitFlags submitFlags,
+    ovrLayerEyeFov &layer) = 0;
 
-	virtual ovrTextureSwapChain GetSwapChain() { return chain; };
+  virtual ovrTextureSwapChain GetOVRSwapChain() { return mOVRSwapChain; };
 
-	virtual unsigned int GetFlags() { return 0; }
+  virtual unsigned int GetFlags() { return 0; }
 
-	virtual OVR::Sizei GetSrcSize() { return srcSize; };
+  virtual OVR::Sizei GetInputSrcSize() { return mInputSrcSize; };
 
-	virtual void SetSupportedContext() {};
-	virtual void ResetSupportedContext() {};
+  virtual void SetSupportedContext() {};
+  virtual void ResetSupportedContext() {};
 
 protected:
-	ovrTextureSwapChain chain;
-	OVR::Sizei singleScreenSize;
-	OVR::Sizei srcSize;
+  ovrTextureSwapChain mOVRSwapChain;
+  OVR::Sizei mInputSrcSize;
+  ovrTextureSwapChainDesc mOVRSwapChainDesc;
 };
 
-class DX12Compositor : public Compositor {
+class DX11Compositor : public Compositor
+{
 public:
-	DX12Compositor(vr::D3D12TextureData_t *td, OVR::Sizei &bufferSize, ovrTextureSwapChain *chains);
+  DX11Compositor(ID3D11Texture2D* texture);
 
-	// Override
-	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
-		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;
+  virtual ~DX11Compositor() override;
+
+  // Override
+  virtual void Invoke(vr::Texture_t const* texture) override;
+
+  virtual void Invoke(
+    ovrEyeType eye,
+    vr::Texture_t const* texture,
+    vr::VRTextureBounds_t const* bounds,
+    vr::EVRSubmitFlags submitFlags,
+    ovrLayerEyeFov &layer) override;
+
+  unsigned int GetFlags() override;
+
+protected:
+  bool CheckChainCompatible(
+    D3D11_TEXTURE2D_DESC& inputDesc,
+    ovrTextureSwapChainDesc& OVRChainDesc,
+    vr::EColorSpace colourSpace);
+
+protected:
+  CComPtr<ID3D11Device> mDevice;
+  CComPtr<ID3D11DeviceContext> mContext;
 
 private:
-	ComPtr<ID3D12Device> device;
-	ComPtr<ID3D12CommandQueue> queue;
-	ComPtr<ID3D12GraphicsCommandList> commandList;
-
-	int chainLength = -1;
-
-	ComPtr<ID3D12CommandAllocator> allocator = NULL;
-	ComPtr<ID3D12DescriptorHeap> rtvVRHeap = NULL;  // Resource Target View Heap
-	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> texRtv;
-	std::vector<ID3D12Resource*> texResource;
-
-	ComPtr<ID3D12Resource> m_vertexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	ComPtr<ID3D12PipelineState> pipelineState;
-	ComPtr<ID3D12RootSignature> rootSignature;
-
-	ComPtr<ID3D12DescriptorHeap> srvHeap = NULL;
-	UINT m_rtvDescriptorSize;
+  bool mSubmitVerticallyFlipped;
 };
 
-class DX11Compositor : public Compositor {
+class DX11CubemapCompositor : public DX11Compositor
+{
 public:
-	DX11Compositor(ID3D11Texture2D* td, bool skyboxMode);
+  DX11CubemapCompositor(ID3D11Texture2D* firstTexture);
 
-	virtual ~DX11Compositor() override;
+  virtual ~DX11CubemapCompositor() override;
 
-	// Override
-	virtual void Invoke(const vr::Texture_t * texture) override;
+  // Override
+  virtual void Invoke(vr::Texture_t const* firstTexture) override;
 
-	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
-		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;
-
-	unsigned int GetFlags() override;
+  virtual void Invoke(
+    ovrEyeType eye,
+    vr::Texture_t const* texture,
+    vr::VRTextureBounds_t const* bounds,
+    vr::EVRSubmitFlags submitFlags,
+    ovrLayerEyeFov &layer) override
+  {}
 
 private:
-	void ThrowIfFailed(HRESULT test);
-
-	bool CheckChainCompatible(D3D11_TEXTURE2D_DESC & inputDesc, ovrTextureSwapChainDesc & chainDesc, vr::EColorSpace colourSpace);
-
-	void RenderSourceToCubemapChain(ID3D11Texture2D* faceSrc, const D3D11_TEXTURE2D_DESC& faceSrcDesc, ID3D11Texture2D* hmdTexture, int subResourceDestIndex);
-
-	CComPtr<ID3D11Device> device;
-	CComPtr<ID3D11DeviceContext> context;
-
-	ovrTextureSwapChainDesc chainDesc;
-
-	bool submitVerticallyFlipped;
-
-	// Cubemap members:
-	const bool cubemapMode;
-	CComPtr<ID3D11VertexShader> vertexShader;
-	CComPtr<ID3D11PixelShader> pixelShader;
-	CComPtr<ID3D11InputLayout> inputLayout;
-	CComPtr<ID3D11Buffer> quadVertexBuffer;
-	CComPtr<ID3D11SamplerState> sampler;
-	CComPtr<ID3DDeviceContextState> cubemapTextureContextState;
-	CComQIPtr<ID3D11Device1> device1;
-	CComQIPtr<ID3D11DeviceContext1> context1;
-};
-
-class DX11HybridCompositor : public Compositor {
-public:
-	DX11HybridCompositor(ID3D10Texture2D* td);
-
-	virtual ~DX11HybridCompositor() override;
-
-	// Override
-	virtual void Invoke(const vr::Texture_t * texture) override;
-
-	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
-		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;
-
-	unsigned int GetFlags() override;
-
-	virtual void SetSupportedContext() override;
-	virtual void ResetSupportedContext() override;
+  void RenderSourceToCubemapChain(
+    ID3D11Texture2D* faceSrc,
+    D3D11_TEXTURE2D_DESC const& faceSrcDesc,
+    ID3D11Texture2D* hmdTexture,
+    int subResourceDestIndex);
 
 private:
-	void ThrowIfFailed(HRESULT test);
-
-	bool CheckChainCompatible(D3D11_TEXTURE2D_DESC & inputDesc, ovrTextureSwapChainDesc & chainDesc, vr::EColorSpace colourSpace);
-
-	// TODO: make sure all of below are indeed needed.
-	CComPtr<ID3D11Device> device;
-	CComQIPtr<ID3D11Device1> device1;
-	CComQIPtr<ID3D11DeviceContext> context;
-	CComQIPtr<ID3D11DeviceContext1> context1;
-	CComPtr<ID3DDeviceContextState> customContextState;
-	CComPtr<ID3DDeviceContextState> originalContextState;
-
-	ovrTextureSwapChainDesc chainDesc;
-
-	bool submitVerticallyFlipped;
+  CComPtr<ID3D11VertexShader> mVertexShader;
+  CComPtr<ID3D11PixelShader> mPixelShader;
+  CComPtr<ID3D11InputLayout> mShaderInputLayout;
+  CComPtr<ID3D11Buffer> mQuadVertexBuffer;
+  CComPtr<ID3D11SamplerState> mSampler;
+  CComPtr<ID3DDeviceContextState> mCubemapTextureContextState;
+  CComQIPtr<ID3D11Device1> mDevice1;
+  CComQIPtr<ID3D11DeviceContext1> mContext1;
 };
 
-class GLCompositor : public Compositor {
+class DX11HybridCompositor : public Compositor
+{
 public:
-	GLCompositor(OVR::Sizei size);
+  DX11HybridCompositor(ID3D10Texture2D* texture);
 
-	unsigned int GetFlags() override;
+  virtual ~DX11HybridCompositor() override;
 
-	// Override
-	virtual void Invoke(const vr::Texture_t * texture) override;
+  // Override
+  virtual void Invoke(vr::Texture_t const* texture) override;
 
-	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
-		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;
+  virtual void Invoke(
+    ovrEyeType eye,
+    vr::Texture_t const* texture,
+    vr::VRTextureBounds_t const* bounds,
+    vr::EVRSubmitFlags submitFlags,
+    ovrLayerEyeFov &layer) override;
+
+  unsigned int GetFlags() override;
+
+  virtual void SetSupportedContext() override;
+  virtual void ResetSupportedContext() override;
 
 private:
-	GLuint fboId;
+  bool CheckChainCompatible(
+    D3D11_TEXTURE2D_DESC& inputDesc,
+    ovrTextureSwapChainDesc& OVRchainDesc,
+    vr::EColorSpace colourSpace);
+
+  // TODO: make sure all of below are indeed needed.
+  CComPtr<ID3D11Device> mDevice;
+  CComQIPtr<ID3D11Device1> mDevice1;
+  CComQIPtr<ID3D11DeviceContext> mContext;
+  CComQIPtr<ID3D11DeviceContext1> mContext1;
+  CComPtr<ID3DDeviceContextState> mDX11ContextState;
+  CComPtr<ID3DDeviceContextState> mOriginalContextState;
+
+  bool mSubmitVerticallyFlipped;
 };
 
-class VkCompositor : public Compositor {
-public:
-	VkCompositor(const vr::Texture_t *initialTexture);
-
-	virtual ~VkCompositor() override;
-
-	// Override
-	virtual void Invoke(const vr::Texture_t * texture) override;
-
-	virtual void Invoke(ovrEyeType eye, const vr::Texture_t * texture, const vr::VRTextureBounds_t * bounds,
-		vr::EVRSubmitFlags submitFlags, ovrLayerEyeFov &layer) override;
-
-private:
-	bool CheckChainCompatible(const vr::VRVulkanTextureData_t &tex, const ovrTextureSwapChainDesc &chainDesc, vr::EColorSpace colourSpace);
-
-	bool submitVerticallyFlipped;
-	ovrTextureSwapChainDesc chainDesc;
-	uint64_t /*VkCommandPool*/ commandPool;
-
-	uint32_t graphicsQueueFamilyId;
-};

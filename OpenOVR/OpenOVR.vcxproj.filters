@@ -311,13 +311,7 @@
     <ClCompile Include="convert.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Compositor\dx12compositor.cpp">
-      <Filter>Source Files\Compositor</Filter>
-    </ClCompile>
     <ClCompile Include="Compositor\dx11compositor.cpp">
-      <Filter>Source Files\Compositor</Filter>
-    </ClCompile>
-    <ClCompile Include="Compositor\glcompositor.cpp">
       <Filter>Source Files\Compositor</Filter>
     </ClCompile>
     <ClCompile Include="Reimpl\BaseCompositor.cpp">
@@ -343,9 +337,6 @@
     </ClCompile>
     <ClCompile Include="Reimpl\BaseScreenshots.cpp">
       <Filter>Source Files\Reimpl</Filter>
-    </ClCompile>
-    <ClCompile Include="Misc\Haptics.cpp">
-      <Filter>Source Files\Misc</Filter>
     </ClCompile>
     <ClCompile Include="Misc\debug_helper.cpp">
       <Filter>Source Files\Misc</Filter>
@@ -379,9 +370,6 @@
     </ClCompile>
     <ClCompile Include="Reimpl\CVRSettings.cpp">
       <Filter>Source Files\Reimpl\StubDefs</Filter>
-    </ClCompile>
-    <ClCompile Include="Misc\audio_override.cpp">
-      <Filter>Source Files\Misc</Filter>
     </ClCompile>
     <ClCompile Include="Misc\ini.c">
       <Filter>Source Files\Misc</Filter>
@@ -422,10 +410,10 @@
     <ClCompile Include="Compositor\compositor.cpp">
       <Filter>Source Files\Compositor</Filter>
     </ClCompile>
-    <ClCompile Include="Compositor\vkcompositor.cpp">
+    <ClCompile Include="Compositor\dx11hybridcompositor.cpp">
       <Filter>Source Files\Compositor</Filter>
     </ClCompile>
-    <ClCompile Include="Compositor\dx11hybridcompositor.cpp">
+    <ClCompile Include="Compositor\dx11cubemapcompositor.cpp">
       <Filter>Source Files\Compositor</Filter>
     </ClCompile>
   </ItemGroup>

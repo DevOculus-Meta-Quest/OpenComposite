@@ -102,16 +102,9 @@ int Config::ini_handler(void* user, const char* pSection,
 #define CFGOPT(type, vname) if(name == #vname) { cfg->vname = parse_ ## type(value, #vname, lineno); return true; }
 
 	if (section == "" || section == "default") {
-		CFGOPT(bool, enableAudio);
-		CFGOPT(bool, renderCustomHands);
-		CFGOPT(HmdColor_t, handColour);
 		CFGOPT(float, supersampleRatio);
-		CFGOPT(bool, haptics);
-		CFGOPT(bool, admitUnknownProps);
 		CFGOPT(bool, threePartSubmit);
 		CFGOPT(bool, useViewportStencil);
-		CFGOPT(bool, forceConnectedTouch);
-		CFGOPT(bool, logGetTrackedProperty);
 		CFGOPT(bool, dx10Mode);
 		CFGOPT(bool, enableLayers);
 		CFGOPT(bool, enableCubemap);

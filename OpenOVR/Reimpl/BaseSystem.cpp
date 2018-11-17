@@ -257,10 +257,6 @@ bool BaseSystem::IsTrackedDeviceConnected(vr::TrackedDeviceIndex_t deviceIndex) 
 
 	unsigned int connected = ovr_GetConnectedControllerTypes(*ovr::session);
 
-	if (oovr_global_configuration.ForceConnectedTouch()) {
-		connected |= ovrControllerType_LTouch | ovrControllerType_RTouch;
-	}
-
 	if (deviceIndex == leftHandIndex) {
 		return connected && ovrControllerType_LTouch != 0;
 	}
@@ -299,11 +295,6 @@ bool BaseSystem::GetBoolTrackedDeviceProperty(vr::TrackedDeviceIndex_t unDeviceI
 		break;
 	}
 
-	if (oovr_global_configuration.AdmitUnknownProps()) {
-		*pErrorL = TrackedProp_UnknownProperty;
-		return 0;
-	}
-
 	char msg[1024];
 	snprintf(msg, sizeof(msg), "dev: %d, prop: %d", unDeviceIndex, prop);
 	OOVR_LOG(msg);
@@ -331,11 +322,6 @@ float BaseSystem::GetFloatTrackedDeviceProperty(vr::TrackedDeviceIndex_t unDevic
 		}
 	}
 
-	if (oovr_global_configuration.AdmitUnknownProps()) {
-		*pErrorL = TrackedProp_UnknownProperty;
-		return 0;
-	}
-	
 	char msg[1024];
 	snprintf(msg, sizeof(msg), "(dev %d): ETrackedDeviceProperty %d", unDeviceIndex, prop);
 	OOVR_LOG(msg);
@@ -369,11 +355,6 @@ int32_t BaseSystem::GetInt32TrackedDeviceProperty(vr::TrackedDeviceIndex_t unDev
 		}
 	}
 
-	if (oovr_global_configuration.AdmitUnknownProps()) {
-		*pErrorL = TrackedProp_UnknownProperty;
-		return 0;
-	}
-
 	char msg[1024];
 	snprintf(msg, sizeof(msg), "dev: %d, prop: %d", unDeviceIndex, prop);
 	OOVR_LOG(msg);
@@ -404,11 +385,6 @@ uint64_t BaseSystem::GetUint64TrackedDeviceProperty(vr::TrackedDeviceIndex_t dev
 			ButtonMaskFromId(k_EButton_SteamVR_Trigger);
 	}
 
-	if (oovr_global_configuration.AdmitUnknownProps()) {
-		*pErrorL = TrackedProp_UnknownProperty;
-		return 0;
-	}
-
 	char msg[1024];
 	snprintf(msg, sizeof(msg), "dev: %d, prop: %d", dev, prop);
 	MessageBoxA(NULL, msg, "GetUint64TrackedDeviceProperty", MB_OK);
@@ -419,27 +395,12 @@ HmdMatrix34_t BaseSystem::GetMatrix34TrackedDeviceProperty(vr::TrackedDeviceInde
 	if (pErrorL)
 		*pErrorL = TrackedProp_Success;
 
-	if (oovr_global_configuration.AdmitUnknownProps()) {
-		*pErrorL = TrackedProp_UnknownProperty;
-
-		HmdMatrix34_t m = { 0 };
-		m.m[0][0] = 1;
-		m.m[1][1] = 1;
-		m.m[2][2] = 1;
-		return m;
-	}
-
 	STUBBED();
 }
 
 uint32_t BaseSystem::GetArrayTrackedDeviceProperty(vr::TrackedDeviceIndex_t unDeviceIndex, ETrackedDeviceProperty prop, PropertyTypeTag_t propType, void * pBuffer, uint32_t unBufferSize, ETrackedPropertyError * pError) {
 	if (pError)
 		*pError = TrackedProp_Success;
-
-	if (oovr_global_configuration.AdmitUnknownProps()) {
-		*pError = TrackedProp_UnknownProperty;
-		return 0;
-	}
 
 	STUBBED();
 }
@@ -458,16 +419,11 @@ if(prop == in) { \
 	return (uint32_t) strlen(out) + 1; \
 }
 
-	if (oovr_global_configuration.LogGetTrackedProperty()) {
-		OOVR_LOGF("(dev %d): ETrackedDeviceProperty %d", unDeviceIndex, prop);
-	}
-
-	if (unDeviceIndex == leftHandIndex) {
-		PROP(Prop_RenderModelName_String, "renderLeftHand");
-	}
-	else if(unDeviceIndex == rightHandIndex) {
-		PROP(Prop_RenderModelName_String, "renderRightHand");
-	}
+  if (unDeviceIndex == leftHandIndex) {
+    PROP(Prop_RenderModelName_String, "renderLeftHand");
+  } else if (unDeviceIndex == rightHandIndex) {
+    PROP(Prop_RenderModelName_String, "renderRightHand");
+  }
 
 	// These have been validated against SteamVR
 	// TODO add an option to fake this out with 'lighthouse' and 'HTC' in case there is a compatibility issue
@@ -495,9 +451,6 @@ if(prop == in) { \
 	PROP(Prop_RenderModelName_String, "<unknown>"); // It appears this just gets passed into IVRRenderModels as the render model name
 
 #undef PROP
-
-	if(!oovr_global_configuration.AdmitUnknownProps())
-		OOVR_ABORT("This string property (in log) was not found");
 
 	*pErrorL = TrackedProp_UnknownProperty;
 	return 0; // There are tonnes, and we're not implementing all of them.
@@ -850,17 +803,6 @@ bool BaseSystem::GetControllerStateWithPose(ETrackingUniverseOrigin eOrigin, vr:
 }
 
 void BaseSystem::TriggerHapticPulse(vr::TrackedDeviceIndex_t unControllerDeviceIndex, uint32_t unAxisId, unsigned short usDurationMicroSec) {
-	if (!oovr_global_configuration.Haptics())
-		return;
-
-	if (unControllerDeviceIndex == leftHandIndex || unControllerDeviceIndex == rightHandIndex) {
-		static Haptics haptics;
-
-		haptics.StartSimplePulse(unControllerDeviceIndex == leftHandIndex ? ovrControllerType_LTouch : ovrControllerType_RTouch, usDurationMicroSec);
-
-		return;
-	}
-
 	// Invalid controller
 	STUBBED();
 }

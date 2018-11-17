@@ -91,7 +91,7 @@ def gen_interface(interface, version, header, impl, basename, namespace="vr", ba
     header.write("\t%s();\n" % cname);
     header.write("\t// Interface methods:\n")
     impl.write("// Misc for %s:\n" % cname)
-    impl.write("%s::%s() : base(GetCreateBase%s()) {}\n" % (cname, cname, interface))
+    impl.write("%s::%s() : base(GetCreateBase%s()) { OOVR_LOG(\"Created.\"); }\n" % (cname, cname, interface))
     impl.write("// Interface methods for %s:\n" % cname)
     filename = "../" + basename
     icontext = dict(context)
