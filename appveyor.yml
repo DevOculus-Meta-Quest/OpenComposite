@@ -17,7 +17,7 @@ before_build:
   - nuget restore
 build:
   project: OpenOVR.sln
-  verbosity: minimal
+  verbosity: detailed
 on_success:
 - ps: >-
     If ($env:Platform -Match "x86") {

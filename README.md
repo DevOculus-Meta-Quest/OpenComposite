@@ -10,4 +10,4 @@ This fork contains stripped down version of the Open Composite effort, with two 
 
 Download the DLLs:
 UNDER CONSTRUCTION
-[64-bit](https://ci.appveyor.com/api/projects/ZNix/openovr/artifacts/x64/openvr_api.dll?branch=master&job=Platform%3A+x64&pr=false)
+[64-bit](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/x64/openvr_api.dll?branch=master&job=Platform%3A+x64&pr=false)
