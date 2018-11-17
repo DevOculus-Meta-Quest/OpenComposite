@@ -1,4 +1,4 @@
-version: 0.5.0.2
+version: 0.5.0.3
 branches:
   only:
   - master
@@ -19,4 +19,5 @@ build:
   verbosity: normal
 on_success:
 - ps: >-
-    Push-AppveyorArtifact "x64/$env:Configuration/openvr_api.dll" -FileName "x64/openvr_api.dll"
+    7z a OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION.zip "x64/$env:Configuration/openvr_api.dll"
+    Push-AppveyorArtifact OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION.zip
