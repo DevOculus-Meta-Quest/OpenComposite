@@ -9,14 +9,14 @@ This fork contains stripped down version of the Open Composite effort, with two 
 # Installation
 
 Download the 64 bit DLL:
-[Latest 64-bit v0.5.0.5](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.5.0.5.zip)
+[Latest 64-bit v0.5.0.7](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.5.0.7.zip)
 
 [Older DLL versions](https://ci.appveyor.com/project/TheIronWolfModding/openovr/history)
 
 # History
 11/17/18 - v0.6.0.0
 Initial fork.  Added features:
-* enableCubemap=true/false - implements SkyBox (rF2 loading screen).
-* postInitCmd=<your command> - runs supplied command after Oculus Runtime is initialized.  Example:
+* `enableCubemap=true/false`: Default: `true`. Implements SkyBox (rF2 loading screen).
+* `postInitCmd=<your command>` Default: `false`.  - runs supplied command after Oculus Runtime is initialized.  Example:
 postInitCmd=cmd /q /c timeout 5 & "C:\Program Files\notepad.exe"
-* dx10Mode=true/false - allows forcing OC to accept DX10 textures (Raceroom).  Note: will be removed when Raceroom moves to DX11.
+* `dx10Mode=true/false`.  Default `false`.  Allows forcing OC to accept DX10 textures (Raceroom).  Note: will be removed when Raceroom moves to DX11.

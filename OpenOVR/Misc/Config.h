@@ -26,19 +26,22 @@ private:
 		const char* name, const char* value,
 		int lineno);
 
-	bool enableAudio = true;
-	bool renderCustomHands = true;
+	// TODO: Remove/ifdefout.
+	bool enableAudio = false;
+	bool renderCustomHands = false;
 	vr::HmdColor_t handColour = vr::HmdColor_t{ 0.3f, 0.3f, 0.3f, 1 };
 	float supersampleRatio = 1.0f;
-	bool haptics = true;
+	bool haptics = false;
 	bool admitUnknownProps = false;
-	bool threePartSubmit = true;
-	bool useViewportStencil = false;
-	bool forceConnectedTouch = true;
+	bool forceConnectedTouch = false;
 	bool logGetTrackedProperty = false;
+
+	// rF2 defaults.
 	bool dx10Mode = false;
-	bool enableLayers = true;
-	bool enableCubemap = false;
+	bool enableLayers = false;
+	bool enableCubemap = true;
+	bool threePartSubmit = true;
+	bool useViewportStencil = true;
 	std::string postInitCmd;
 };
 
