@@ -1,4 +1,4 @@
-version: 0.5.0.3
+version: 0.5.0.4
 branches:
   only:
   - master
@@ -16,8 +16,9 @@ before_build:
   - nuget restore
 build:
   project: OpenOVR.sln
-  verbosity: normal
+  verbosity: detailed
 on_success:
 - ps: >-
     7z a OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION.zip "x64/$env:Configuration/openvr_api.dll"
+    
     Push-AppveyorArtifact OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION.zip
