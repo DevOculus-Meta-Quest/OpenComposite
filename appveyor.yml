@@ -1,4 +1,4 @@
-version: 0.5.0.0
+version: 0.5.0.1
 branches:
   only:
   - master
@@ -25,4 +25,4 @@ on_success:
 
     7z rn OpenComposite.zip "RuntimeSwitcher/bin/$env:Configuration" "OpenComposite"
 
-    Push-AppveyorArtifact "OpenComposite_tiwm_0.5.0.0.zip"
+    Push-AppveyorArtifact "OpenComposite_tiwm_0.5.0.1.zip"
