@@ -395,9 +395,6 @@
     <ClCompile Include="Reimpl\CVRInput.cpp">
       <Filter>Source Files\Reimpl\StubDefs</Filter>
     </ClCompile>
-    <ClCompile Include="Reimpl\BaseClientCore.cpp">
-      <Filter>Source Files\Reimpl</Filter>
-    </ClCompile>
     <ClCompile Include="Reimpl\CVRClientCore.cpp">
       <Filter>Source Files\Reimpl\StubDefs</Filter>
     </ClCompile>
@@ -415,6 +412,9 @@
     </ClCompile>
     <ClCompile Include="Compositor\dx11cubemapcompositor.cpp">
       <Filter>Source Files\Compositor</Filter>
+    </ClCompile>
+    <ClCompile Include="Reimpl\BaseClientCore.cpp">
+      <Filter>Source Files\Reimpl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

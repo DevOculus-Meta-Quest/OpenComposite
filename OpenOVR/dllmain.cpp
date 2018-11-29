@@ -4,7 +4,7 @@
 #include "Reimpl/Interfaces.h"
 
 // Needed for the system-wide usage of this DLL (when renamed to vrclient[_x64].dll)
-#include "Reimpl/GVRClientCore.gen.h"
+// #include "Reimpl/GVRClientCore.gen.h"
 
 #include "Misc/Config.h"
 #include "Misc/ScopeGuard.h"
@@ -349,22 +349,5 @@ VR_INTERFACE void VR_CALLTYPE VR_ShutdownInternal()
 
 VR_INTERFACE void* VRClientCoreFactory(const char* pInterfaceName, int* pReturnCode)
 {
-  *pReturnCode = VRInitError_None;
-
-  string name = pInterfaceName;
-
-#define CLIENT_VER(ver)                                                                            \
-  if (IVRClientCore_##ver::IVRClientCore_Version == name) {                                        \
-    static CVRClientCore_##ver inst;                                                               \
-    return &inst;                                                                                  \
-  }
-
-  CLIENT_VER(002);
-  CLIENT_VER(003);
-
-#undef CLIENT_VER
-
-  OOVR_LOG(pInterfaceName);
-  MessageBoxA(NULL, pInterfaceName, "Missing client interface", MB_OK);
-  ERR("unknown/unsupported interface " + name);
+  OOVR_ABORT("Stub");
 }

@@ -3,19 +3,20 @@
 # List these rather than scanning for files, as this ensures
 # that files not checked into version control won't interfere
 # with the build process.
+# Only generate interfaces used by rF2 and R3E.
 interfaces_list = [
     "Compositor",
     "System",
-    "Chaperone",
+    # "Chaperone",
     "Overlay",
-    "ChaperoneSetup",
+    # "ChaperoneSetup",
     "RenderModels",
-    "Screenshots",
+    # "Screenshots",
     "Settings",
-    "ExtendedDisplay",
-    "Applications",
-    "Input",
-    "ClientCore",
+    #  "ExtendedDisplay",
+    # "Applications",
+    # "Input",
+    # "ClientCore",
 
     # OpenComposite-specific interfaces
     "OCSystem",
