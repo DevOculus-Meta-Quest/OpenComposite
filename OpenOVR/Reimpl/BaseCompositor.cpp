@@ -4,8 +4,8 @@
 #include "Misc/Config.h"
 
 #include "OVR_CAPI.h"
-#include "libovr_wrapper.h"
 #include "convert.h"
+#include "libovr_wrapper.h"
 
 #include "Extras/OVR_Math.h"
 using namespace OVR;
@@ -45,28 +45,28 @@ void BaseCompositor::SubmitFrames()
     mPerEyeRenderState = RS_WAIT_BEGIN;
     return;
   } else if (mPerEyeRenderState == RS_WAIT_BEGIN) {
-    OOVR_LOG("[WARN] Should not submit frames twice in a row without waiting");
-    WaitGetPoses(NULL, 0, NULL, 0);
+    OOVR_LOGD("[WARN] Should not submit frames twice in a row without waiting");
+    WaitGetPoses(nullptr, 0, nullptr, 0);
   }
 
-  ovrSession &session = *ovr::session;
-  ovrHmdDesc &hmdDesc = ovr::hmdDesc;
+  ovrSession& session = *ovr::session;
+  ovrHmdDesc& hmdDesc = ovr::hmdDesc;
 
   // Call ovr_GetRenderDesc each frame to get the ovrEyeRenderDesc, as the returned values (e.g. HmdToEyePose) may change at runtime.
-  ovrEyeRenderDesc *eyeRenderDesc = ovr::eyeRenderDesc;
+  ovrEyeRenderDesc* eyeRenderDesc = ovr::eyeRenderDesc;
   eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, hmdDesc.DefaultEyeFov[0]);
   eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, hmdDesc.DefaultEyeFov[1]);
 
   // Get eye poses, feeding in correct IPD offset
   ovrPosef EyeRenderPose[2];
-  ovrPosef *HmdToEyePose = ovr::hmdToEyeViewPose;
+  ovrPosef* HmdToEyePose = ovr::hmdToEyeViewPose;
   HmdToEyePose[0] = eyeRenderDesc[0].HmdToEyePose;
   HmdToEyePose[1] = eyeRenderDesc[1].HmdToEyePose;
 
   ovr_CalcEyePoses2(mTrackingState.HeadPose.ThePose, HmdToEyePose, EyeRenderPose);
 
   //// Render Scene to Eye Buffers
-  //for (int eye = 0; eye < 2; ++eye) {
+  // for (int eye = 0; eye < 2; ++eye) {
   //	// Switch to eye render target
   //	GLuint curTexId;
   //	int curIndex;
@@ -96,7 +96,7 @@ void BaseCompositor::SubmitFrames()
   ovrLayerHeader const* const* layers;
   ovrLayerHeader* app_layer = &mPerEyeLayer.Header;
 
-  BaseOverlay *overlay = GetUnsafeBaseOverlay();
+  BaseOverlay* overlay = GetUnsafeBaseOverlay();
   if (overlay) {
     // Let the overlay system add in it's layers
     layer_count = overlay->_BuildLayers(app_layer, layers);
@@ -135,7 +135,7 @@ void BaseCompositor::SubmitCubemapFrames()
     return;
   }
 
-  ovrSession &session = *ovr::session;
+  ovrSession& session = *ovr::session;
 
   // SVR supports layers while in SB.  If any game uses that, we could add it.
   int layer_count = 1;
@@ -155,13 +155,9 @@ void BaseCompositor::SubmitCubemapFrames()
     sys->_OnPostFrame();
 }
 
-BaseCompositor::BaseCompositor()
-{
-  memset(&mTrackingState, 0, sizeof(ovrTrackingState));
-}
+BaseCompositor::BaseCompositor() { memset(&mTrackingState, 0, sizeof(ovrTrackingState)); }
 
-BaseCompositor::~BaseCompositor()
-{}
+BaseCompositor::~BaseCompositor() {}
 
 void BaseCompositor::SetTrackingSpace(ETrackingUniverseOrigin eOrigin)
 {
@@ -182,8 +178,10 @@ ETrackingUniverseOrigin BaseCompositor::GetTrackingSpace()
   }
 }
 
-ovr_enum_t BaseCompositor::WaitGetPoses(TrackedDevicePose_t * renderPoseArray, uint32_t renderPoseArrayCount,
-  TrackedDevicePose_t * gamePoseArray, uint32_t gamePoseArrayCount)
+ovr_enum_t BaseCompositor::WaitGetPoses(TrackedDevicePose_t* renderPoseArray,
+                                        uint32_t renderPoseArrayCount,
+                                        TrackedDevicePose_t* gamePoseArray,
+                                        uint32_t gamePoseArrayCount)
 {
 
   // Assume this method isn't being called between frames, b/c it really shouldn't be.
@@ -209,8 +207,7 @@ ovr_enum_t BaseCompositor::WaitGetPoses(TrackedDevicePose_t * renderPoseArray, u
   return GetLastPoses(renderPoseArray, renderPoseArrayCount, gamePoseArray, gamePoseArrayCount);
 }
 
-void BaseCompositor::GetSinglePose(vr::TrackedDeviceIndex_t index, vr::TrackedDevicePose_t* pose,
-  ovrTrackingState &state)
+void BaseCompositor::GetSinglePose(vr::TrackedDeviceIndex_t index, vr::TrackedDevicePose_t* pose, ovrTrackingState& state)
 {
   memset(pose, 0, sizeof(TrackedDevicePose_t));
 
@@ -264,7 +261,7 @@ void BaseCompositor::GetSinglePose(vr::TrackedDeviceIndex_t index, vr::TrackedDe
   O2S_om34(hmdTransform, pose->mDeviceToAbsoluteTracking);
 }
 
-void BaseCompositor::GetSinglePoseRendering(TrackedDeviceIndex_t unDeviceIndex, TrackedDevicePose_t * pOutputPose)
+void BaseCompositor::GetSinglePoseRendering(TrackedDeviceIndex_t unDeviceIndex, TrackedDevicePose_t* pOutputPose)
 {
   GetSinglePose(unDeviceIndex, pOutputPose, mTrackingState);
 }
@@ -282,7 +279,7 @@ Matrix4f BaseCompositor::GetHandTransform()
   // ovrPose.ThePose.Orientation = { 0,0,0,1 };
 
   Vector3f rotateAxis = Vector3f(1, 0, 0);
-  Quatf rotation = Quatf(rotateAxis, controller_offset_angle * deg_to_rad); //count++ * 0.01f);
+  Quatf rotation = Quatf(rotateAxis, controller_offset_angle * deg_to_rad); // count++ * 0.01f);
 
   Matrix4f transform(rotation);
 
@@ -294,13 +291,15 @@ Matrix4f BaseCompositor::GetHandTransform()
   return transform;
 }
 
-ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t * renderPoseArray, uint32_t renderPoseArrayCount,
-  TrackedDevicePose_t * gamePoseArray, uint32_t gamePoseArrayCount)
+ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t* renderPoseArray,
+                                        uint32_t renderPoseArrayCount,
+                                        TrackedDevicePose_t* gamePoseArray,
+                                        uint32_t gamePoseArrayCount)
 {
 
   for (size_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
-    TrackedDevicePose_t *renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
-    TrackedDevicePose_t *gamePose = i < gamePoseArrayCount ? gamePoseArray + i : NULL;
+    TrackedDevicePose_t* renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
+    TrackedDevicePose_t* gamePose = i < gamePoseArrayCount ? gamePoseArray + i : NULL;
 
     if (renderPose) {
       GetSinglePose(static_cast<int>(i), renderPose, mTrackingState);
@@ -318,8 +317,9 @@ ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t * renderPoseArray, u
   return VRCompositorError_None;
 }
 
-ovr_enum_t BaseCompositor::GetLastPoseForTrackedDeviceIndex(TrackedDeviceIndex_t unDeviceIndex, TrackedDevicePose_t* pOutputPose,
-  TrackedDevicePose_t * pOutputGamePose)
+ovr_enum_t BaseCompositor::GetLastPoseForTrackedDeviceIndex(TrackedDeviceIndex_t unDeviceIndex,
+                                                            TrackedDevicePose_t* pOutputPose,
+                                                            TrackedDevicePose_t* pOutputGamePose)
 {
 
   if (unDeviceIndex < 0 || unDeviceIndex >= k_unMaxTrackedDeviceCount) {
@@ -340,14 +340,16 @@ ovr_enum_t BaseCompositor::GetLastPoseForTrackedDeviceIndex(TrackedDeviceIndex_t
   return VRCompositorError_None;
 }
 
-std::unique_ptr<Compositor> BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture, const OVR::Sizei& fovTextureSize, bool cubemapMode, bool layerUse) const
+std::unique_ptr<Compositor> BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture,
+                                                                const OVR::Sizei& fovTextureSize,
+                                                                bool cubemapMode,
+                                                                bool layerUse) const
 {
   std::unique_ptr<Compositor> comp;
 
   switch (texture->eType) {
 #ifdef SUPPORT_DX
-  case TextureType_DirectX:
-  {
+  case TextureType_DirectX: {
     if (!oovr_global_configuration.DX10Mode()) {
       if (!cubemapMode) {
         OOVR_LOG(!layerUse ? "Creating new DX11 Compositor" : "Creating new DX11 Compositor for layer use");
@@ -376,7 +378,7 @@ std::unique_ptr<Compositor> BaseCompositor::CreateCompositorAPI(const vr::Textur
   return comp;
 }
 
-ovr_enum_t BaseCompositor::Submit(EVREye eye,  Texture_t const* texture, VRTextureBounds_t const* bounds, EVRSubmitFlags submitFlags)
+ovr_enum_t BaseCompositor::Submit(EVREye eye, Texture_t const* texture, VRTextureBounds_t const* bounds, EVRSubmitFlags submitFlags)
 {
   auto& comp = mPerEyeCompositors[S2O_eye(eye)];
   if (comp.get() == nullptr) {
@@ -386,9 +388,7 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye,  Texture_t const* texture, VRTextu
 
   comp->SetSupportedContext();
 
-  auto revertToCallerContext = MakeScopeGuard([&]() {
-    comp->ResetSupportedContext();
-  });
+  auto revertToCallerContext = MakeScopeGuard([&]() { comp->ResetSupportedContext(); });
 
   if (!mLeftEyeSubmitted && !mRightEyeSubmitted) {
     // TODO call frame-start method
@@ -398,7 +398,7 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye,  Texture_t const* texture, VRTextu
   }
 
   // TODO make sure we don't start on the second eye.
-  //if (sessionStatus.IsVisible) return;
+  // if (sessionStatus.IsVisible) return;
 
   mPerEyeLayer.Viewport[S2O_eye(eye)] = Recti(mFOVTextureSize);
 
@@ -457,10 +457,7 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye,  Texture_t const* texture, VRTextu
   return VRCompositorError_None;
 }
 
-void BaseCompositor::ClearLastSubmittedFrame()
-{
-  STUBBED();
-}
+void BaseCompositor::ClearLastSubmittedFrame() { STUBBED(); }
 
 void BaseCompositor::PostPresentHandoff()
 {
@@ -477,9 +474,9 @@ void BaseCompositor::PostPresentHandoff()
   //  that way we can call ovr_WaitToBeginFrame in WaitGetPoses to mimick SteamVR.
 }
 
-bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint32_t unFramesAgo)
+bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming* pTiming, uint32_t unFramesAgo)
 {
-  //if (pTiming->m_nSize != sizeof(OOVR_Compositor_FrameTiming)) {
+  // if (pTiming->m_nSize != sizeof(OOVR_Compositor_FrameTiming)) {
   //	STUBBED();
   //}
 
@@ -488,7 +485,7 @@ bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint3
   ovrPerfStats stats;
   ovrResult result = ovrSuccess;
   OOVR_FAILED_OVR_LOG(ovr_GetPerfStats(*ovr::session, &stats));
-  const ovrPerfStatsPerCompositorFrame &frame = stats.FrameStats[0];
+  const ovrPerfStatsPerCompositorFrame& frame = stats.FrameStats[0];
 
   memset(pTiming, 0, sizeof(OOVR_Compositor_FrameTiming));
 
@@ -504,9 +501,9 @@ bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint3
   pTiming->m_flSystemTimeInSeconds = ovr_GetTimeInSeconds();
 
   /** These times may include work from other processes due to OS scheduling.
-  * The fewer packets of work these are broken up into, the less likely this will happen.
-  * GPU work can be broken up by calling Flush.  This can sometimes be useful to get the GPU started
-  * processing that work earlier in the frame. */
+   * The fewer packets of work these are broken up into, the less likely this will happen.
+   * GPU work can be broken up by calling Flush.  This can sometimes be useful to get the GPU
+   * started processing that work earlier in the frame. */
 
   // time spent rendering the scene (gpu work submitted between WaitGetPoses and second Submit)
   // TODO this should be easy to time, using ovr_GetTimeInSeconds and storing
@@ -514,13 +511,14 @@ bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint3
   pTiming->m_flPreSubmitGpuMs = 0;
 
   // additional time spent rendering by application (e.g. companion window)
-  // AFAIK this is similar to m_flPreSubmitGpuMs, it's the time between PostPresentHandoff and WaitGetPoses
-  // Probably not as important though
+  // AFAIK this is similar to m_flPreSubmitGpuMs, it's the time between PostPresentHandoff and
+  // WaitGetPoses Probably not as important though
   pTiming->m_flPostSubmitGpuMs = 0;
 
   // time between work submitted immediately after present (ideally vsync) until the end of compositor submitted work
   // TODO CompositorCpuStartToGpuEndElapsedTime might be -1 if it's unavailable, handle that
-  pTiming->m_flTotalRenderGpuMs = (frame.AppGpuElapsedTime + frame.CompositorCpuStartToGpuEndElapsedTime) / 1000;
+  pTiming->m_flTotalRenderGpuMs
+  = (frame.AppGpuElapsedTime + frame.CompositorCpuStartToGpuEndElapsedTime) / 1000;
 
   // time spend performing distortion correction, rendering chaperone, overlays, etc.
   pTiming->m_flCompositorRenderGpuMs = frame.CompositorGpuElapsedTime / 1000;
@@ -570,17 +568,14 @@ bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint3
   return true;
 }
 
-uint32_t BaseCompositor::GetFrameTimings(OOVR_Compositor_FrameTiming * pTiming, uint32_t nFrames)
+uint32_t BaseCompositor::GetFrameTimings(OOVR_Compositor_FrameTiming* pTiming, uint32_t nFrames)
 {
   STUBBED();
 }
 
-float BaseCompositor::GetFrameTimeRemaining()
-{
-  STUBBED();
-}
+float BaseCompositor::GetFrameTimeRemaining() { STUBBED(); }
 
-void BaseCompositor::GetCumulativeStats(OOVR_Compositor_CumulativeStats * pStats, uint32_t nStatsSizeInBytes)
+void BaseCompositor::GetCumulativeStats(OOVR_Compositor_CumulativeStats* pStats, uint32_t nStatsSizeInBytes)
 {
   STUBBED();
 }
@@ -596,28 +591,22 @@ void BaseCompositor::FadeToColor(float fSeconds, float fRed, float fGreen, float
   // TODO what does background do?
 }
 
-HmdColor_t BaseCompositor::GetCurrentFadeColor(bool bBackground)
-{
-  return mFadeColour;
-}
+HmdColor_t BaseCompositor::GetCurrentFadeColor(bool bBackground) { return mFadeColour; }
 
 void BaseCompositor::FadeGrid(float fSeconds, bool bFadeIn)
 {
   // What is this supposed to do?
 }
 
-float BaseCompositor::GetCurrentGridAlpha()
-{
-  STUBBED();
-}
+float BaseCompositor::GetCurrentGridAlpha() { STUBBED(); }
 
-ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t * pTextures, uint32_t unTextureCount)
+ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t* pTextures, uint32_t unTextureCount)
 {
   if (!oovr_global_configuration.EnableCubemap())
     return VRCompositorError_None;
 
-  // For now accept 6 face cube only.  In the future, we could accept 1 and 2, and fill rest of faces
-  // with pre-ready textures.
+  // For now accept 6 face cube only.  In the future, we could accept 1 and 2, and fill rest of
+  // faces with pre-ready textures.
   if (unTextureCount != 6u) {
     OOVR_LOGF("Skybox with less than 6 faces is not supported.  Requested face count %d", unTextureCount);
     return VRCompositorError_None;
@@ -625,8 +614,10 @@ ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t * pTextures, uint32
 
   // See if this is the first time we're invoked.
   if (mCubemapCompositor.get() == nullptr) {
-    const auto size = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
-    mCubemapCompositor = GetUnsafeBaseCompositor()->CreateCompositorAPI(pTextures, size, true /*cubemapMode*/, false /*layerUse*/);
+    const auto size
+    = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
+    mCubemapCompositor = GetUnsafeBaseCompositor()->CreateCompositorAPI(
+    pTextures, size, true /*cubemapMode*/, false /*layerUse*/);
 
     mCubemapLayer.Orientation = Quatf::Identity();
 
@@ -648,7 +639,7 @@ ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t * pTextures, uint32
 void BaseCompositor::ClearSkyboxOverride()
 {
   // TODO
-  //STUBBED();
+  // STUBBED();
 }
 
 void BaseCompositor::CompositorBringToFront()
@@ -656,55 +647,28 @@ void BaseCompositor::CompositorBringToFront()
   // No actions required, Oculus runs via direct mode
 }
 
-void BaseCompositor::CompositorGoToBack()
-{
-  STUBBED();
-}
+void BaseCompositor::CompositorGoToBack() { STUBBED(); }
 
-void BaseCompositor::CompositorQuit()
-{
-  STUBBED();
-}
+void BaseCompositor::CompositorQuit() { STUBBED(); }
 
-bool BaseCompositor::IsFullscreen()
-{
-  STUBBED();
-}
+bool BaseCompositor::IsFullscreen() { STUBBED(); }
 
-uint32_t BaseCompositor::GetCurrentSceneFocusProcess()
-{
-  STUBBED();
-}
+uint32_t BaseCompositor::GetCurrentSceneFocusProcess() { STUBBED(); }
 
-uint32_t BaseCompositor::GetLastFrameRenderer()
-{
-  STUBBED();
-}
+uint32_t BaseCompositor::GetLastFrameRenderer() { STUBBED(); }
 
 bool BaseCompositor::CanRenderScene()
 {
   return true; // TODO implement
 }
 
-void BaseCompositor::ShowMirrorWindow()
-{
-  STUBBED();
-}
+void BaseCompositor::ShowMirrorWindow() { STUBBED(); }
 
-void BaseCompositor::HideMirrorWindow()
-{
-  STUBBED();
-}
+void BaseCompositor::HideMirrorWindow() { STUBBED(); }
 
-bool BaseCompositor::IsMirrorWindowVisible()
-{
-  STUBBED();
-}
+bool BaseCompositor::IsMirrorWindowVisible() { STUBBED(); }
 
-void BaseCompositor::CompositorDumpImages()
-{
-  STUBBED();
-}
+void BaseCompositor::CompositorDumpImages() { STUBBED(); }
 
 bool BaseCompositor::ShouldAppRenderWithLowResources()
 {
@@ -727,20 +691,17 @@ void BaseCompositor::SuspendRendering(bool bSuspend)
   // TODO
   // I'm not sure what the purpose of this function is. If you know, please tell me.
   // - ZNix
-  //STUBBED();
+  // STUBBED();
 }
 
-ovr_enum_t BaseCompositor::GetMirrorTextureD3D11(EVREye eEye, void * pD3D11DeviceOrResource, void ** ppD3D11ShaderResourceView)
+ovr_enum_t BaseCompositor::GetMirrorTextureD3D11(EVREye eEye, void* pD3D11DeviceOrResource, void** ppD3D11ShaderResourceView)
 {
   STUBBED();
 }
 
-void BaseCompositor::ReleaseMirrorTextureD3D11(void * pD3D11ShaderResourceView)
-{
-  STUBBED();
-}
+void BaseCompositor::ReleaseMirrorTextureD3D11(void* pD3D11ShaderResourceView) { STUBBED(); }
 
-ovr_enum_t BaseCompositor::GetMirrorTextureGL(EVREye eEye, glUInt_t * pglTextureId, glSharedTextureHandle_t * pglSharedTextureHandle)
+ovr_enum_t BaseCompositor::GetMirrorTextureGL(EVREye eEye, glUInt_t* pglTextureId, glSharedTextureHandle_t* pglSharedTextureHandle)
 {
   STUBBED();
 }
@@ -760,7 +721,7 @@ void BaseCompositor::UnlockGLSharedTextureForAccess(glSharedTextureHandle_t glSh
   STUBBED();
 }
 
-uint32_t BaseCompositor::GetVulkanInstanceExtensionsRequired(VR_OUT_STRING() char * pchValue, uint32_t unBufferSize)
+uint32_t BaseCompositor::GetVulkanInstanceExtensionsRequired(VR_OUT_STRING() char* pchValue, uint32_t unBufferSize)
 {
 #if defined(SUPPORT_VK)
   // Whaddya know, the Oculus and Valve methods work almost identically...
@@ -772,7 +733,9 @@ uint32_t BaseCompositor::GetVulkanInstanceExtensionsRequired(VR_OUT_STRING() cha
 #endif
 }
 
-uint32_t BaseCompositor::GetVulkanDeviceExtensionsRequired(VkPhysicalDevice_T * pPhysicalDevice, char * pchValue, uint32_t unBufferSize)
+uint32_t BaseCompositor::GetVulkanDeviceExtensionsRequired(VkPhysicalDevice_T* pPhysicalDevice,
+                                                           char* pchValue,
+                                                           uint32_t unBufferSize)
 {
 #if defined(SUPPORT_VK)
   // Use the default LUID, even if another physical device is passed in. TODO.
@@ -784,12 +747,7 @@ uint32_t BaseCompositor::GetVulkanDeviceExtensionsRequired(VkPhysicalDevice_T * 
 #endif
 }
 
-void BaseCompositor::SetExplicitTimingMode(ovr_enum_t eTimingMode)
-{
-  STUBBED();
-}
+void BaseCompositor::SetExplicitTimingMode(ovr_enum_t eTimingMode) { STUBBED(); }
 
-ovr_enum_t BaseCompositor::SubmitExplicitTimingData()
-{
-  STUBBED();
-}
+
+ovr_enum_t BaseCompositor::SubmitExplicitTimingData() { STUBBED(); }

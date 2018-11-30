@@ -350,4 +350,5 @@ VR_INTERFACE void VR_CALLTYPE VR_ShutdownInternal()
 VR_INTERFACE void* VRClientCoreFactory(const char* pInterfaceName, int* pReturnCode)
 {
   OOVR_ABORT("Stub");
+  return nullptr;
 }
