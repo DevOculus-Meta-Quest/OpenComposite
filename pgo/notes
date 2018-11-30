@@ -1,14 +1,14 @@
-To collect PGO data:
+To collect/refresh PGO data:
 
-* Build ReleaseAVX2_PGOGEN.  This would do two things:
+1. Build ReleaseAVX2_PGOGEN.  This would do two things:
 	- Create instrumented openvr_api.dll
-	- Overwrite pgo\openvr_api_saved.pgd with the new .pgd.
-* Place instrumented openvr_api.dll into game folder
-* Place pgort140.dll next to instrumented openvr_api.dll
-* Place pgort140.dll in Oculus Runtime folder: c:\Program Files\Oculus\Support\oculus-runtime\
-* Run the game
-* Copy openvr_api![N].pgc back to pgo folder
-* Build Realease_AVX2.  This will:
+	- Overwrite pgo\openvr_api_saved.pgd with the new .pgd.  Do not check this one in yet, until step 7 is complete.
+2. Place instrumented openvr_api.dll into game folder
+3. Place pgort140.dll next to instrumented openvr_api.dll
+4. Place pgort140.dll in Oculus Runtime folder: c:\Program Files\Oculus\Support\oculus-runtime\
+5. Run the game
+6. Copy openvr_api![N].pgc back to pgo folder
+7. Build Realease_AVX2.  This will:
 	- produce merged pgo\openvr_api.pgd
 	- Overwrite pgo\openvr_api_saved.pgd with the new merged .pgd.
-* Check in the newly merged .pgd
+8. Check in the newly merged .pgd
