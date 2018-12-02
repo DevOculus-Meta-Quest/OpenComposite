@@ -12,3 +12,5 @@ To collect/refresh PGO data:
 	- produce merged pgo\openvr_api.pgd
 	- Overwrite pgo\openvr_api_saved.pgd with the new merged .pgd.
 8. Check in the newly merged .pgd
+
+Note: /USEPROFILE:AGGRESSIVE generates slightly bigger binary, I decided to keep it off because those functions most likely aren't even called by rF2.
