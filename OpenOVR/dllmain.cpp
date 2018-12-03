@@ -126,9 +126,15 @@ console_window c;
 
 void TraceStatrtupMsg()
 {
+#ifdef VERSION_AVX2
+  OOVR_LOGF("Wolf's Open Composite "
+            "(TIWM fork) version: %s_AVX2+PGO\n",
+            OOVR_VERSION_STRING);
+#else
   OOVR_LOGF("Wolf's Open Composite "
             "(TIWM fork) version: %s\n",
             OOVR_VERSION_STRING);
+#endif
   OOVR_LOGF("Requested configuration:");
   OOVR_LOGF("supersampleRatio=%f", oovr_global_configuration.SupersampleRatio());
   OOVR_LOGF("dx10Mode=%s", oovr_global_configuration.DX10Mode() ? "true" : "false");

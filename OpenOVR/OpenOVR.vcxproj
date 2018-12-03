@@ -253,7 +253,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;SUPPORT_GL;SUPPORT_DX;SUPPORT_VK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;SUPPORT_GL;SUPPORT_DX;SUPPORT_VK;VERSION_AVX2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\BundledLibs;..\libs\libovr\OculusSDK\LibOVRKernel\Src;..\libs\libovr\OculusSDK\LibOVR\Include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -277,7 +277,7 @@
       <Command>copy /y ..\pgo\openvr_api_saved.pgd ..\pgo\openvr_api.pgd</Command>
     </PreLinkEvent>
     <PostBuildEvent>
-      <Command>copy /y ..\pgo\openvr_api.pgd ..\pgo\openvr_api_saved.pgd</Command>
+      <Command>copy /y ..\pgo\openvr_api.pgd ..\pgo\openvr_api_saved.pgd &amp; del ..\pgo\openvr_api.pgd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RealeaseAVX2_PGOGEN|x64'">
