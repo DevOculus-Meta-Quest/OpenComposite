@@ -1,16 +1,16 @@
-version: 0.6.0.0
+version: 0.6.0.20
 branches:
   only:
   - master
 image: Visual Studio 2017
-configuration: Release
+configuration:
+  - Release
+  - ReleaseAVX2
 platform:
   - x64
 install:
   - ps: appveyor DownloadFile http://thecrewchief.org/downloads/appveyor/ovr_sdk_win_1.26.0_public_nosamples.7z
-  - ps: appveyor DownloadFile http://thecrewchief.org/downloads/appveyor/vulkan-1.1.85.0-minisdk.7z
   - ps: 7z x -olibs/libovr ovr_sdk_win_1.26.0_public_nosamples.7z
-  - ps: 7z x -olibs vulkan-1.1.85.0-minisdk.7z
   - ps: ./configure.cmd
 before_build:
   - nuget restore
@@ -19,8 +19,21 @@ build:
   verbosity: minimal
 on_success:
 - ps: >-
-    7z a OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION.zip "x64/$env:Configuration/openvr_api.dll"
-    
-    7z rn OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION.zip "x64/$env:Configuration" "OpenComposite_tiwm"
 
-    Push-AppveyorArtifact OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION.zip
+    pushd ./x64/$env:Configuration/
+     
+    7z a ../../OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION"_"$env:Configuration.zip "openvr_api.dll"
+    
+    popd
+    
+    pushd ./res/
+    
+    dir
+    
+    7z a ../OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION"_"$env:Configuration.zip "opencomposite.ini"
+    
+    7z a ../OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION"_"$env:Configuration.zip "readme.txt"
+    
+    popd
+    
+    Push-AppveyorArtifact OpenComposite_tiwm_$env:APPVEYOR_BUILD_VERSION"_"$env:Configuration.zip
