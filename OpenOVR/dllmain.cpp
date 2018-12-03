@@ -137,12 +137,12 @@ void TraceStatrtupMsg()
 #endif
   OOVR_LOGF("Requested configuration:");
   OOVR_LOGF("supersampleRatio=%f", oovr_global_configuration.SupersampleRatio());
-  OOVR_LOGF("dx10Mode=%s", oovr_global_configuration.DX10Mode() ? "true" : "false");
   OOVR_LOGF("enableLayers=%s", oovr_global_configuration.DX10Mode() ? "true" : "false");
   OOVR_LOGF("enableCubemap=%s", oovr_global_configuration.EnableCubemap() ? "true" : "false");
   OOVR_LOGF("threePartSubmit=%s", oovr_global_configuration.ThreePartSubmit() ? "true" : "false");
   OOVR_LOGF("useViewportStencil=%s", oovr_global_configuration.UseViewportStencil() ? "true" : "false");
   OOVR_LOGF("postInitCmd=\"%s\"\n", oovr_global_configuration.PostInitCmd().c_str());
+  OOVR_LOGF("dx10Mode=%s", oovr_global_configuration.DX10Mode() ? "true" : "false");
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
