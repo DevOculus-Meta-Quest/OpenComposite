@@ -62,7 +62,6 @@ bool BaseChaperone::GetPlayAreaRect(HmdQuad_t *rect) {
 	OOVR_FAILED_OVR_ABORT(status);
 
 	// Lifted from ReVive
-	// TODO add ReVive (MIT) licence to repo
 	// TODO make it go counter-clockwise
 	memcpy(points, rect->vCorners, 4 * sizeof(ovrVector3f));
 

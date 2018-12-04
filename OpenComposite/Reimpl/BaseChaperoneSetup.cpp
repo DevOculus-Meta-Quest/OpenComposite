@@ -40,7 +40,6 @@ bool BaseChaperoneSetup::GetLiveCollisionBoundsInfo(VR_OUT_ARRAY_COUNT(punQuadsC
 	OOVR_FAILED_OVR_ABORT(status);
 
 	// Lifted from ReVive
-	// TODO add ReVive (MIT) licence to repo
 	// TODO make it go counter-clockwise
 	if (pQuadsBuffer)
 		memcpy(points, pQuadsBuffer->vCorners, 4 * sizeof(ovrVector3f));

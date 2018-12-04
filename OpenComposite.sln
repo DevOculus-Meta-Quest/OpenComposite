@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2003
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenOVR", "OpenOVR\OpenOVR.vcxproj", "{763555EE-FA66-4DFF-91F9-F0CD194B780F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenComposite", "OpenComposite\OpenComposite.vcxproj", "{763555EE-FA66-4DFF-91F9-F0CD194B780F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{EA50E705-5113-49E5-B105-2512EDC8DDC6} = {EA50E705-5113-49E5-B105-2512EDC8DDC6}
 		{29FA0962-DDC6-4F72-9D12-E150DF29E279} = {29FA0962-DDC6-4F72-9D12-E150DF29E279}
