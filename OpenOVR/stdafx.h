@@ -5,7 +5,7 @@
 
 #pragma once
 
-#define OOVR_VERSION_STRING "0.6.0.0"
+#define OOVR_VERSION_STRING "1.0.0.0"
 
 #include "targetver.h"
 

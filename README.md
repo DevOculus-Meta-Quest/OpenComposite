@@ -7,13 +7,15 @@ This fork contains stripped down version of the Open Composite effort, with two 
 * Stable, quality and predictable releases
 
 # Installation
-Download the DLL:
-[Latest 64-bit v0.6.0.0_AVX2+PGO](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.6.0.0.zip) - Custom compiled DLL for Hasewell or later Intel processors + profile guided optimizations.    Not that it matters, just wanted to learn :D
+## Download the latest DLL:
+Custom compiled DLL for Haswell or later Intel processors + profile guided optimizations.    Not that it matters, just wanted to learn :D
+[Latest 64-bit v1.0.0.0 AVX2+PGO](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.6.0.0.zip) - Custom compiled DLL for Haswell or later Intel processors + profile guided optimizations.    Not that it matters, just wanted to learn :D
 
 If above version crashes, here's regular DLL version.
-[Latest 64-bit v0.6.0.0](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.6.0.0.zip)
+[Latest 64-bit v1.0.0.0](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.6.0.0.zip)
 
-[Older DLL versions](https://ci.appveyor.com/project/TheIronWolfModding/openovr/history)
+## Older DLL versions:
+[v0.6.0.0](https://www.mediafire.com/file/macm20nbc3i35q8/OpenComposite_tiwm_0.6.0.0.zip/file)
 
 * Copy `openvr_api.dll` into `[rFactor 2 root]\Bin64` folder.  Usually `[rFactor 2 root]` is in Steam installation folder `Steam\SteamApps\common\rFactor 2\Bin64\`.
 * If this is first time you install this .dll, optionally, copy included `opencomposite.ini` to the `[rFactor 2 root]\Bin64` folder.  This contains rF2 default settings.
