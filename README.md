@@ -8,15 +8,18 @@ This fork contains stripped down version of the Open Composite effort, with two 
 
 # Installation
 ## Download the latest DLL:
-Custom compiled DLL for Haswell or later Intel processors + profile guided optimizations.    Not that it matters, just wanted to learn :D
-[Latest 64-bit v1.0.0.0 AVX2+PGO](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.6.0.0.zip) - Custom compiled DLL for Haswell or later Intel processors + profile guided optimizations.    Not that it matters, just wanted to learn :D
+Custom compiled DLL for Haswell or later Intel processors + profile guided optimizations.
+
+[Latest 64-bit v1.0.0.0 AVX2+PGO](https://www.mediafire.com/file/iicbs54n0whxka8/OpenComposite_tiwm_1.0.0.0_ReleaseAVX2.zip/file)
 
 If above version crashes, here's regular DLL version.
-[Latest 64-bit v1.0.0.0](https://ci.appveyor.com/api/projects/TheIronWolfModding/openovr/artifacts/OpenComposite_tiwm_0.6.0.0.zip)
+
+[Latest 64-bit v1.0.0.0](https://www.mediafire.com/file/76h96az63eu8uvk/OpenComposite_tiwm_1.0.0.0_Release.zip/file)
 
 ## Older DLL versions:
 [v0.6.0.0](https://www.mediafire.com/file/macm20nbc3i35q8/OpenComposite_tiwm_0.6.0.0.zip/file)
 
+## Steps to install into rFactor 2:
 * Copy `openvr_api.dll` into `[rFactor 2 root]\Bin64` folder.  Usually `[rFactor 2 root]` is in Steam installation folder `Steam\SteamApps\common\rFactor 2\Bin64\`.
 * If this is first time you install this .dll, optionally, copy included `opencomposite.ini` to the `[rFactor 2 root]\Bin64` folder.  This contains rF2 default settings.
 * Adjust `supersampleRatio` value to your liking (this is Oculus PPD).
@@ -25,13 +28,18 @@ If above version crashes, here's regular DLL version.
 `supersampleRatio` - real number, default 1.0. The supersample ratio in use - this is similar to what you would enter into SteamVR,
 a value of 145% in SteamVR is a value of 1.45 here. A value of 80% in SteamVR is 0.8 here, and so on. Higher numbers improve
 graphics, at a major performance cost.
-`enableLayers` - flag with `true` or `false` value, default `false`.  If `true`, converts SteamVR overlay creation calls to Oculus layers.  Otherwise, ignores those calls.
-`enableCubemap` - flag with `true` or `false` value, default `true`.  If `true`, converts SteamVR skybox creation calls to Oculus cubemap.  Otherwise, ignores those calls.
-`threePartSubmit` - flag with `true` or `false` value, default `true`.  If `true`, follows Oculus' frame submission pacing guidelines by waiting on `ovr_WaitToBeginFrame`.  Otherwise, no wait on submission is performed.
-`useViewportStencil` - flag with `true` or `false` value, default `true`.  If `true`, enables experimental feature to hide invisible texture areas, which might improve performance.
-`postInitCmd` - string value, default is empty.  Specifies command to run after Oculus runtime is initialized.  For example: `cmd /q /c timeout 5 & "C:\Program Files\Oculus\Support\oculus-dash\bin\OculusDash.exe"`.  Can be used start various tools, and kill undesired processes :).
-`dx10Mode` - flag with `true` or `false` value, default `false`.  If `true`, enables DX10 support (used by Raceroom).  This is unsuported feature and will be deprecated in the future.
 
+`enableLayers` - flag with `true` or `false` value, default `false`.  If `true`, converts SteamVR overlay creation calls to Oculus layers.  Otherwise, ignores those calls.
+
+`enableCubemap` - flag with `true` or `false` value, default `true`.  If `true`, converts SteamVR skybox creation calls to Oculus cubemap.  Otherwise, ignores those calls.
+
+`threePartSubmit` - flag with `true` or `false` value, default `true`.  If `true`, follows Oculus' frame submission pacing guidelines by waiting on `ovr_WaitToBeginFrame`.  Otherwise, no wait on submission is performed.
+
+`useViewportStencil` - flag with `true` or `false` value, default `true`.  If `true`, enables experimental feature to hide invisible texture areas, which might improve performance.
+
+`postInitCmd` - string value, default is empty.  Specifies command to run after Oculus runtime is initialized.  For example: `cmd /q /c timeout 5 & "C:\Program Files\Oculus\Support\oculus-dash\bin\OculusDash.exe"`.  Can be used start various tools, and kill undesired processes :).
+
+`dx10Mode` - flag with `true` or `false` value, default `false`.  If `true`, enables DX10 support (used by Raceroom).  This is unsuported feature and will be deprecated in the future.
 
 # History
 12/03/2018 - v1.0.0.0
