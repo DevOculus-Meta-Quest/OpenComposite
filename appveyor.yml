@@ -1,4 +1,4 @@
-version: 0.6.0.21
+version: 1.0.0.0
 branches:
   only:
   - master
