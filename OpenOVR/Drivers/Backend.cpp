@@ -122,6 +122,14 @@ void BackendManager::ForceBoundsVisible(bool status){
 	return backend->ForceBoundsVisible(status);
 }
 
+void BackendManager::GetDXGIOutputInfo(int32_t *pnAdapterIndex) {
+	return backend->GetDXGIOutputInfo(pnAdapterIndex);
+}
+
+void BackendManager::GetOutputDevice(uint64_t *pnDevice, vr::ETextureType textureType, VkInstance_T *pInstance) {
+	return backend->GetOutputDevice(pnDevice, textureType, pInstance);
+}
+
 // ITrackedDevice
 bool ITrackedDevice::GetControllerState(vr::VRControllerState_t *state) {
 

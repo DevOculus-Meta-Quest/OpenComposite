@@ -166,6 +166,10 @@ PREPEND bool AreBoundsVisible() APPEND; \
 /** Set the boundaries to be visible or not (although setting this to false shouldn't affect \
  * what happens if the player moves their hands too close and shows it that way) **/ \
 PREPEND void ForceBoundsVisible(bool status) APPEND; \
+/** See BaseSystem header for more information */ \
+PREPEND void GetDXGIOutputInfo(int32_t *pnAdapterIndex) APPEND; \
+/** See BaseSystem header for more information */ \
+PREPEND void GetOutputDevice(uint64_t *pnDevice, vr::ETextureType textureType, VkInstance_T *pInstance) APPEND; \
 
 
 /**

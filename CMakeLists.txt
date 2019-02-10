@@ -130,6 +130,7 @@ add_library(DrvOculus STATIC
 	DrvOculus/OculusBackendSubmit.cpp
 	DrvOculus/OculusBackendMirror.cpp
 	DrvOculus/OculusBackendGuardian.cpp
+	DrvOculus/OculusBackendAdapter.cpp
 
 	DrvOculus/pub/DrvOculus.h
 
@@ -325,6 +326,7 @@ add_library(OCCore STATIC
 target_include_directories(OCCore PUBLIC OpenOVR) # TODO make this private and put the public headers elsewhere
 target_include_directories(OCCore PRIVATE BundledLibs)
 target_compile_definitions(OCCore PRIVATE -DSUPPORT_DX -DSUPPORT_GL -DSUPPORT_VK)
+target_compile_definitions(DrvOculus PRIVATE -DSUPPORT_DX -DSUPPORT_GL -DSUPPORT_VK) # Temporary, TODO apply the flags to all drivers and OCCore
 target_link_libraries(OCCore OpenVR ovr ovrkernel Vulkan)
 
 # Set up precompiled headers for OCCore
