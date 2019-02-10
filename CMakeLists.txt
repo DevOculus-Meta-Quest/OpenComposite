@@ -326,7 +326,9 @@ add_library(OCCore STATIC
 target_include_directories(OCCore PUBLIC OpenOVR) # TODO make this private and put the public headers elsewhere
 target_include_directories(OCCore PRIVATE BundledLibs)
 target_compile_definitions(OCCore PRIVATE -DSUPPORT_DX -DSUPPORT_GL -DSUPPORT_VK)
+if (WIN32)
 target_compile_definitions(DrvOculus PRIVATE -DSUPPORT_DX -DSUPPORT_GL -DSUPPORT_VK) # Temporary, TODO apply the flags to all drivers and OCCore
+endif()
 target_link_libraries(OCCore OpenVR ovr ovrkernel Vulkan)
 
 # Set up precompiled headers for OCCore
