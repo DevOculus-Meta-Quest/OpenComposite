@@ -5,6 +5,7 @@
 #include "OpenVR/interfaces/IVRSettings_002.h"
 #include "Misc/Config.h"
 #include "BaseSystem.h"
+#include "static_bases.gen.h"
 #include <string>
 #include <codecvt>
 
@@ -170,7 +171,20 @@ float  BaseSettings::GetFloat(const char * pchSection, const char * pchSettingsK
 			return oovr_global_configuration.SupersampleRatio();
 		}
 		else if (key == kk::k_pch_SteamVR_IPD_Float) {
-			return BaseSystem::SGetIpd();
+			BaseSystem *sys = GetUnsafeBaseSystem();
+			if(!sys) {
+				// return 0.01; // 10cm, placeholder
+				OOVR_ABORT("Cannot get IPD without BaseSystem");
+			}
+
+			ETrackedPropertyError err = vr::TrackedProp_Success;
+			float ipd = sys->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_UserIpdMeters_Float, &err);
+
+			if(err != vr::TrackedProp_Success) {
+				OOVR_ABORTF("Cannot get HMD IPD: Tracked property error %d", err);
+			}
+
+			return ipd;
 		}
 	}
 
