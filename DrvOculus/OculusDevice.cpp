@@ -81,7 +81,7 @@ void OculusDevice::GetPose(vr::ETrackingUniverseOrigin origin, vr::TrackedDevice
 	O2S_v3f(ovrPose.LinearVelocity, pose->vVelocity);
 	O2S_v3f(ovrPose.AngularVelocity, pose->vAngularVelocity);
 
-	pose->mDeviceToAbsoluteTracking = GetUnsafeBaseSystem()->_PoseToTrackingSpace(origin, ovrPose.ThePose);
+	pose->mDeviceToAbsoluteTracking = backend->PoseToTrackingSpace(origin, ovrPose.ThePose);
 }
 
 uint64_t OculusDevice::GetUint64TrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError * pErrorL) {

@@ -178,6 +178,13 @@ PREPEND void OnPostFrame(postFrameCallback_t) APPEND; \
 \
 PREPEND bool HasInputFocus() APPEND; \
 PREPEND bool OverlayPresent() APPEND; \
+\
+/** Sets tracking space returned by WaitGetPoses */ \
+PREPEND void SetTrackingSpace(vr::ETrackingUniverseOrigin origin) APPEND; \
+/** Gets current tracking space returned by WaitGetPoses */ \
+PREPEND vr::ETrackingUniverseOrigin GetTrackingSpace() APPEND; \
+/** Recenter the play area */ \
+PREPEND void ResetSeatedZeroPose() APPEND; \
 
 
 /**

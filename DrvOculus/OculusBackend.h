@@ -52,6 +52,7 @@ public:
 	DECLARE_BACKEND_FUNCS(virtual, override)
 
 	ovrTrackingState GetTrackingState();
+	vr::HmdMatrix34_t PoseToTrackingSpace(vr::ETrackingUniverseOrigin origin, ovrPosef pose);
 
 private:
 
@@ -83,6 +84,13 @@ private:
 
 	// Event handling
 	ovrSessionStatus lastStatus;
+
+	// Tracking Space
+	vr::ETrackingUniverseOrigin waitGetPosesOrigin = vr::ETrackingUniverseOrigin::TrackingUniverseStanding;
+	bool usingDualOriginMode = false;
+	float fakeOriginHeight;
+
+	void ResetFakeSeatedHeight();
 
 	// Mirror
 	ovrMirrorTexture mirrorTexture = nullptr;

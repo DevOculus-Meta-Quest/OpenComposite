@@ -142,6 +142,18 @@ bool BackendManager::OverlayPresent() {
 	return backend->OverlayPresent();
 }
 
+void BackendManager::SetTrackingSpace(vr::ETrackingUniverseOrigin origin) {
+	return backend->SetTrackingSpace(origin);
+}
+
+vr::ETrackingUniverseOrigin BackendManager::GetTrackingSpace() {
+	return backend->GetTrackingSpace();
+}
+
+void BackendManager::ResetSeatedZeroPose() {
+	return backend->ResetSeatedZeroPose();
+}
+
 // ITrackedDevice
 bool ITrackedDevice::GetControllerState(vr::VRControllerState_t *state) {
 

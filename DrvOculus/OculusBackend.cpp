@@ -29,6 +29,9 @@ OculusBackend::OculusBackend() {
 		if (dev)
 			dev->InitialiseDevice(i);
 	}
+
+	// Set the tracking pose to it's default
+	SetTrackingSpace(waitGetPosesOrigin);
 }
 
 OculusBackend::~OculusBackend() {
@@ -150,8 +153,7 @@ bool OculusBackend::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint32
 	*/
 
 	// pose used by app to render this frame
-	ETrackingUniverseOrigin origin = GetUnsafeBaseSystem()->_GetTrackingOrigin();
-	GetPrimaryHMD()->GetPose(origin, &pTiming->m_HmdPose, ETrackingStateType::TrackingStateType_Rendering);
+	GetPrimaryHMD()->GetPose(waitGetPosesOrigin, &pTiming->m_HmdPose, ETrackingStateType::TrackingStateType_Rendering);
 
 	return true;
 }

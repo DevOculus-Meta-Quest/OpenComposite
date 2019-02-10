@@ -25,23 +25,14 @@ private:
 
 	bool blockingInputsUntilRelease[2] = { false, false };
 
-	ETrackingUniverseOrigin origin = ETrackingUniverseOrigin::TrackingUniverseStanding;
-	bool usingDualOriginMode = false;
-	float fakeOriginHeight;
-
 public:
 	// To be called by other base classes
 	void _OnPostFrame();
 	void _EnqueueEvent(const VREvent_t &e);
 	void _BlockInputsUntilReleased();
 
-	void _SetTrackingOrigin(ETrackingUniverseOrigin origin);
-	ETrackingUniverseOrigin _GetTrackingOrigin();
-	HmdMatrix34_t _PoseToTrackingSpace(ETrackingUniverseOrigin origin, ovrPosef pose);
 private:
 	void CheckControllerEvents(vr::TrackedDeviceIndex_t hand, VRControllerState_t &last);
-
-	void _ResetFakeSeatedHeight();
 
 public:
 	static const TrackedDeviceIndex_t leftHandIndex = 1;

@@ -44,21 +44,11 @@ BaseCompositor::~BaseCompositor() {
 }
 
 void BaseCompositor::SetTrackingSpace(ETrackingUniverseOrigin eOrigin) {
-	ovrTrackingOrigin origin = ovrTrackingOrigin_FloorLevel;
-	if (eOrigin == TrackingUniverseSeated) {
-		origin = ovrTrackingOrigin_EyeLevel;
-	}
-
-	OOVR_FAILED_OVR_ABORT(ovr_SetTrackingOriginType(SESS, origin));
+	BackendManager::Instance().SetTrackingSpace(eOrigin);
 }
 
 ETrackingUniverseOrigin BaseCompositor::GetTrackingSpace() {
-	if (ovr_GetTrackingOriginType(SESS) == ovrTrackingOrigin_EyeLevel) {
-		return TrackingUniverseSeated;
-	}
-	else {
-		return TrackingUniverseStanding;
-	}
+	return BackendManager::Instance().GetTrackingSpace();
 }
 
 ovr_enum_t BaseCompositor::WaitGetPoses(TrackedDevicePose_t * renderPoseArray, uint32_t renderPoseArrayCount,
@@ -104,7 +94,7 @@ Matrix4f BaseCompositor::GetHandTransform() {
 ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t * renderPoseArray, uint32_t renderPoseArrayCount,
 	TrackedDevicePose_t * gamePoseArray, uint32_t gamePoseArrayCount) {
 
-	ETrackingUniverseOrigin origin = GetUnsafeBaseSystem()->_GetTrackingOrigin();
+	ETrackingUniverseOrigin origin = BackendManager::Instance().GetTrackingSpace();
 
 	for (uint32_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
 		TrackedDevicePose_t *renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
@@ -134,7 +124,7 @@ ovr_enum_t BaseCompositor::GetLastPoseForTrackedDeviceIndex(TrackedDeviceIndex_t
 		return VRCompositorError_IndexOutOfRange;
 	}
 
-	ETrackingUniverseOrigin origin = GetUnsafeBaseSystem()->_GetTrackingOrigin();
+	ETrackingUniverseOrigin origin = BackendManager::Instance().GetTrackingSpace();
 
 	TrackedDevicePose_t pose;
 	GetSinglePoseRendering(origin, unDeviceIndex, &pose);
