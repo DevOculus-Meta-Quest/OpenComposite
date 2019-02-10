@@ -263,13 +263,6 @@ void BaseSystem::_BlockInputsUntilReleased() {
 	blockingInputsUntilRelease[1] = true;
 }
 
-float BaseSystem::SGetIpd() {
-	ovrPosef &left = ovr::hmdToEyeViewPose[ovrEye_Left];
-	ovrPosef &right = ovr::hmdToEyeViewPose[ovrEye_Right];
-
-	return abs(left.Position.x - right.Position.x);
-}
-
 void BaseSystem::CheckControllerEvents(TrackedDeviceIndex_t hand, VRControllerState_t &last) {
 	VRControllerState_t state;
 	GetControllerState(hand, &state, sizeof(state));

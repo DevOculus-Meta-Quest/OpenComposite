@@ -249,8 +249,12 @@ float OculusHMD::GetFloatTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, 
 		if (pErrorL)
 			*pErrorL = TrackedProp_UnknownProperty;
 		return 0;
-	case Prop_UserIpdMeters_Float:
-		return BaseSystem::SGetIpd();
+	case Prop_UserIpdMeters_Float: {
+		ovrPosef &left = ovr::hmdToEyeViewPose[ovrEye_Left];
+		ovrPosef &right = ovr::hmdToEyeViewPose[ovrEye_Right];
+
+		return abs(left.Position.x - right.Position.x);
+	}
 	case Prop_SecondsFromVsyncToPhotons_Float:
 		// Seems to be used by croteam games, IDK what the real value is, 100s should do
 		return 0.0001f;
