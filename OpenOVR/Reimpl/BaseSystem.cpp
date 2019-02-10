@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #define BASE_IMPL
 #include "BaseSystem.h"
-#include "OVR_CAPI.h"
-#include "libovr_wrapper.h"
 #include "convert.h"
 #include "BaseCompositor.h"
 #include "BaseOverlay.h"
