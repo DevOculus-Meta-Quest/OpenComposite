@@ -18,11 +18,6 @@
 #pragma comment(lib, "dxgi.lib")
 #endif
 
-// Needed for GetOutputDevice if Vulkan is enabled
-#if defined(SUPPORT_VK)
-#include "OVR_CAPI_Vk.h"
-#endif
-
 using namespace std;
 
 BaseSystem::BaseSystem() {
