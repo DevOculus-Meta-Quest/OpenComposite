@@ -156,6 +156,40 @@ bool OculusBackend::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint32
 	return true;
 }
 
+void OculusBackend::OnPostFrame(postFrameCallback_t cb) {
+	ovrSessionStatus status;
+	ovr_GetSessionStatus(*ovr::session, &status);
+
+	if (status.ShouldQuit && !lastStatus.ShouldQuit) {
+		VREvent_t e = {0};
+
+		e.eventType = VREvent_Quit;
+		e.trackedDeviceIndex = k_unTrackedDeviceIndex_Hmd;
+		e.eventAgeSeconds = 0; // Is this required for quit events?
+
+		VREvent_Process_t data = {0};
+		data.bForced = false;
+		data.pid = data.oldPid = 0; // TODO but probably very rarely used
+		e.data.process = data;
+
+		cb(e);
+	}
+
+	if (status.ShouldRecenter && !lastStatus.ShouldRecenter) {
+		// Why on earth doesn't OpenVR have a recenter event?!
+		GetUnsafeBaseSystem()->ResetSeatedZeroPose();
+	}
+
+	lastStatus = status;
+}
+
+bool OculusBackend::HasInputFocus() {
+	return lastStatus.HasInputFocus;
+}
+bool OculusBackend::OverlayPresent() {
+	return lastStatus.OverlayPresent;
+}
+
 ITrackedDevice* OculusBackend::GetDevice(vr::TrackedDeviceIndex_t index) {
 	return GetDeviceOculus(index);
 }

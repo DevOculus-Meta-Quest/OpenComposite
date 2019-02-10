@@ -130,6 +130,18 @@ void BackendManager::GetOutputDevice(uint64_t *pnDevice, vr::ETextureType textur
 	return backend->GetOutputDevice(pnDevice, textureType, pInstance);
 }
 
+void BackendManager::OnPostFrame(postFrameCallback_t callback) {
+	return backend->OnPostFrame(std::move(callback));
+}
+
+bool BackendManager::HasInputFocus() {
+	return backend->HasInputFocus();
+}
+
+bool BackendManager::OverlayPresent() {
+	return backend->OverlayPresent();
+}
+
 // ITrackedDevice
 bool ITrackedDevice::GetControllerState(vr::VRControllerState_t *state) {
 

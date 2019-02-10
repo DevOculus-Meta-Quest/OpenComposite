@@ -239,56 +239,26 @@ const char * BaseSystem::GetPropErrorNameFromEnum(ETrackedPropertyError error) {
 }
 
 bool BaseSystem::IsInputAvailable() {
-	return lastStatus.HasInputFocus;
+	return BackendManager::Instance().HasInputFocus();
 }
 
 bool BaseSystem::IsSteamVRDrawingControllers() {
-	return !lastStatus.HasInputFocus;
+	return !BackendManager::Instance().HasInputFocus();
 }
 
 bool BaseSystem::ShouldApplicationPause() {
-	return !lastStatus.HasInputFocus;
+	return !BackendManager::Instance().HasInputFocus();
 }
 
 bool BaseSystem::ShouldApplicationReduceRenderingWork() {
-	return lastStatus.OverlayPresent;
+	return BackendManager::Instance().OverlayPresent();
 }
 
 void BaseSystem::_OnPostFrame() {
-	ovrSessionStatus status;
-	ovr_GetSessionStatus(*ovr::session, &status);
-
-	if (status.ShouldQuit && !lastStatus.ShouldQuit) {
-		VREvent_t e;
-
-		e.eventType = VREvent_Quit;
-		e.trackedDeviceIndex = k_unTrackedDeviceIndex_Hmd;
-		e.eventAgeSeconds = 0; // Is this required for quit events?
-
-		VREvent_Process_t data;
-		data.bForced = false;
-		data.pid = data.oldPid = 0; // TODO but probably very rarely used
-		e.data.process = data;
-
-		events.push(e);
-	}
-
 	CheckControllerEvents(leftHandIndex, lastLeftHandState);
 	CheckControllerEvents(rightHandIndex, lastRightHandState);
 
-	// Not exactly an event, but this is a convenient place to put it
-	// TODO move all the event handling out and run it per frame, and queue up events
-	// Also note this is done after all other events, as it doesn't set ShouldRecenter
-	// and thus could end up resetting the pose several times if it occured at the same time
-	// as another event
-	if (status.ShouldRecenter && !lastStatus.ShouldRecenter) {
-		// Why on earth doesn't OpenVR have a recenter event?!
-		ResetSeatedZeroPose();
-	}
-
-	// Note this isn't called if handle_event is called, preventing one
-	//  event from firing despite another event also being changed in the same poll call
-	lastStatus = status;
+	BackendManager::Instance().OnPostFrame([this](const VREvent_t &e) { _EnqueueEvent(e); });
 }
 
 void BaseSystem::_EnqueueEvent(const VREvent_t &e) {
@@ -492,7 +462,7 @@ void BaseSystem::ReleaseInputFocus() {
 }
 
 bool BaseSystem::IsInputFocusCapturedByAnotherProcess() {
-	return !lastStatus.HasInputFocus;
+	return !BackendManager::Instance().HasInputFocus();
 }
 
 uint32_t BaseSystem::DriverDebugRequest(vr::TrackedDeviceIndex_t unDeviceIndex, const char * pchRequest, char * pchResponseBuffer, uint32_t unResponseBufferSize) {

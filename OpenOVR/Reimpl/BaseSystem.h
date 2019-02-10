@@ -18,7 +18,6 @@ private:
 		event_info_t(VREvent_t ev, TrackedDevicePose_t pose) : ev(ev), pose(pose) {}
 	};
 
-	ovrSessionStatus lastStatus;
 	std::queue<event_info_t> events;
 
 	VRControllerState_t lastLeftHandState = { 0 };

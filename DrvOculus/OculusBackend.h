@@ -81,6 +81,9 @@ private:
 	Compositor * compositors[2] = { NULL, NULL };
 	std::unique_ptr<Compositor> skyboxCompositor;
 
+	// Event handling
+	ovrSessionStatus lastStatus;
+
 	// Mirror
 	ovrMirrorTexture mirrorTexture = nullptr;
 	int mirrorTexturesCount = 0;

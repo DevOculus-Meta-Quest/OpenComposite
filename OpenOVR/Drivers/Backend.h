@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <functional>
 #include "OpenVR/interfaces/vrtypes.h"
 #include "../OpenOVR/custom_types.h" // TODO move this into the OpenVR tree
 
@@ -117,6 +118,8 @@ public:
 	virtual vr::HiddenAreaMesh_t GetHiddenAreaMesh(vr::EVREye eEye, vr::EHiddenAreaMeshType type) = 0;
 };
 
+typedef std::function<void(vr::VREvent_t)> postFrameCallback_t;
+
 #define DECLARE_BACKEND_FUNCS(PREPEND, APPEND) \
 PREPEND IHMD* GetPrimaryHMD() APPEND; \
 \
@@ -170,6 +173,11 @@ PREPEND void ForceBoundsVisible(bool status) APPEND; \
 PREPEND void GetDXGIOutputInfo(int32_t *pnAdapterIndex) APPEND; \
 /** See BaseSystem header for more information */ \
 PREPEND void GetOutputDevice(uint64_t *pnDevice, vr::ETextureType textureType, VkInstance_T *pInstance) APPEND; \
+/** Called at the end of every frame - dispatch events here */ \
+PREPEND void OnPostFrame(postFrameCallback_t) APPEND; \
+\
+PREPEND bool HasInputFocus() APPEND; \
+PREPEND bool OverlayPresent() APPEND; \
 
 
 /**
