@@ -1,3 +1,11 @@
+--------------------------------------------------------------------------------------------------------------------------------
+This project is no longer under development as I do not own Oculus hardware anymore.
+--------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
 # About
 This project is a fork of a fantastic work by Campbell Suter, please see main project site here: https://gitlab.com/znixian/OpenOVR
 
