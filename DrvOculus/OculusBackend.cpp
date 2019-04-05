@@ -62,7 +62,9 @@ void OculusBackend::GetDeviceToAbsoluteTrackingPose(
 
 	for (uint32_t i = 0; i < poseArrayCount; i++) {
 		OculusDevice* dev = GetDeviceOculus(i);
-		dev->GetPose(toOrigin, &poseArray[i], trackingState);
+
+		if(dev)
+			dev->GetPose(toOrigin, &poseArray[i], trackingState);
 	}
 
 }
