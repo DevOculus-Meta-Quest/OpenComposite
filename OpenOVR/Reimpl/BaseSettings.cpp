@@ -137,7 +137,7 @@ bool  BaseSettings::GetBool(const char * pchSection, const char * pchSettingsKey
 			// Note when set to true, expect k_pch_SteamVR_SpeakersForwardYawOffsetDegrees_Float
 			return false; // TODO
 		}
-		else if (key == kk::k_pch_SteamVR_DirectMode_Bool) {
+		else if (key == kk::k_pch_DirectMode_Section) { // not sure if this is equivalent to previous key used here: k_pch_SteamVR_DirectMode_Bool
 			// Oculus doesn't support windowed mode
 			return true;
 		}
@@ -145,9 +145,9 @@ bool  BaseSettings::GetBool(const char * pchSection, const char * pchSettingsKey
 			// What? (Used in The Lab btw)
 			return false;
 		}
-		else if (key == kk::k_pch_SteamVR_AllowReprojection_Bool) {
-			return true;
-		}
+		//else if (key == kk::k_pch_SteamVR_AllowReprojection_Bool) { // commented out - key no longer exists...
+		//	return true;
+		//}
 	}
 
 	STUBBED();

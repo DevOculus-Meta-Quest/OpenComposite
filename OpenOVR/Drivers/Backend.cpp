@@ -146,6 +146,10 @@ void ITrackedDevice::InitialiseDevice(vr::TrackedDeviceIndex_t index) {
 	deviceIndex = index;
 }
 
+int32_t ITrackedDevice::SetControllerVibration(const ovrHapticsBuffer* buffer) {
+	return 0; // default implementation
+}
+
 // properties
 
 bool ITrackedDevice::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError * pErrorL) {

@@ -290,6 +290,11 @@ ovrControllerType OculusControllerDevice::GetControllerType() {
 	}
 }
 
+int32_t OculusControllerDevice::SetControllerVibration(const ovrHapticsBuffer* buffer) {
+	
+	return ovr_SubmitControllerVibration(*ovr::session, GetControllerType(), buffer);
+}
+
 // properties
 bool OculusControllerDevice::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError * pErrorL) {
 	if(pErrorL)
