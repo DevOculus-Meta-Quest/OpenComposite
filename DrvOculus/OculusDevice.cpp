@@ -374,10 +374,12 @@ if(prop == in) { \
 	case EOculusTrackedObject::LTouch:
 		PROP(Prop_RenderModelName_String, "renderLeftHand");
 		PROP(Prop_ModelNumber_String, "Oculus Rift CV1 (Left Controller)");
+			PROP(Prop_RegisteredDeviceType_String, "oculus/F00BAAF00F_Controller_Left"); // TODO is this different CV1 vs S?
 		break;
 	case EOculusTrackedObject::RTouch:
 		PROP(Prop_RenderModelName_String, "renderRightHand");
 		PROP(Prop_ModelNumber_String, "Oculus Rift CV1 (Right Controller)");
+		PROP(Prop_RegisteredDeviceType_String, "oculus/F00BAAF00F_Controller_Right");
 		break;
 	case EOculusTrackedObject::Object0:
 		PROP(Prop_RenderModelName_String, "renderObject0");

@@ -4,7 +4,7 @@
 #include <string>
 
 
-#include "BaseSystem.h" 
+#include "BaseSystem.h"
 #include <fstream>
 #include <codecvt>
 #include <iostream>
@@ -31,8 +31,9 @@ static bool ReadJson(wstring path, Json::Value &result) {
 		return false;
 	}
 }
-std::wstring stringToWstring(const std::string& t_str)
-{
+
+// Convert a UTF-8 string to a UTF-16 (wide) string
+static std::wstring utf8to16(const std::string& t_str) {
 	//setup converter
 	typedef std::codecvt_utf8<wchar_t> convert_type;
 	std::wstring_convert<convert_type, wchar_t> converter;
@@ -40,15 +41,17 @@ std::wstring stringToWstring(const std::string& t_str)
 	//use converter (.to_bytes: wstr->str, .from_bytes: str->wstr)
 	return converter.from_bytes(t_str);
 }
-std::string dirnameOf(const std::string& fname)
-{
+
+static std::string dirnameOf(const std::string& fname) {
 	size_t pos = fname.find_last_of("\\/");
 	return (std::string::npos == pos)
-		? "."
+		? ""
 		: fname.substr(0, pos);
 }
-bool iequals(const string& a, const string& b)
-{
+
+// Case-insensitively compares two strings
+static bool iequals(const string& a, const string& b) {
+	// from https://stackoverflow.com/a/4119881
 	unsigned int sz = a.size();
 	if (b.size() != sz)
 		return false;
@@ -57,11 +60,20 @@ bool iequals(const string& a, const string& b)
 			return false;
 	return true;
 }
+
+// Represents an action set. This is a set of controls that can be configured
+// independantly - as I understand it, these are to be used for different portions
+// of a game. You might have one action set for shooting, one for driving, and so on.
+// It also stores the usage mode, which controls how it should eventually be shown
+// in the binding editor (whether the user can bind controls seperately for each hand
+// or not).
+// See https://github.com/ValveSoftware/openvr/wiki/Action-manifest#action-sets
 struct ActionSet
 {
 	string name;
 	string usage;
 };
+
 struct ActionSource
 {
 	string sourceType;
@@ -98,11 +110,11 @@ map<string, InputValue*> _stringInputValueMap;
 // ---
 
 EVRInputError BaseInput::SetActionManifestPath(const char *pchActionManifestPath) {
-	
+
 	if ((pchActionManifestPath != NULL) && (pchActionManifestPath[0] == '\0')) // null or empty string
 		return VRInputError_InvalidParam;
 
-	wstring actionManifestPath = stringToWstring(pchActionManifestPath);
+	wstring actionManifestPath = utf8to16(pchActionManifestPath);
 	ReadJson(actionManifestPath, _actionManifest);
 
 	Json::Value jsonDefaultBindings = _actionManifest["default_bindings"];
@@ -133,13 +145,13 @@ EVRInputError BaseInput::SetActionManifestPath(const char *pchActionManifestPath
 	string bindingUrl = jsonDefaultBindings[index]["binding_url"].asString();
 	string bindingsPath = dirnameOf(pchActionManifestPath) + "/" + bindingUrl;
 
-	wstring bindingsPathw = stringToWstring(bindingsPath);
+	wstring bindingsPathw = utf8to16(bindingsPath);
 	ReadJson(bindingsPathw, _bindingsJson);
 
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetActionSetHandle(const char *pchActionSetName, VRActionSetHandle_t *pHandle) {
-	
+
 	// check if key is in map and return it, add new keys to the map
 	string pchActionSetNameString = pchActionSetName;
 	std::transform(pchActionSetNameString.begin(), pchActionSetNameString.end(), pchActionSetNameString.begin(), ::tolower);
@@ -188,7 +200,7 @@ EVRInputError BaseInput::GetActionSetHandle(const char *pchActionSetName, VRActi
 	return VRInputError_NameNotFound;
 }
 EVRInputError BaseInput::GetActionHandle(const char *pchActionName, VRActionHandle_t *pHandle) {
-	
+
 	// check if key is in map and return it, add new keys to the map
 	string pchActionNameString = pchActionName;
 	std::transform(pchActionNameString.begin(), pchActionNameString.end(), pchActionNameString.begin(), ::tolower);
@@ -204,7 +216,7 @@ EVRInputError BaseInput::GetActionHandle(const char *pchActionName, VRActionHand
 	else // key not found
 	{
 		// create new Action and insert/return handle
-		
+
 		Json::Value jsonAction = _actionManifest["actions"];
 		for (int index = 0; index < jsonAction.size(); index++)
 		{
@@ -221,11 +233,11 @@ EVRInputError BaseInput::GetActionHandle(const char *pchActionName, VRActionHand
 			}
 		}
 	}
-	
+
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetInputSourceHandle(const char *pchInputSourcePath, VRInputValueHandle_t  *pHandle) {
-	
+
 	// check if key is in map and return it, add new keys to the map
 	string pchInputSourcePathString = pchInputSourcePath;
 	std::transform(pchInputSourcePathString.begin(), pchInputSourcePathString.end(), pchInputSourcePathString.begin(), ::tolower);
@@ -375,7 +387,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 			GetActionHandle(jsonCurrentItem["output"].asCString(), &actionHandle);
 			if (actionHandle == vr::k_ulInvalidActionHandle)
 				continue; // action does not exist for this source
-			
+
 			Action *action = (Action*)actionHandle;
 
 			string path = jsonCurrentItem["path"].asString();
@@ -431,7 +443,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 			}
 
 		}
-		
+
 
 		Json::Value jsonSources = _bindingsJson["bindings"][actionSet->name]["sources"];
 		for (int index = 0; index < jsonSources.size(); index++)
@@ -540,7 +552,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 					ProcessInputSource(jsonCurrentSourceItem, actionHandle, sourceType, parameterSubMode, actionSet->name);
 				}
 			}
-						
+
 		}
 
 		actionSourcesBuilt = true;
@@ -572,7 +584,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	TrackedDeviceIndex_t trackedDeviceIndexRight = inputValueRight->trackedDeviceIndex;
 	ITrackedDevice *deviceRight = BackendManager::Instance().GetDevice(trackedDeviceIndexRight);
 	if (deviceRight != nullptr)
-	{	
+	{
 		bool success = deviceRight->GetControllerState(&inputValueRight->controllerState);
 		inputValueRight->isConnected = true;
 	}
@@ -584,7 +596,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 }
 
 // helper method:
-void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actionHandle, string sourceType, 
+void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actionHandle, string sourceType,
 	string parameterSubMode, string actionSetName) {
 
 	Action *action = (Action*)actionHandle;
@@ -642,7 +654,7 @@ void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actio
 }
 
 // helper method
-void BaseInput::DetermineActionState(uint64_t buttonId, uint64_t buttonFlags, bool pressedButtonState, 
+void BaseInput::DetermineActionState(uint64_t buttonId, uint64_t buttonFlags, bool pressedButtonState,
 	bool& masterPressedButtonState, vr::VRControllerAxis_t axis, double activateThreshold, double deactivateThreshold,
 	bool& bState, bool& bChanged, bool& actionSourceDirectionState) {
 
@@ -721,10 +733,10 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	bool validDigitalType = iequals(digitalAction->type, "boolean");
 	if (!validDigitalType)
 		return VRInputError_WrongType;
-	
+
 
 	// Note: how to determine which input changed most recently???
-		
+
 	bool bActive = false;
 	InputValue *inputValue = nullptr;
 	VRControllerAxis_t triggerAxis;
@@ -767,7 +779,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	{
 		return VRInputError_InvalidDevice; // left and right controllers both not found? b/c action is not yet configured...
 	}
-	
+
 	buttonPressedFlags = inputValue->controllerState.ulButtonPressed;
 	buttonTouchedFlags = inputValue->controllerState.ulButtonTouched;
 	thumbstickAxis = inputValue->controllerState.rAxis[0];
@@ -813,7 +825,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	bool bState = false;
 	bool bChanged = false;
 	for (auto actionSourcePtr = begin(actionSources); actionSourcePtr != end(actionSources); ++actionSourcePtr)
-	{	
+	{
 		ActionSource *actionSource = (*actionSourcePtr);
 		string sourcePath = actionSource->sourcePath;
 		string actionSetName = actionSource->actionSetName;
@@ -829,7 +841,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 			if (isRight)
 			{
 				DetermineActionState((uint64_t)EVRButtonId::k_EButton_Grip, buttonPressedFlags, rightGripPressed, _rightGripPressed,
-					gripAxis, actionSource->sourceParametersActivateThreshold, actionSource->sourceParametersDeactivateThreshold, 
+					gripAxis, actionSource->sourceParametersActivateThreshold, actionSource->sourceParametersDeactivateThreshold,
 					bState, bChanged, actionSource->rightState);
 			}
 			else if (isLeft)
@@ -872,14 +884,14 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 		else if (iequals(pathSubst, "/input/joystick") && iequals(actionSource->sourceMode, "dpad") && iequals(actionSource->sourceType, "east"))
 		{
 			// NOTE: I didn't want to change the DPAD button mappings in GetControllerState() in OculusDevice.cpp,
-			// because I'm not sure of the repercussions and I don't want to break any existing functionality, but 
-			// I found the current button flags to be incorrect with my oculus touch thumbsticks (CV1).  The true mappings 
+			// because I'm not sure of the repercussions and I don't want to break any existing functionality, but
+			// I found the current button flags to be incorrect with my oculus touch thumbsticks (CV1).  The true mappings
 			// are as follows, which I account for in this method:
 			// right means up
 			// up means right
 			// left means down
 			// down means left
-			
+
 			if (isRight)
 			{
 				DetermineActionState((uint64_t)EVRButtonId::k_EButton_DPad_Up, buttonPressedFlags, rightJoystickEast, _rightJoystickEast,
@@ -1023,7 +1035,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 		}
 
 		bActive = true;
-		
+
 	}
 
 
@@ -1044,7 +1056,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 		return VRInputError_InvalidHandle;
 	}
-	
+
 	Action *analogAction = (Action*)action;
 
 	bool validAnalogType = iequals(analogAction->type, "single") ||
@@ -1097,7 +1109,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		axis = inputValueRight->controllerState.rAxis;
 	}
 
-	
+
 	// determine what data to output:
 	InputValue *inputValue = (InputValue*)activeOrigin;
 	string name = inputValue->name;
@@ -1115,7 +1127,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	{
 		analogData = axis[2]; // grip
 	}
-	
+
 	pActionData->x = analogData.x;
 	pActionData->y = analogData.y;
 	pActionData->activeOrigin = activeOrigin;
@@ -1197,7 +1209,7 @@ EVRInputError BaseInput::GetPoseActionDataRelativeToNow(VRActionHandle_t action,
 	STUBBED();
 }
 EVRInputError BaseInput::GetPoseActionDataForNextFrame(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
-	
+
 	return GetPoseActionData(action, eOrigin, 0, pActionData, unActionDataSize, ulRestrictToDevice);
 }
 EVRInputError BaseInput::GetSkeletalActionData(VRActionHandle_t action, InputSkeletalActionData_t *pActionData, uint32_t unActionDataSize,
@@ -1205,7 +1217,7 @@ EVRInputError BaseInput::GetSkeletalActionData(VRActionHandle_t action, InputSke
 	STUBBED();
 }
 EVRInputError BaseInput::GetSkeletalActionData(VRActionHandle_t action, InputSkeletalActionData_t *pActionData, uint32_t unActionDataSize) {
-	
+
 	if (action == vr::k_ulInvalidActionHandle)
 	{
 		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
@@ -1273,7 +1285,7 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t action, EVRSkeleta
 	uint32_t unTransformArrayCount, VRInputValueHandle_t ulRestrictToDevice) {
 	STUBBED();
 }
-EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t action, EVRSkeletalTransformSpace eTransformSpace, 
+EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t action, EVRSkeletalTransformSpace eTransformSpace,
 	EVRSkeletalMotionRange eMotionRange, VR_ARRAY_COUNT(unTransformArrayCount) VRBoneTransform_t *pTransformArray, uint32_t unTransformArrayCount) {
 	STUBBED();
 }
@@ -1303,66 +1315,8 @@ EVRInputError BaseInput::DecompressSkeletalBoneData(const void *pvCompressedBuff
 EVRInputError BaseInput::TriggerHapticVibrationAction(VRActionHandle_t action, float fStartSecondsFromNow, float fDurationSeconds,
 	float fFrequency, float fAmplitude, VRInputValueHandle_t ulRestrictToDevice) {
 
-	if (action == vr::k_ulInvalidActionHandle)
-	{
-		return VRInputError_InvalidHandle;
-	}
-
-	Action *vibrationAction = (Action*)action;
-
-	InputValue *inputValue;
-	
-	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
-	if (ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
-	{
-		if (ulRestrictToDevice == vibrationAction->rightInputValue)
-			inputValue = (InputValue*)vibrationAction->rightInputValue;
-		else if (ulRestrictToDevice == vibrationAction->leftInputValue)
-			inputValue = (InputValue*)vibrationAction->leftInputValue;
-
-	}
-	else if (vibrationAction->leftInputValue != k_ulInvalidInputValueHandle)
-	{
-		inputValue = (InputValue*)vibrationAction->leftInputValue;
-	}
-	else if (vibrationAction->rightInputValue != k_ulInvalidInputValueHandle)
-	{
-		inputValue = (InputValue*)vibrationAction->rightInputValue;
-	}
-
-	ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
-
-	
-	
-	// convert to buffered haptics
-	float sampleMilliseconds = 3.125;
-	vector<uint8_t> samples;
-	int frequencyMultiplier = (int)(320 / fFrequency);
-	uint8_t amplitude = (uint8_t)round(fAmplitude * 255);
-	int count = 1;
-	for (float millisecondsLeft = fDurationSeconds * 1000; millisecondsLeft > 0; millisecondsLeft -= sampleMilliseconds)
-	{
-		if (count % frequencyMultiplier == 0)
-			samples.push_back(amplitude);
-
-		count++;
-	}
-
-	// TODO: make use of fStartSecondsFromNow
-
-	if (samples.size() > 0)
-	{
-		ovrHapticsBuffer buffer;
-		buffer.SubmitMode = ovrHapticsBufferSubmit_Enqueue;
-		buffer.SamplesCount = (uint32_t)samples.size();
-		buffer.Samples = samples.data();
-		int32_t result = device->SetControllerVibration(&buffer);
-		if (result != ovrSuccess)
-		{
-			// Something bad happened - haptics submit failed
-		}
-	}
-	
+	// TODO implement
+	// STUBBED();
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, VRActionHandle_t digitalActionHandle,
@@ -1373,7 +1327,7 @@ EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, V
 EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize) {
 	STUBBED();
 }
-EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize, 
+EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize,
 	int32_t unStringSectionsToInclude) {
 	STUBBED();
 }

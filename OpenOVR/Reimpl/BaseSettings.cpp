@@ -137,7 +137,10 @@ bool  BaseSettings::GetBool(const char * pchSection, const char * pchSettingsKey
 			// Note when set to true, expect k_pch_SteamVR_SpeakersForwardYawOffsetDegrees_Float
 			return false; // TODO
 		}
-		else if (key == kk::k_pch_DirectMode_Section) { // not sure if this is equivalent to previous key used here: k_pch_SteamVR_DirectMode_Bool
+		else if (key == kk1::k_pch_SteamVR_DirectMode_Bool) {
+			// Note that this is NOT the same as k_pch_DirectMode_Section - the key is very slightly different
+			// direct_mode vs directMode
+
 			// Oculus doesn't support windowed mode
 			return true;
 		}
@@ -145,9 +148,11 @@ bool  BaseSettings::GetBool(const char * pchSection, const char * pchSettingsKey
 			// What? (Used in The Lab btw)
 			return false;
 		}
-		//else if (key == kk::k_pch_SteamVR_AllowReprojection_Bool) { // commented out - key no longer exists...
-		//	return true;
-		//}
+		else if (key == kk1::k_pch_SteamVR_AllowReprojection_Bool || key == "allowInterleavedReprojection") {
+			// There were two different reprojection strings for the same property - allowReprojection and allowInterleavedReprojection, however the key was removed
+			// at some point, so it's currently just specified as a string. TODO modify the header splitter to keep these old properties around somewhere.
+			return true;
+		}
 	}
 
 	STUBBED();

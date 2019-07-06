@@ -36,7 +36,7 @@ enum OOVR_EVRSummaryType
 	// The skeletal summary data will match the animated bone transforms for the action.
 	VRSummaryType_FromAnimation = 0,
 
-	// The skeletal summary data will include unprocessed data directly from the device when available. 
+	// The skeletal summary data will include unprocessed data directly from the device when available.
 	// This data is generally less latent than the data that is computed from the animations.
 	VRSummaryType_FromDevice = 1,
 };
@@ -251,7 +251,7 @@ public:
 
 	/** Reads the state of the skeletal bone data associated with this action and copies it into the given buffer. */
 	virtual EVRInputError GetSkeletalBoneData(VRActionHandle_t action, EVRSkeletalTransformSpace eTransformSpace, EVRSkeletalMotionRange eMotionRange, VR_ARRAY_COUNT(unTransformArrayCount) VRBoneTransform_t *pTransformArray, uint32_t unTransformArrayCount);
-	
+
 	/** Reads summary information about the current pose of the skeleton associated with the given action.   */
 	virtual EVRInputError GetSkeletalSummaryData(VRActionHandle_t action, EVRSummaryType eSummaryType, VRSkeletalSummaryData_t * pSkeletalSummaryData);
 
@@ -303,7 +303,7 @@ public:
 
 private:
 	// these are helper methods to be used internally
-	void ProcessInputSource(Json::Value inputJson, VRActionHandle_t actionHandle, std::string sourceType, 
+	void ProcessInputSource(Json::Value inputJson, VRActionHandle_t actionHandle, std::string sourceType,
 		std::string parameterSubMode, std::string actionSetName);
 
 	void DetermineActionState(uint64_t buttonId, uint64_t buttonFlags, bool pressedButtonState,
