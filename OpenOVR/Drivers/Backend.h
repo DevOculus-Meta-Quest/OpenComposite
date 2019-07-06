@@ -62,8 +62,8 @@ public:
 	* is invalid. */
 	virtual bool GetControllerState(vr::VRControllerState_t *pControllerState);
 
-	/** Submits a Haptics buffer (used for vibration) to Touch (only) controllers. */
-	virtual int32_t SetControllerVibration(const ovrHapticsBuffer* buffer);
+	/** Triggers a haptic event as described by the specified action */
+	virtual int32_t TriggerHapticVibrationAction(float fFrequency, float fAmplitude);
 	
 	///////
 	vr::TrackedDeviceIndex_t DeviceIndex();

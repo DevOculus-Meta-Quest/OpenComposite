@@ -146,7 +146,7 @@ void ITrackedDevice::InitialiseDevice(vr::TrackedDeviceIndex_t index) {
 	deviceIndex = index;
 }
 
-int32_t ITrackedDevice::SetControllerVibration(const ovrHapticsBuffer* buffer) {
+int32_t ITrackedDevice::TriggerHapticVibrationAction(float fFrequency, float fAmplitude) {
 	return 0; // default implementation
 }
 
