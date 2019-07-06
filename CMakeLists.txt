@@ -288,7 +288,9 @@ add_library(OCCore STATIC
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_022.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRDriverManager_001.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRExtendedDisplay_001.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_003.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_004.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_005.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_006.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_001.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_002.h
@@ -318,6 +320,7 @@ add_library(OCCore STATIC
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_017.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_019.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_003.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_005.h
 	SplitOpenVRHeaders/OpenVR/interfaces/openvr.h
 	SplitOpenVRHeaders/OpenVR/interfaces/version.h
 	SplitOpenVRHeaders/OpenVR/interfaces/vrannotation.h
