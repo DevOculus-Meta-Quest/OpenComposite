@@ -243,7 +243,7 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t * texture, const V
 }
 
 void BaseCompositor::ClearLastSubmittedFrame() {
-	STUBBED();
+	// Unsure what should go here, but leaving empty seems to work fine
 }
 
 void BaseCompositor::PostPresentHandoff() {
