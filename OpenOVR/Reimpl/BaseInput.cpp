@@ -102,6 +102,9 @@ struct InputValue
 	string type;
 	TrackedDeviceIndex_t trackedDeviceIndex;
 	VRControllerState_t controllerState;
+	TrackedDevicePose_t seatedPose;
+	TrackedDevicePose_t standingPose;
+	TrackedDevicePose_t rawPose;
 	bool isConnected;
 };
 map<string, Action*> _stringActionMap;
@@ -581,6 +584,9 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	if (device != nullptr)
 	{
 		bool success = device->GetControllerState(&inputValue->controllerState);
+		device->GetPose(TrackingUniverseSeated, &inputValue->seatedPose, TrackingStateType_Rendering);
+		device->GetPose(TrackingUniverseStanding, &inputValue->standingPose, TrackingStateType_Rendering);
+		device->GetPose(TrackingUniverseRawAndUncalibrated, &inputValue->rawPose, TrackingStateType_Rendering);
 		inputValue->isConnected = true;
 	}
 	else
@@ -598,6 +604,9 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	if (deviceRight != nullptr)
 	{
 		bool success = deviceRight->GetControllerState(&inputValueRight->controllerState);
+		deviceRight->GetPose(TrackingUniverseSeated, &inputValueRight->seatedPose, TrackingStateType_Rendering);
+		deviceRight->GetPose(TrackingUniverseStanding, &inputValueRight->standingPose, TrackingStateType_Rendering);
+		deviceRight->GetPose(TrackingUniverseRawAndUncalibrated, &inputValueRight->rawPose, TrackingStateType_Rendering);
 		inputValueRight->isConnected = true;
 	}
 	else
@@ -789,7 +798,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	}
 	else
 	{
-		return VRInputError_InvalidDevice; // left and right controllers both not found? b/c action is not yet configured...
+		return VRInputError_None; // left and right controllers both not found? b/c action is not yet configured...
 	}
 
 	buttonPressedFlags = inputValue->controllerState.ulButtonPressed;
@@ -1081,7 +1090,14 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	if (analogAction->leftInputValue == vr::k_ulInvalidInputValueHandle &&
 		analogAction->rightInputValue == vr::k_ulInvalidInputValueHandle)
 	{
-		return VRInputError_InvalidDevice;
+		// If the action has no input, that means the action was defined in the action manifest but not defined in controller binding JSON.
+		// This probably means the binding is optional and not set up, so we will mark it as inactive.
+		pActionData->x = 0;
+		pActionData->y = 0;
+		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
+		pActionData->bActive = false;
+
+		return VRInputError_None;
 	}
 
 	// determine input based on action path:
@@ -1170,39 +1186,44 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 		pActionData->pose.bPoseIsValid = false;
 		pActionData->pose.bDeviceIsConnected = false;
 		pActionData->bActive = false;
-		return VRInputError_InvalidDevice;
+		return VRInputError_None;
 	}
 
 	VRInputValueHandle_t activeOrigin = vr::k_ulInvalidInputValueHandle;
 	TrackedDeviceIndex_t trackedDeviceIndex;
 
-
+	InputValue *inputValue;
 	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
 	if (analogAction->leftInputValue != k_ulInvalidInputValueHandle &&
 		analogAction->rightInputValue != k_ulInvalidInputValueHandle &&
 		ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
 	{
 		activeOrigin = ulRestrictToDevice;
-		InputValue *inputValue = (InputValue*)ulRestrictToDevice;
+		inputValue = (InputValue*)ulRestrictToDevice;
 		trackedDeviceIndex = inputValue->trackedDeviceIndex;
 	}
 	else if (analogAction->leftInputValue != vr::k_ulInvalidInputValueHandle)
 	{
 		activeOrigin = analogAction->leftInputValue;
-		InputValue *inputValueLeft = (InputValue*)analogAction->leftInputValue;
-		trackedDeviceIndex = inputValueLeft->trackedDeviceIndex;
+		inputValue = (InputValue*)analogAction->leftInputValue;
+		trackedDeviceIndex = inputValue->trackedDeviceIndex;
 	}
 	else
 	{
 		activeOrigin = analogAction->rightInputValue;
-		InputValue *inputValueRight = (InputValue*)analogAction->rightInputValue;
-		trackedDeviceIndex = inputValueRight->trackedDeviceIndex;
+		inputValue = (InputValue*)analogAction->rightInputValue;
+		trackedDeviceIndex = inputValue->trackedDeviceIndex;
 	}
 
-	ITrackedDevice *device = BackendManager::Instance().GetDevice(trackedDeviceIndex);
-	if (device != nullptr)
+	if (inputValue->isConnected)
 	{
-		device->GetPose(eOrigin, &pActionData->pose, ETrackingStateType::TrackingStateType_Now);
+		if (eOrigin == TrackingUniverseSeated)
+			pActionData->pose = inputValue->seatedPose;
+		else if (eOrigin == TrackingUniverseStanding)
+			pActionData->pose = inputValue->standingPose;
+		else // TrackingUniverseRawAndUncalibrated
+			pActionData->pose = inputValue->rawPose;
+	
 		pActionData->activeOrigin = activeOrigin;
 		pActionData->bActive = true;
 	}
@@ -1386,8 +1407,44 @@ EVRInputError BaseInput::TriggerHapticVibrationAction(VRActionHandle_t action, f
 }
 EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, VRActionHandle_t digitalActionHandle,
 	VR_ARRAY_COUNT(originOutCount) VRInputValueHandle_t *originsOut, uint32_t originOutCount) {
+	
+	// Retrieves the action sources for an action. If the action has more origins than will fit in the array, 
+	// only the number that will fit in the array are returned. If the action has fewer origins, the extra array 
+	// entries will be set to k_ulInvalidInputValueHandle
 
-	STUBBED();
+	uint32_t unActionDataSize;
+	VRInputValueHandle_t ulRestrictToDevice = k_ulInvalidInputValueHandle;
+	InputDigitalActionData_t *pActionData;
+
+	Action *digitalAction = (Action*)digitalActionHandle;
+
+	std::vector<VRInputValueHandle_t> vectorOriginOut;
+	uint32_t count = originOutCount;
+
+	// Note: right now the action source is going to be either left or right controller...
+	// In the future, they should be split up to controller parts (ex: button a) 
+	if (digitalAction->leftInputValue != k_ulInvalidInputValueHandle && count > 0)
+	{
+		vectorOriginOut.push_back(digitalAction->leftInputValue);
+		count--;
+	}
+
+	if (digitalAction->rightInputValue != k_ulInvalidInputValueHandle && count > 0)
+	{
+		vectorOriginOut.push_back(digitalAction->rightInputValue);
+		count--;
+	}
+	
+	while (count > 0)
+	{
+		vectorOriginOut.push_back(k_ulInvalidInputValueHandle);
+
+		count--;
+	}
+
+	originsOut = &vectorOriginOut[0];
+
+	return VRInputError_None;
 }
 EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize) {
 	STUBBED();
