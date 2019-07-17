@@ -107,7 +107,7 @@ add_library(ovrkernel STATIC
 	${OVRKDIR}/Src/Util/Util_Watchdog.cpp
 )
 target_include_directories(ovrkernel PUBLIC ${OVRKDIR}/Src)
-target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging/include)
+target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging)
 target_link_libraries(ovrkernel ovr)
 
 # Shader configuration
@@ -117,6 +117,7 @@ set(OVRK_BLITTER ${OVRKDIR}/Src/Util/Util_D3D11_Blitter.cpp)
 build_fx(${OVRKSDIR}/Blt_ps.hlsl ps_4_0 ${OVRK_BLITTER})
 build_fx(${OVRKSDIR}/Blt_ps_ms2.hlsl ps_5_0 ${OVRK_BLITTER})
 build_fx(${OVRKSDIR}/Blt_vs.hlsl vs_5_0 ${OVRK_BLITTER})
+build_fx(${OVRKSDIR}/GrayBlt_ps.hlsl ps_4_0 ${OVRK_BLITTER})
 
 # === DrvOculus ===
 add_library(DrvOculus STATIC
