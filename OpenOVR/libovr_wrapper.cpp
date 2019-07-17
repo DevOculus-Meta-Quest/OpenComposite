@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "libovr_wrapper.h"
 #include "OVR_CAPI.h"
+#include "Misc/Config.h"
 
 #define VALIDATE(x, msg) if (!OVR_SUCCESS(x)) { \
 	char buff[1024]; \
@@ -21,6 +22,7 @@ namespace ovr {
 	// TODO should these be updated every frame, incase the user adjusts their IPD?
 	ovrEyeRenderDesc eyeRenderDesc[2];
 	ovrPosef      hmdToEyeViewPose[2];
+	OVR::Matrix4f    hmdToEyeMatrix[2];
 
 	void Setup() {
 		// Initializes LibOVR, and the Rift
@@ -41,8 +43,31 @@ namespace ovr {
 		// Fill out the eye pose stuff
 		eyeRenderDesc[0] = ovr_GetRenderDesc(*session, ovrEye_Left, hmdDesc.DefaultEyeFov[0]);
 		eyeRenderDesc[1] = ovr_GetRenderDesc(*session, ovrEye_Right, hmdDesc.DefaultEyeFov[1]);
+
+		//apply "virtual prism correction"
+		//should update hmdToEyeViewPose's rotation and then simply call OVR::Matrix4f constructor
+		//hmdToEyeViewPose[...].Rotate({ pitch roll yaw in some order})
+		//but hmdToEyeViewPose is from C API so doesn't support OVR_Math.h
 		hmdToEyeViewPose[0] = eyeRenderDesc[0].HmdToEyePose;
 		hmdToEyeViewPose[1] = eyeRenderDesc[1].HmdToEyePose;
+
+		//not sure whether Y->X->Z or Z->X->Y order is correct
+		hmdToEyeMatrix[0] = OVR::Matrix4f(hmdToEyeViewPose[0]);
+		hmdToEyeMatrix[0] =
+			OVR::Matrix4f::RotationY(oovr_global_configuration.LeftEyeYaw() * MATH_FLOAT_DEGREETORADFACTOR)
+			*
+			OVR::Matrix4f::RotationX(oovr_global_configuration.LeftEyePitch() * MATH_FLOAT_DEGREETORADFACTOR) *
+			OVR::Matrix4f::RotationZ(oovr_global_configuration.LeftEyeRoll() * MATH_FLOAT_DEGREETORADFACTOR
+			) *
+			hmdToEyeMatrix[0];
+		
+		hmdToEyeMatrix[1] = OVR::Matrix4f(hmdToEyeViewPose[1]);
+		hmdToEyeMatrix[1] =
+			OVR::Matrix4f::RotationY(oovr_global_configuration.RightEyeYaw() * MATH_FLOAT_DEGREETORADFACTOR
+			) *
+			OVR::Matrix4f::RotationX(oovr_global_configuration.RightEyePitch() * MATH_FLOAT_DEGREETORADFACTOR) *
+			OVR::Matrix4f::RotationZ(oovr_global_configuration.RightEyeRoll() * MATH_FLOAT_DEGREETORADFACTOR) *
+			hmdToEyeMatrix[1];
 
 		// It seems that SteamVR defaults to a floor-level tracking origin, while LibOVR does the opposite.
 		ovr_SetTrackingOriginType(*session, ovrTrackingOrigin_FloorLevel);

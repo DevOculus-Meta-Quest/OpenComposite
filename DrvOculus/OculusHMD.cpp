@@ -103,15 +103,8 @@ bool OculusHMD::ComputeDistortion(EVREye eEye, float fU, float fV, DistortionCoo
 
 HmdMatrix34_t OculusHMD::GetEyeToHeadTransform(EVREye ovr_eye) {
 	ovrEyeType eye = S2O_eye(ovr_eye);
-	ovrPosef &pose = ovr::hmdToEyeViewPose[eye];
-
-	OVR::Matrix4f transform(pose);
-	// For some bizzare reason, inverting the matrix (to go from hmd->eye
-	// to eye->hmd) breaks the view, and it's fine without it. That or I'm misunderstanding
-	// what exactly this method is supposed to return.
-
 	HmdMatrix34_t result;
-	O2S_om34(transform, result);
+	O2S_om34(ovr::hmdToEyeMatrix[eye], result);
 	return result;
 }
 
