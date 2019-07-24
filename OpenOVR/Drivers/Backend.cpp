@@ -147,7 +147,9 @@ void ITrackedDevice::InitialiseDevice(vr::TrackedDeviceIndex_t index) {
 }
 
 int32_t ITrackedDevice::TriggerHapticVibrationAction(float fFrequency, float fAmplitude) {
-	return 0; // default implementation
+	// Don't support haptics by default
+	// TODO is there a better way to handle this?
+	return 0;
 }
 
 // properties
