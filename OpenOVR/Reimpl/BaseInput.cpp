@@ -479,7 +479,7 @@ void BaseInput::BuildActionSet(const ActionSet *actionSet) {
 bool actionSourcesBuilt = false;
 EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveActionSet_t *pSets,
 	uint32_t unSizeOfVRSelectedActionSet_t, uint32_t unSetCount) {
-
+	
 	/** Reads the current state into all actions. After this call, the results of Get*Action calls
 	* will be the same until the next call to UpdateActionState. */
 
@@ -517,15 +517,10 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	ITrackedDevice *device = BackendManager::Instance().GetDevice(trackedDeviceIndex);
 	if (device != nullptr)
 	{
-		// Note that this forces dual-origin mode on the LibOVR driver (OculusDevice.cpp), but it seems
-		// perfectly stable at this point.
-		// Also note that to fix the input lag issue, passing TrackingStateType_Rendering into GetPose in
-		// GetPoseActionData would have probably worked, but this is more along the lines of what SteamVR
-		// probably does.
+		inputValue->controllerStateFromLastUpdate = inputValue->controllerState; // keep track of previous controller state
+		inputValue->isSetControllerStateFromLastUpdate = inputValue->isSetControllerState;
 		bool success = device->GetControllerState(&inputValue->controllerState);
-		device->GetPose(TrackingUniverseSeated, &inputValue->seatedPose, TrackingStateType_Rendering);
-		device->GetPose(TrackingUniverseStanding, &inputValue->standingPose, TrackingStateType_Rendering);
-		device->GetPose(TrackingUniverseRawAndUncalibrated, &inputValue->rawPose, TrackingStateType_Rendering);
+		inputValue->isSetControllerState = true;
 		inputValue->isConnected = true;
 	}
 	else
@@ -542,10 +537,11 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	ITrackedDevice *deviceRight = BackendManager::Instance().GetDevice(trackedDeviceIndexRight);
 	if (deviceRight != nullptr)
 	{
+		
+		inputValueRight->controllerStateFromLastUpdate = inputValueRight->controllerState; // keep track of previous controller state
+		inputValueRight->isSetControllerStateFromLastUpdate = inputValueRight->isSetControllerState;
 		bool success = deviceRight->GetControllerState(&inputValueRight->controllerState);
-		deviceRight->GetPose(TrackingUniverseSeated, &inputValueRight->seatedPose, TrackingStateType_Rendering);
-		deviceRight->GetPose(TrackingUniverseStanding, &inputValueRight->standingPose, TrackingStateType_Rendering);
-		deviceRight->GetPose(TrackingUniverseRawAndUncalibrated, &inputValueRight->rawPose, TrackingStateType_Rendering);
+		inputValueRight->isSetControllerState = true;
 		inputValueRight->isConnected = true;
 	}
 	else
@@ -681,6 +677,8 @@ bool _leftJoystickSouth = false;
 
 EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigitalActionData_t *pActionData, uint32_t unActionDataSize,
 	VRInputValueHandle_t ulRestrictToDevice) {
+
+	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
 	if (action == vr::k_ulInvalidActionHandle)
 	{
@@ -1006,17 +1004,21 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 
 	}
 
+	float nowTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
+	float fUpdateTime = functionCallTimeInSeconds - nowTimeInSeconds;
 
 	pActionData->activeOrigin = activeOrigin;
 	pActionData->bActive = bActive;
 	pActionData->bChanged = bChanged;
 	pActionData->bState = bState;
-	pActionData->fUpdateTime = 0; //todo: maybe get difference between statetime an current time ovr_GetTimeInSeconds
+	pActionData->fUpdateTime = fUpdateTime;
 
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalogActionData_t *pActionData, uint32_t unActionDataSize,
 	VRInputValueHandle_t ulRestrictToDevice) {
+
+	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
 	pActionData->bActive = false;
 	if (action == vr::k_ulInvalidActionHandle)
@@ -1033,6 +1035,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		iequals(analogAction->type, "vector3");
 	if (!validAnalogType)
 		return VRInputError_WrongType;
+	
 
 	if (analogAction->leftInputValue == vr::k_ulInvalidInputValueHandle &&
 		analogAction->rightInputValue == vr::k_ulInvalidInputValueHandle)
@@ -1043,12 +1046,17 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		pActionData->y = 0;
 		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 		pActionData->bActive = false;
-
+		pActionData->fUpdateTime = 0;
+		pActionData->deltaX = 0;
+		pActionData->deltaY = 0;
+		pActionData->deltaZ = 0;
+		
 		return VRInputError_None;
 	}
 
 	// determine input based on action path:
 	VRInputValueHandle_t activeOrigin;
+	VRControllerAxis_t *axisFromLastUpdate = nullptr;
 	VRControllerAxis_t *axis = nullptr;
 	string sourcePath;
 
@@ -1059,6 +1067,8 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	{
 		activeOrigin = ulRestrictToDevice;
 		InputValue *inputValue = (InputValue*)ulRestrictToDevice;
+
+		axisFromLastUpdate = inputValue->controllerStateFromLastUpdate.rAxis;
 		axis = inputValue->controllerState.rAxis;
 		if (ulRestrictToDevice == analogAction->leftInputValue)
 			sourcePath = analogAction->leftActionSources[0]->sourcePath;
@@ -1074,6 +1084,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		activeOrigin = analogAction->leftInputValue;
 		sourcePath = analogAction->leftActionSources[0]->sourcePath;
 		InputValue *inputValueLeft = (InputValue*)analogAction->leftInputValue;
+		axisFromLastUpdate = inputValueLeft->controllerStateFromLastUpdate.rAxis;
 		axis = inputValueLeft->controllerState.rAxis;
 	}
 	else if (analogAction->rightInputValue != k_ulInvalidInputValueHandle)
@@ -1081,40 +1092,53 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		activeOrigin = analogAction->rightInputValue;
 		sourcePath = analogAction->rightActionSources[0]->sourcePath;
 		InputValue *inputValueRight = (InputValue*)analogAction->rightInputValue;
+		axisFromLastUpdate = inputValueRight->controllerStateFromLastUpdate.rAxis;
 		axis = inputValueRight->controllerState.rAxis;
 	}
-
 
 	// determine what data to output:
 	InputValue *inputValue = (InputValue*)activeOrigin;
 	string name = inputValue->name;
 	string pathSubst = sourcePath.substr(name.size(), sourcePath.size() - name.size());
+	VRControllerAxis_t analogDataFromLastUpdate;
 	VRControllerAxis_t analogData;
 	if (iequals(pathSubst, "/input/trackpad") || iequals(pathSubst, "/input/joystick"))
 	{
+		analogDataFromLastUpdate = axisFromLastUpdate[0];
 		analogData = axis[0]; // thumbstick
 	}
-	else if (iequals(pathSubst, "/input/trigger"))
+	else if (iequals(pathSubst, "/input/trigger")) 
 	{
+		analogDataFromLastUpdate = axisFromLastUpdate[1];
 		analogData = axis[1]; // trigger
 	}
 	else if (iequals(pathSubst, "/input/grip"))
 	{
+		analogDataFromLastUpdate = axisFromLastUpdate[2];
 		analogData = axis[2]; // grip
 	}
 
+	float xDelta = inputValue->isSetControllerStateFromLastUpdate ? analogDataFromLastUpdate.x - analogData.x : 0;
+	float yDelta = inputValue->isSetControllerStateFromLastUpdate ? analogDataFromLastUpdate.y - analogData.y : 0;
+
+	float nowTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
+	float fUpdateTime = functionCallTimeInSeconds - nowTimeInSeconds;
+	
 	pActionData->x = analogData.x;
 	pActionData->y = analogData.y;
+	pActionData->z = 0;  // todo: z is valid for vector3 actions
 	pActionData->activeOrigin = activeOrigin;
 	pActionData->bActive = true;
+	pActionData->fUpdateTime = fUpdateTime;
+	pActionData->deltaX = xDelta;
+	pActionData->deltaY = yDelta;
+	pActionData->deltaZ = 0; // todo: z is valid for vector3 actions
 
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
 	InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
-
-	//Todo: mke use of fPredictedSecondsFromNow
-
+	
 	if (action == vr::k_ulInvalidActionHandle)
 	{
 		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
@@ -1164,12 +1188,22 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 
 	if (inputValue->isConnected)
 	{
-		if (eOrigin == TrackingUniverseSeated)
-			pActionData->pose = inputValue->seatedPose;
-		else if (eOrigin == TrackingUniverseStanding)
-			pActionData->pose = inputValue->standingPose;
-		else // TrackingUniverseRawAndUncalibrated
-			pActionData->pose = inputValue->rawPose;
+		if (fPredictedSecondsFromNow != 0)
+		{
+			ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
+			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Prediction, fPredictedSecondsFromNow);
+		}
+		else
+		{
+			// Note that this forces dual-origin mode on the LibOVR driver (OculusDevice.cpp), but it seems
+			// perfectly stable at this point.
+			// Also note that to completely fix the input lag issue, passing TrackingStateType_Rendering into
+			// GetPose had to happen in GetPoseActionData instead of UpdateActionState.
+			
+			ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
+			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Rendering);
+			
+		}
 
 		pActionData->activeOrigin = activeOrigin;
 		pActionData->bActive = true;
