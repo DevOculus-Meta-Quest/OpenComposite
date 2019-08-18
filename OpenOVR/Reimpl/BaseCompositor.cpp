@@ -107,8 +107,16 @@ ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t * renderPoseArray, u
 	ETrackingUniverseOrigin origin = GetUnsafeBaseSystem()->_GetTrackingOrigin();
 
 	for (uint32_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
-		TrackedDevicePose_t *renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
-		TrackedDevicePose_t *gamePose = i < gamePoseArrayCount ? gamePoseArray + i : NULL;
+		TrackedDevicePose_t *renderPose = NULL;
+		TrackedDevicePose_t *gamePose = NULL;
+		
+		if (renderPoseArray) {
+			renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
+		}
+
+		if (gamePoseArray) {
+			gamePose = i < gamePoseArrayCount ? gamePoseArray + i : NULL;
+		}
 
 		if (renderPose) {
 			GetSinglePoseRendering(origin, i, renderPose);
@@ -266,6 +274,14 @@ bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint3
 }
 
 uint32_t BaseCompositor::GetFrameTimings(OOVR_Compositor_FrameTiming * pTiming, uint32_t nFrames) {
+	STUBBED();
+}
+
+bool BaseCompositor::GetFrameTiming(vr::Compositor_FrameTiming * pTiming, uint32_t unFramesAgo) {
+	STUBBED();
+}
+
+uint32_t BaseCompositor::GetFrameTimings(vr::Compositor_FrameTiming * pTiming, uint32_t nFrames) {
 	STUBBED();
 }
 
@@ -428,11 +444,11 @@ uint32_t BaseCompositor::GetVulkanDeviceExtensionsRequired(VkPhysicalDevice_T * 
 }
 
 void BaseCompositor::SetExplicitTimingMode(ovr_enum_t eTimingMode) {
-	STUBBED();
+
 }
 
 ovr_enum_t BaseCompositor::SubmitExplicitTimingData() {
-	STUBBED();
+	return 0;
 }
 
 bool BaseCompositor::IsMotionSmoothingSupported() {

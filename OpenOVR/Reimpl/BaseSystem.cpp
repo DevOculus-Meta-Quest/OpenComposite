@@ -587,6 +587,17 @@ void BaseSystem::AcknowledgeQuit_UserPrompt() {
 	STUBBED();
 }
 
+uint32_t BaseSystem::GetAppContainerFilePaths(VR_OUT_STRING() char *pchBuffer, uint32_t unBufferSize) {
+	STUBBED();
+}
+
+const char *BaseSystem::GetRuntimeVersion() {
+	STUBBED();
+	static string data = "";
+	const char* cptr = data.c_str();
+	return cptr;
+}
+
 DistortionCoordinates_t BaseSystem::ComputeDistortion(EVREye eEye, float fU, float fV) {
 	DistortionCoordinates_t out;
 	ComputeDistortion(eEye, fU, fV, &out);
