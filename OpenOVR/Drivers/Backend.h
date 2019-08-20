@@ -18,7 +18,7 @@ enum ETrackingStateType {
 	TrackingStateType_Rendering,
 
 	/**
-	* Use the tracking data corresponding to the predicted time 
+	* Use the tracking data corresponding to the predicted time
 	*/
 	TrackingStateType_Prediction,
 };
@@ -40,7 +40,7 @@ public:
 		vr::TrackedDevicePose_t* pose,
 		ETrackingStateType trackingState,
 		double absTime) = 0;
-	
+
 	/** Returns a bool property. If the device index is not valid or the property is not a bool type this function will return false. */
 	virtual bool GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError *pErrorL);
 

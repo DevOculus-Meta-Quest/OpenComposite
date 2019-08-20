@@ -593,9 +593,6 @@ uint32_t BaseSystem::GetAppContainerFilePaths(VR_OUT_STRING() char *pchBuffer, u
 
 const char *BaseSystem::GetRuntimeVersion() {
 	STUBBED();
-	static string data = "";
-	const char* cptr = data.c_str();
-	return cptr;
 }
 
 DistortionCoordinates_t BaseSystem::ComputeDistortion(EVREye eEye, float fU, float fV) {

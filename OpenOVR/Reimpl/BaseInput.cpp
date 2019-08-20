@@ -479,7 +479,7 @@ void BaseInput::BuildActionSet(const ActionSet *actionSet) {
 bool actionSourcesBuilt = false;
 EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveActionSet_t *pSets,
 	uint32_t unSizeOfVRSelectedActionSet_t, uint32_t unSetCount) {
-	
+
 	/** Reads the current state into all actions. After this call, the results of Get*Action calls
 	* will be the same until the next call to UpdateActionState. */
 
@@ -537,7 +537,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	ITrackedDevice *deviceRight = BackendManager::Instance().GetDevice(trackedDeviceIndexRight);
 	if (deviceRight != nullptr)
 	{
-		
+
 		inputValueRight->controllerStateFromLastUpdate = inputValueRight->controllerState; // keep track of previous controller state
 		inputValueRight->isSetControllerStateFromLastUpdate = inputValueRight->isSetControllerState;
 		bool success = deviceRight->GetControllerState(&inputValueRight->controllerState);
@@ -1035,7 +1035,6 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		iequals(analogAction->type, "vector3");
 	if (!validAnalogType)
 		return VRInputError_WrongType;
-	
 
 	if (analogAction->leftInputValue == vr::k_ulInvalidInputValueHandle &&
 		analogAction->rightInputValue == vr::k_ulInvalidInputValueHandle)
@@ -1050,7 +1049,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		pActionData->deltaX = 0;
 		pActionData->deltaY = 0;
 		pActionData->deltaZ = 0;
-		
+
 		return VRInputError_None;
 	}
 
@@ -1096,6 +1095,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		axis = inputValueRight->controllerState.rAxis;
 	}
 
+
 	// determine what data to output:
 	InputValue *inputValue = (InputValue*)activeOrigin;
 	string name = inputValue->name;
@@ -1107,7 +1107,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		analogDataFromLastUpdate = axisFromLastUpdate[0];
 		analogData = axis[0]; // thumbstick
 	}
-	else if (iequals(pathSubst, "/input/trigger")) 
+	else if (iequals(pathSubst, "/input/trigger"))
 	{
 		analogDataFromLastUpdate = axisFromLastUpdate[1];
 		analogData = axis[1]; // trigger
@@ -1123,7 +1123,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 
 	float nowTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 	float fUpdateTime = functionCallTimeInSeconds - nowTimeInSeconds;
-	
+
 	pActionData->x = analogData.x;
 	pActionData->y = analogData.y;
 	pActionData->z = 0;  // todo: z is valid for vector3 actions
@@ -1138,7 +1138,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 }
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
 	InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
-	
+
 	if (action == vr::k_ulInvalidActionHandle)
 	{
 		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
@@ -1199,10 +1199,9 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 			// perfectly stable at this point.
 			// Also note that to completely fix the input lag issue, passing TrackingStateType_Rendering into
 			// GetPose had to happen in GetPoseActionData instead of UpdateActionState.
-			
+
 			ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
 			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Rendering);
-			
 		}
 
 		pActionData->activeOrigin = activeOrigin;
@@ -1448,6 +1447,54 @@ EVRInputError BaseInput::GetOriginTrackedDeviceInfo(VRInputValueHandle_t origin,
 
 	return VRInputError_None;
 }
+
+/** Retrieves useful information about the bindings for an action */
+EVRInputError BaseInput::GetActionBindingInfo(VRActionHandle_t actionHandle, OOVR_InputBindingInfo_t *pOriginInfo,
+		uint32_t unBindingInfoSize, uint32_t unBindingInfoCount, uint32_t *punReturnedBindingInfoCount ) {
+
+	// TODO confirm this is correct
+
+	auto *action = (Action *) actionHandle;
+
+	OOVR_FALSE_ABORT(action != nullptr);
+	OOVR_FALSE_ABORT(unBindingInfoSize == sizeof(OOVR_InputBindingInfo_t));
+
+	for (int i = 0; i < unBindingInfoCount; i++) {
+		pOriginInfo[i] = {0};
+	}
+
+	uint32_t i = 0;
+
+	for (const ActionSource *src : action->leftActionSources) {
+		if (i >= unBindingInfoCount)
+			break;
+		GetActionSourceBindingInfo(action, src, &pOriginInfo[i++]);
+	}
+
+	for (const ActionSource *src : action->rightActionSources) {
+		if (i >= unBindingInfoCount)
+			break;
+		GetActionSourceBindingInfo(action, src, &pOriginInfo[i++]);
+	}
+
+	*punReturnedBindingInfoCount = i;
+	return VRInputError_None;
+}
+
+void BaseInput::GetActionSourceBindingInfo(const Action *action,
+		const ActionSource *src, OOVR_InputBindingInfo_t *result) {
+
+	*result = {0};
+
+	// TODO cleanup with define
+	strcpy_s(result->rchDevicePathName, sizeof(result->rchDevicePathName), action->name.c_str());
+	strcpy_s(result->rchModeName, sizeof(result->rchModeName), src->sourceMode.c_str());
+	strcpy_s(result->rchSlotName, sizeof(result->rchSlotName), src->sourceType.c_str());
+
+	// FIXME afaik this isn't correct
+	strcpy_s(result->rchInputPathName, sizeof(result->rchInputPathName), src->sourcePath.c_str());
+}
+
 EVRInputError BaseInput::ShowActionOrigins(VRActionSetHandle_t actionSetHandle, VRActionHandle_t ulActionHandle) {
 	STUBBED();
 }
