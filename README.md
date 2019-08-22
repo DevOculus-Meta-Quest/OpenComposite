@@ -169,7 +169,7 @@ a game, this is created next to the EXE file and contains potentially invaluable
 information. Please also say what caused the crash - did it crash on startup, or maybe after clicking
 load on the main menu, for example?
 
-## Licence
+## License
 
 OpenComposite itself is Free Software under the GPLv3:
 
@@ -189,7 +189,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 ```
 
 [GPL Full Text](https://www.gnu.org/licenses/gpl-3.0-standalone.html). This also can be found in
-the `LICENCE.txt` file supplied with the source code.
+the `LICENSE.txt` file supplied with the source code.
 
 ### LibOVR
 
@@ -206,7 +206,7 @@ The text of this may be found at: [https://developer.oculus.com/licenses/sdk-3.4
 
 This program (and it's source code) includes several versions of the
 [OpenVR](https://github.com/ValveSoftware/openvr) headers. These are under the
-[MIT Licence](https://github.com/ValveSoftware/openvr/blob/master/LICENSE). This also can be
+[MIT License](https://github.com/ValveSoftware/openvr/blob/master/LICENSE). This also can be
 found in the `LICENSE_OPENVR.txt` file supplied with the source code.
 
 ```
@@ -222,17 +222,17 @@ is Free Software under the GPLv3, same as this project.
 ### INIH
 
 This program uses the [inih](https://github.com/benhoyt/inih) INI parsing library by Ben Hoyt. This is available under
-the MIT licence, a copy of which can be found in the `LICENSE_INIH` file of this repository.
+the MIT license, a copy of which can be found in the `LICENSE_INIH` file of this repository.
 
 ### Microblink Build
 
 This program uses a part of Psiha's and Microblink's [build](https://github.com/microblink/build) CMake utilities
-library. This is available under the two-clause BSD licence, a copy of which can be found in the 'LICENCE_BUILD_UTIL.txt'
+library. This is available under the two-clause BSD license, a copy of which can be found in the 'LICENSE_BUILD_UTIL.txt'
 file of this repository.
 
 ## Compiling (**for developers**)
 
-Download the Source Code from [GitLab](https://gitlab.com/znixian/OpenOVR) - it's under the GPLv3 licence.
+Download the Source Code from [GitLab](https://gitlab.com/znixian/OpenOVR) - it's under the GPLv3 license.
 
 Download Visual Studio 2017 and it's C++ package. This may work on older versions of VS, but that break
 at any time.
