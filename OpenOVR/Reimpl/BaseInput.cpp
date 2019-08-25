@@ -201,6 +201,16 @@ EVRInputError BaseInput::GetActionHandle(const char *pchActionName, VRActionHand
 		}
 	}
 
+	// Create a new action that doesn't appear in the manifest
+	// Appears in No Man's Sky for quitgame
+	// More experimentation may be required to figure out how SteamVR handles this
+	auto *action = new Action();
+	action->name = pchActionNameString;
+	action->type = "<unset>";
+
+	(*((Action**)pHandle)) = action;
+	_stringActionMap[pchActionNameString] = action;
+
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetInputSourceHandle(const char *pchInputSourcePath, VRInputValueHandle_t  *pHandle) {
@@ -572,6 +582,7 @@ void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actio
 		ActionSource *actionSource = new ActionSource();
 		actionSource->sourceMode = inputJson["mode"].asString();
 		actionSource->sourcePath = path;
+		actionSource->sourceDevice = pathLeftSubst; // TODO should it be left? Case might be different
 		actionSource->sourceType = sourceType;
 		actionSource->parameterSubMode = parameterSubMode;
 		actionSource->actionSetName = actionSetName;
@@ -594,6 +605,7 @@ void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actio
 		ActionSource *actionSource = new ActionSource();
 		actionSource->sourceMode = inputJson["mode"].asString();
 		actionSource->sourcePath = path;
+		actionSource->sourceDevice = pathRightSubst; // TODO should it be right? Case might be different
 		actionSource->sourceType = sourceType;
 		actionSource->parameterSubMode = parameterSubMode;
 		actionSource->actionSetName = actionSetName;
@@ -1399,27 +1411,24 @@ EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, V
 	Action *digitalAction = (Action *) digitalActionHandle;
 
 	std::vector<VRInputValueHandle_t> vectorOriginOut;
-	uint32_t count = originOutCount;
 
 	// Note: right now the action source is going to be either left or right controller...
 	// In the future, they should be split up to controller parts (ex: button a)
-	if (digitalAction->leftInputValue != k_ulInvalidInputValueHandle && count > 0) {
+	if (digitalAction->leftInputValue != k_ulInvalidInputValueHandle) {
 		vectorOriginOut.push_back(digitalAction->leftInputValue);
-		count--;
 	}
 
-	if (digitalAction->rightInputValue != k_ulInvalidInputValueHandle && count > 0) {
+	if (digitalAction->rightInputValue != k_ulInvalidInputValueHandle) {
 		vectorOriginOut.push_back(digitalAction->rightInputValue);
-		count--;
 	}
 
-	while (count > 0) {
-		vectorOriginOut.push_back(k_ulInvalidInputValueHandle);
-
-		count--;
+	for(int i=0; i<originOutCount; i++) {
+		if (i < vectorOriginOut.size()) {
+			originsOut[i] = vectorOriginOut[i];
+		} else {
+			originsOut[i] = k_ulInvalidInputValueHandle;
+		}
 	}
-
-	originsOut = &vectorOriginOut[0];
 
 	return VRInputError_None;
 }
@@ -1486,13 +1495,28 @@ void BaseInput::GetActionSourceBindingInfo(const Action *action,
 
 	*result = {0};
 
+	// Some sample values from the SteamVR OpenGL example:
+	// {
+	//   rchDevicePathName = "/user/hand/right"
+	//   rchInputPathName = "/input/trigger"
+	//   rchModeName = "button"
+	//   rchSlotName = "click"
+	// }
+
 	// TODO cleanup with define
-	strcpy_s(result->rchDevicePathName, sizeof(result->rchDevicePathName), action->name.c_str());
 	strcpy_s(result->rchModeName, sizeof(result->rchModeName), src->sourceMode.c_str());
 	strcpy_s(result->rchSlotName, sizeof(result->rchSlotName), src->sourceType.c_str());
 
-	// FIXME afaik this isn't correct
-	strcpy_s(result->rchInputPathName, sizeof(result->rchInputPathName), src->sourcePath.c_str());
+	// Split the input pathname (eg "/user/hand/right/input/trigger") into a device
+	// path ("/user/hand/right") and input path ("/input/trigger")
+	strcpy_s(result->rchDevicePathName, sizeof(result->rchDevicePathName), src->sourceDevice.c_str());
+
+	string inputPath = src->sourcePath.substr(src->sourceDevice.size());
+	strcpy_s(result->rchInputPathName, sizeof(result->rchInputPathName), inputPath.c_str());
+
+	// Note there still seems to be some issues with No Man's Sky's control display - it's showing everything
+	// as belonging to the left controller. Not sure whether that's the fault of this code or not, but in
+	// any case it should be noted in #126.
 }
 
 EVRInputError BaseInput::ShowActionOrigins(VRActionSetHandle_t actionSetHandle, VRActionHandle_t ulActionHandle) {

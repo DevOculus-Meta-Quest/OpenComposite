@@ -109,7 +109,7 @@ ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t * renderPoseArray, u
 	for (uint32_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
 		TrackedDevicePose_t *renderPose = NULL;
 		TrackedDevicePose_t *gamePose = NULL;
-		
+
 		if (renderPoseArray) {
 			renderPose = i < renderPoseArrayCount ? renderPoseArray + i : NULL;
 		}
@@ -271,6 +271,9 @@ void BaseCompositor::PostPresentHandoff() {
 
 bool BaseCompositor::GetFrameTiming(OOVR_Compositor_FrameTiming * pTiming, uint32_t unFramesAgo) {
 	return BackendManager::Instance().GetFrameTiming(pTiming, unFramesAgo);
+
+	// TODO fill in the m_nNumVSyncsReadyForUse and uint32_t m_nNumVSyncsToFirstView fields, but only
+	// when called from the correct version of the interface.
 }
 
 uint32_t BaseCompositor::GetFrameTimings(OOVR_Compositor_FrameTiming * pTiming, uint32_t nFrames) {
@@ -278,11 +281,11 @@ uint32_t BaseCompositor::GetFrameTimings(OOVR_Compositor_FrameTiming * pTiming, 
 }
 
 bool BaseCompositor::GetFrameTiming(vr::Compositor_FrameTiming * pTiming, uint32_t unFramesAgo) {
-	STUBBED();
+	return GetFrameTiming((OOVR_Compositor_FrameTiming *) pTiming, unFramesAgo);
 }
 
 uint32_t BaseCompositor::GetFrameTimings(vr::Compositor_FrameTiming * pTiming, uint32_t nFrames) {
-	STUBBED();
+	return GetFrameTimings((OOVR_Compositor_FrameTiming *) pTiming, nFrames);
 }
 
 float BaseCompositor::GetFrameTimeRemaining() {
@@ -444,11 +447,16 @@ uint32_t BaseCompositor::GetVulkanDeviceExtensionsRequired(VkPhysicalDevice_T * 
 }
 
 void BaseCompositor::SetExplicitTimingMode(ovr_enum_t eTimingMode) {
-
+	// Explicit timing means the application calls SubmitExplicitTimingData each
+	// frame, and in return we're not allowed to use their Vulkan queue
+	// during WaitGetPoses. We don't do any of that anyway, so nothing needs to
+	// be done here.
 }
 
 ovr_enum_t BaseCompositor::SubmitExplicitTimingData() {
-	return 0;
+	// In SteamVR this records a more accurate timestamp for tracking via the GPU's
+	// clock, Oculus doesn't support that so noop here is fine.
+	return VRCompositorError_None;
 }
 
 bool BaseCompositor::IsMotionSmoothingSupported() {
