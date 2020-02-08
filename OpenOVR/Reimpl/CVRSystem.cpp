@@ -3,7 +3,7 @@
 #include "BaseCommon.h"
 
 GEN_INTERFACE("System", "012") // R3E
-GEN_INTERFACE("System", "015") // rF2
+GEN_INTERFACE("System", "021") // rF2
 
 #include "GVRSystem.gen.h"
 

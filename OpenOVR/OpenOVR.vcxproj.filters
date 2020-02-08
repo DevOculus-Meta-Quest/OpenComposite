@@ -126,9 +126,6 @@
     <ClInclude Include="OpenVR\interfaces\vrannotation.h">
       <Filter>Header Files\OpenVR</Filter>
     </ClInclude>
-    <ClInclude Include="OpenVR\interfaces\vrtypes.h">
-      <Filter>Header Files\OpenVR</Filter>
-    </ClInclude>
     <ClInclude Include="Reimpl\BaseCompositor.h">
       <Filter>Header Files\Reimpl</Filter>
     </ClInclude>
@@ -293,6 +290,42 @@
     </ClInclude>
     <ClInclude Include="Misc\ScopeGuard.h">
       <Filter>Source Files\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRApplications_007.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRChaperoneSetup_006.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRCompositor_024.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRDebug_001.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRInput_007.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRIOBuffer_002.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVROverlay_022.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRSettings_003.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRSystem_021.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\IVRTrackedCamera_006.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\version.h">
+      <Filter>Header Files\OpenVR</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenVR\interfaces\vrtypes.h">
+      <Filter>Header Files\Reimpl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
