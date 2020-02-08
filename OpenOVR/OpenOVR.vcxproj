@@ -267,7 +267,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>LibOVR.lib;LibOVRKernel.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-$(Configuration)/;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/Release/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-Release/;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <ProfileGuidedDatabase>
       </ProfileGuidedDatabase>

@@ -18,13 +18,15 @@ This fork contains stripped down version of the Open Composite effort, with two 
 ## Download the latest DLL:
 Custom compiled DLL for Haswell or later Intel processors + profile guided optimizations.
 
-[Latest 64-bit v1.0.0.0 AVX2+PGO](https://www.mediafire.com/file/iicbs54n0whxka8/OpenComposite_tiwm_1.0.0.0_ReleaseAVX2.zip/file)
+[Latest 64-bit v1.0.1.0 AVX2+PGO](https://www.mediafire.com/file/iicbs54n0whxka8/OpenComposite_tiwm_1.0.0.0_ReleaseAVX2.zip/file)
 
 If above version crashes, here's regular DLL version.
 
-[Latest 64-bit v1.0.0.0](https://www.mediafire.com/file/76h96az63eu8uvk/OpenComposite_tiwm_1.0.0.0_Release.zip/file)
+[Latest 64-bit v1.0.1.0](https://www.mediafire.com/file/76h96az63eu8uvk/OpenComposite_tiwm_1.0.0.0_Release.zip/file)
 
 ## Older DLL versions:
+[v1.0.0.0 AVX2+PGO](https://www.mediafire.com/file/iicbs54n0whxka8/OpenComposite_tiwm_1.0.0.0_ReleaseAVX2.zip/file)
+[v1.0.0.0](https://www.mediafire.com/file/76h96az63eu8uvk/OpenComposite_tiwm_1.0.0.0_Release.zip/file)
 [v0.6.0.0](https://www.mediafire.com/file/macm20nbc3i35q8/OpenComposite_tiwm_0.6.0.0.zip/file)
 
 ## Steps to install into rFactor 2:
@@ -50,6 +52,10 @@ graphics, at a major performance cost.
 `dx10Mode` - flag with `true` or `false` value, default `false`.  If `true`, enables DX10 support (used by Raceroom).  This is unsuported feature and will be deprecated in the future.
 
 # History
+02/08/2020 - v1.0.1.0
+* Update to oculus SDK 1.43.0.
+* Update to latest interfaces used in rF2.
+
 12/03/2018 - v1.0.0.0
 * Deprecate `enableAudio` feature.  Please use Windows 10 "App Volume and Device Preferences" instead.
 * Removed code irrelevant to rF2.
