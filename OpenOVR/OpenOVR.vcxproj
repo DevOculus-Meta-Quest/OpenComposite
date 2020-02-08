@@ -180,7 +180,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>LibOVR.lib;LibOVRKernel.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/libovr/OculusSDK/LibOVRKernel/Lib/Windows/$(Platform)/$(Configuration)/VS2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -197,7 +197,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>LibOVR.lib;LibOVRKernel.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/libovr/OculusSDK/LibOVRKernel/Lib/Windows/$(Platform)/$(Configuration)/VS2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -218,7 +218,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>LibOVR.lib;LibOVRKernel.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/libovr/OculusSDK/LibOVRKernel/Lib/Windows/$(Platform)/$(Configuration)/VS2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -242,7 +242,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>LibOVR.lib;LibOVRKernel.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/libovr/OculusSDK/LibOVRKernel/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-$(Configuration)/;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAVX2|x64'">
@@ -267,7 +267,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>LibOVR.lib;LibOVRKernel.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/libovr/OculusSDK/LibOVRKernel/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-$(Configuration)/;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <ProfileGuidedDatabase>
       </ProfileGuidedDatabase>
@@ -302,7 +302,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>LibOVR.lib;LibOVRKernel.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/libovr/OculusSDK/LibOVRKernel/Lib/Windows/$(Platform)/$(Configuration)/VS2015;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../libs/libovr/OculusSDK/LibOVR/Lib/Windows/$(Platform)/$(Configuration)/VS2017;../libs/libovr/OculusSDK/.build/bin/msvc-v141-x64-$(Configuration)/;../libs/vulkan/Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <AdditionalOptions>/GENPROFILE:EXACT %(AdditionalOptions)</AdditionalOptions>
       <ProfileGuidedDatabase>
