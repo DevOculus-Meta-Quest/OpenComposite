@@ -18,11 +18,11 @@ This fork contains stripped down version of the Open Composite effort, with two 
 ## Download the latest DLL:
 Custom compiled DLL for Haswell or later Intel processors + profile guided optimizations.
 
-[Latest 64-bit v1.0.1.0 AVX2+PGO](https://www.mediafire.com/file/iicbs54n0whxka8/OpenComposite_tiwm_1.0.0.0_ReleaseAVX2.zip/file)
+[Latest 64-bit v1.0.1.0 AVX2+PGO](https://www.mediafire.com/file/621n2c3ceguektm/OpenComposite_tiwm_1.0.1.0_ReleaseAVX2.zip/file)
 
 If above version crashes, here's regular DLL version.
 
-[Latest 64-bit v1.0.1.0](https://www.mediafire.com/file/76h96az63eu8uvk/OpenComposite_tiwm_1.0.0.0_Release.zip/file)
+[Latest 64-bit v1.0.1.0](https://www.mediafire.com/file/q5b9p2t0hq2erea/OpenComposite_tiwm_1.0.1.0_Release.zip/file)
 
 ## Older DLL versions:
 [v1.0.0.0 AVX2+PGO](https://www.mediafire.com/file/iicbs54n0whxka8/OpenComposite_tiwm_1.0.0.0_ReleaseAVX2.zip/file)
@@ -53,6 +53,7 @@ graphics, at a major performance cost.
 
 # History
 02/08/2020 - v1.0.1.0
+NOTE: In rF2, please disable `threePartSumit` option.  It is broken now and without actual oculus HMD I can not figure out why.
 * Update to oculus SDK 1.43.0.
 * Update to latest interfaces used in rF2.
 

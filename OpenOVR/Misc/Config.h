@@ -26,7 +26,7 @@ private:
   bool dx10Mode = false;
   bool enableLayers = false;
   bool enableCubemap = true;
-  bool threePartSubmit = true;
+  bool threePartSubmit = false;
   bool useViewportStencil = true;
   std::string postInitCmd;
 };

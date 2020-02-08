@@ -901,3 +901,15 @@ HmdMatrix44_t BaseSystem::GetProjectionMatrix(EVREye eye, float znear, float zfa
 void BaseSystem::PerformanceTestEnableCapture(bool bEnable) { STUBBED(); }
 
 void BaseSystem::PerformanceTestReportFidelityLevelChange(int nFidelityLevel) { STUBBED(); }
+
+uint32_t BaseSystem::GetAppContainerFilePaths(VR_OUT_STRING() char* pchBuffer, uint32_t unBufferSize)
+{
+  STUBBED();
+  return 0u;
+}
+
+const char* BaseSystem::GetRuntimeVersion()
+{
+  STUBBED();
+  return nullptr;
+}

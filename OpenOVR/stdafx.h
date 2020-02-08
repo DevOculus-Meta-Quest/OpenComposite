@@ -29,7 +29,7 @@
 
 #include <Extras/OVR_Math.h>
 #include <OVR_CAPI_D3D.h>
-#include <OpenVR/interfaces/IVRCompositor_022.h>
+#include <OpenVR/interfaces/IVRCompositor_024.h>
 #include <Extras/OVR_Math.h>
 
 #include "OpenVR/interfaces/vrtypes.h"

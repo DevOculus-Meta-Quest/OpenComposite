@@ -28,7 +28,7 @@ using namespace std;
 #include <assert.h>
 
 using namespace vr;
-using namespace IVRCompositor_022;
+using namespace IVRCompositor_024;
 
 typedef int ovr_enum_t;
 
@@ -116,7 +116,7 @@ void BaseCompositor::SubmitFrames()
 
   mPerEyeRenderState = RS_WAIT_BEGIN;
 
-  mFrameIndex++;
+  ++mFrameIndex;
 
   auto* sys = GetUnsafeBaseSystem();
   if (sys != nullptr)
@@ -148,7 +148,7 @@ void BaseCompositor::SubmitCubemapFrames()
 
   mCubemapRenderState = RS_WAIT_BEGIN;
 
-  mFrameIndex++;
+  ++mFrameIndex;
 
   auto* sys = GetUnsafeBaseSystem();
   if (sys != nullptr)
@@ -457,7 +457,13 @@ ovr_enum_t BaseCompositor::Submit(EVREye eye, Texture_t const* texture, VRTextur
   return VRCompositorError_None;
 }
 
-void BaseCompositor::ClearLastSubmittedFrame() { STUBBED(); }
+void BaseCompositor::ClearLastSubmittedFrame()
+{ 
+  // TODO: rf2 calls this.
+  // STUBBED(); 
+  // OOVR_LOG("Submit clear");
+  // ++mFrameIndex;
+}
 
 void BaseCompositor::PostPresentHandoff()
 {
@@ -751,3 +757,20 @@ void BaseCompositor::SetExplicitTimingMode(ovr_enum_t eTimingMode) { STUBBED(); 
 
 
 ovr_enum_t BaseCompositor::SubmitExplicitTimingData() { STUBBED(); }
+
+bool BaseCompositor::IsMotionSmoothingEnabled() { STUBBED(); return false; }
+
+bool BaseCompositor::IsMotionSmoothingSupported()  { STUBBED(); return false; }
+
+bool BaseCompositor::IsCurrentSceneFocusAppLoading() { STUBBED(); return false; }
+
+ovr_enum_t BaseCompositor::SetStageOverride_Async(const char* pchRenderModelPath,
+                                                  const HmdMatrix34_t* pTransform,
+                                                  const OOVR_Compositor_StageRenderSettings* pRenderSettings,
+                                                  uint32_t nSizeOfRenderSettings)
+{
+  STUBBED();
+  return VRCompositorError_None;
+}
+
+void BaseCompositor::ClearStageOverride() { STUBBED(); }
