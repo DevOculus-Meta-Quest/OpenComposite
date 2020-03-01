@@ -1200,24 +1200,33 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 
 	if (inputValue->isConnected)
 	{
-		if (fPredictedSecondsFromNow != 0)
+		ITrackedDevice* device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
+
+		if (device == nullptr) // device timed out / disconnected
 		{
-			ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
-			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Prediction, fPredictedSecondsFromNow);
+			pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
+			pActionData->pose.bPoseIsValid = false;
+			pActionData->pose.bDeviceIsConnected = false;
+			pActionData->bActive = false;
 		}
 		else
 		{
-			// Note that this forces dual-origin mode on the LibOVR driver (OculusDevice.cpp), but it seems
-			// perfectly stable at this point.
-			// Also note that to completely fix the input lag issue, passing TrackingStateType_Rendering into
-			// GetPose had to happen in GetPoseActionData instead of UpdateActionState.
+			if (fPredictedSecondsFromNow != 0)
+			{
+				device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Prediction, fPredictedSecondsFromNow);
+			}
+			else
+			{
+				// Note that this forces dual-origin mode on the LibOVR driver (OculusDevice.cpp), but it seems
+				// perfectly stable at this point.
+				// Also note that to completely fix the input lag issue, passing TrackingStateType_Rendering into
+				// GetPose had to happen in GetPoseActionData instead of UpdateActionState.
+				device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Rendering);
+			}
 
-			ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
-			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Rendering);
+			pActionData->activeOrigin = activeOrigin;
+			pActionData->bActive = true;
 		}
-
-		pActionData->activeOrigin = activeOrigin;
-		pActionData->bActive = true;
 	}
 	else // device not found, consider it disconnected
 	{

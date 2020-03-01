@@ -76,7 +76,7 @@ add_library(ovrkernel STATIC
 	${OVRKDIR}/Src/Kernel/OVR_Allocator.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Atomic.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Callbacks.cpp
-	${OVRKDIR}/Src/Kernel/OVR_CRC32.cpp
+	#${OVRKDIR}/Src/Kernel/OVR_CRC32.cpp
 	${OVRKDIR}/Src/Kernel/OVR_DebugHelp.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Error.cpp
 	${OVRKDIR}/Src/Kernel/OVR_File.cpp
@@ -84,7 +84,7 @@ add_library(ovrkernel STATIC
 	${OVRKDIR}/Src/Kernel/OVR_JSON.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Log.cpp
 	${OVRKDIR}/Src/Kernel/OVR_mach_exc_OSX.c
-	${OVRKDIR}/Src/Kernel/OVR_Rand.cpp
+	#${OVRKDIR}/Src/Kernel/OVR_Rand.cpp
 	${OVRKDIR}/Src/Kernel/OVR_RefCount.cpp
 	${OVRKDIR}/Src/Kernel/OVR_SharedMemory.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Std.cpp
@@ -107,7 +107,7 @@ add_library(ovrkernel STATIC
 	${OVRKDIR}/Src/Util/Util_Watchdog.cpp
 )
 target_include_directories(ovrkernel PUBLIC ${OVRKDIR}/Src)
-target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging) #required change for ovr_sdk_win_1.37.0
+target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging) #required change for ovr_sdk_win_1.37.0 #target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging/include)
 target_link_libraries(ovrkernel ovr)
 
 # Shader configuration
