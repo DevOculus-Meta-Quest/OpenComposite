@@ -2,6 +2,7 @@
 #include "../BaseCommon.h" // TODO don't import from OCOVR, and remove the "../"
 #include "../Misc/Keyboard/VRKeyboard.h" // TODO don't import from OCOVR, and remove the "../"
 #include <map>
+#include <set>
 #include <queue>
 #include <vector>
 #include <memory>
@@ -159,6 +160,11 @@ private:
 	// Name-to-overlay mapping
 	std::map<std::string, OverlayData*> overlays;
 
+	// Set of overlay pointers - use these to ensure the overlays are valid, and
+	// if games pass in some random value (*COUGH* Boneworks *COUGH) we can deal
+	// with it, rather than crashing everything.
+	std::set<OverlayData*> validOverlays;
+
 	// This doesn't do a whole lot, since OOVR does this for every overlay
 	VROverlayHandle_t highQualityOverlay;
 
@@ -289,6 +295,13 @@ public:
 	/** Returns the width of the overlay quad in meters. By default overlays are rendered on a quad that is 1 meter across */
 	virtual EVROverlayError GetOverlayWidthInMeters(VROverlayHandle_t ulOverlayHandle, float *pfWidthInMeters);
 
+	/** Use to draw overlay as a curved surface. Curvature is a percentage from (0..1] where 1 is a fully closed cylinder.
+	* For a specific radius, curvature can be computed as: overlay.width / (2 PI r). */
+	virtual EVROverlayError SetOverlayCurvature(VROverlayHandle_t ulOverlayHandle, float fCurvature);
+
+	/** Returns the curvature of the overlay as a percentage from (0..1] where 1 is a fully closed cylinder. */
+	virtual EVROverlayError GetOverlayCurvature(VROverlayHandle_t ulOverlayHandle, float *pfCurvature);
+
 	/** For high-quality curved overlays only, sets the distance range in meters from the overlay used to automatically curve
 	* the surface around the viewer.  Min is distance is when the surface will be most curved.  Max is when least curved. */
 	virtual EVROverlayError SetOverlayAutoCurveDistanceRangeInMeters(VROverlayHandle_t ulOverlayHandle, float fMinDistanceInMeters, float fMaxDistanceInMeters);
@@ -344,6 +357,13 @@ public:
 
 	/** Sets the transform to relative to the transform of the specified overlay. This overlays visibility will also track the parents visibility */
 	virtual EVROverlayError SetOverlayTransformOverlayRelative(VROverlayHandle_t ulOverlayHandle, VROverlayHandle_t ulOverlayHandleParent, const HmdMatrix34_t *pmatParentOverlayToOverlayTransform);
+
+	/** Sets the hotspot for the specified overlay when that overlay is used as a cursor. These are in texture space with 0,0 in the upper left corner of
+	* the texture and 1,1 in the lower right corner of the texture. */
+	virtual EVROverlayError SetOverlayTransformCursor(VROverlayHandle_t ulCursorOverlayHandle, const HmdVector2_t *pvHotspot);
+
+	/** Gets cursor hotspot/transform for the specified overlay */
+	virtual EVROverlayError GetOverlayTransformCursor(VROverlayHandle_t ulOverlayHandle, HmdVector2_t *pvHotspot);
 
 	/** Shows the VR overlay.  For dashboard overlays, only the Dashboard Manager is allowed to call this. */
 	virtual EVROverlayError ShowOverlay(VROverlayHandle_t ulOverlayHandle);
@@ -418,6 +438,18 @@ public:
 	/** Sets the analog input to Dual Analog coordinate scale for the specified overlay. */
 	virtual EVROverlayError SetOverlayDualAnalogTransform(VROverlayHandle_t ulOverlay, EDualAnalogWhich eWhich, const HmdVector2_t *pvCenter, float fRadius);
 
+	/** Triggers a haptic event on the laser mouse controller for the specified overlay */
+	virtual EVROverlayError TriggerLaserMouseHapticVibration(VROverlayHandle_t ulOverlayHandle, float fDurationSeconds, float fFrequency, float fAmplitude);
+
+	/** Sets the cursor to use for the specified overlay. This will be drawn instead of the generic blob when the laser mouse is pointed at the specified overlay */
+	virtual EVROverlayError SetOverlayCursor(VROverlayHandle_t ulOverlayHandle, VROverlayHandle_t ulCursorHandle);
+
+	/** Sets the override cursor position to use for this overlay in overlay mouse coordinates. This position will be used to draw the cursor
+	* instead of whatever the laser mouse cursor position is. */
+	virtual EVROverlayError SetOverlayCursorPositionOverride(VROverlayHandle_t ulOverlayHandle, const HmdVector2_t *pvCursor);
+
+	/** Clears the override cursor position for this overlay */
+	virtual EVROverlayError ClearOverlayCursorPositionOverride(VROverlayHandle_t ulOverlayHandle);
 
 	// ---------------------------------------------
 	// Overlay texture methods

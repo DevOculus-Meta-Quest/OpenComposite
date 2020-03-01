@@ -690,12 +690,17 @@ bool _leftJoystickSouth = false;
 EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigitalActionData_t *pActionData, uint32_t unActionDataSize,
 	VRInputValueHandle_t ulRestrictToDevice) {
 
+	OOVR_FALSE_ABORT(sizeof(InputDigitalActionData_t) == unActionDataSize);
+
+	// Initialise the action data to being invalid, in case we return without setting it
+	memset(pActionData, 0, unActionDataSize);
+	pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
+	pActionData->bActive = false;
+
 	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
 	if (action == vr::k_ulInvalidActionHandle)
 	{
-		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
-		pActionData->bActive = false;
 		return VRInputError_InvalidHandle;
 	}
 
@@ -1419,6 +1424,13 @@ EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, V
 
 	Action *digitalAction = (Action *) digitalActionHandle;
 
+	if (!digitalAction) {
+		for (auto i = 0; i < originOutCount; i++) {
+			originsOut[i] = {};
+		}
+		return VRInputError_InvalidHandle;
+	}
+
 	std::vector<VRInputValueHandle_t> vectorOriginOut;
 
 	// Note: right now the action source is going to be either left or right controller...
@@ -1474,11 +1486,19 @@ EVRInputError BaseInput::GetActionBindingInfo(VRActionHandle_t actionHandle, OOV
 
 	auto *action = (Action *) actionHandle;
 
-	OOVR_FALSE_ABORT(action != nullptr);
 	OOVR_FALSE_ABORT(unBindingInfoSize == sizeof(OOVR_InputBindingInfo_t));
 
 	for (int i = 0; i < unBindingInfoCount; i++) {
 		pOriginInfo[i] = {0};
+	}
+
+	// For some reason No Man's Sky calls this with a nullptr handle
+	// Haven't confirmed this is how SteamVR behaves, I'm guessing
+	// it just returns InvalidHandle and does nothing, and that seems
+	// to work.
+	if (!action) {
+		*punReturnedBindingInfoCount = 0;
+		return VRInputError_InvalidHandle;
 	}
 
 	uint32_t i = 0;
@@ -1538,5 +1558,12 @@ EVRInputError BaseInput::ShowBindingsForActionSet(VR_ARRAY_COUNT(unSetCount) VRA
 }
 
 bool BaseInput::IsUsingLegacyInput() {
+	STUBBED();
+}
+
+// Interestingly enough this was added to IVRInput_007 without bumping the version number - that's fine since it's
+// at the end of the vtable, but it's interesting that the version has always been bumped for this in the past.
+EVRInputError BaseInput::OpenBindingUI(const char *pchAppKey, VRActionSetHandle_t ulActionSetHandle,
+		VRInputValueHandle_t ulDeviceHandle, bool bShowOnDesktop) {
 	STUBBED();
 }

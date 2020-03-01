@@ -59,8 +59,8 @@ public:
 #define OVL (*((OverlayData**)pOverlayHandle))
 #define USEH() \
 OverlayData *overlay = (OverlayData*)ulOverlayHandle; \
-if (!overlay || !overlays.count(overlay->key)) { \
-	return VROverlayError_InvalidHandle; \
+if (!overlay || !validOverlays.count(overlay) || !overlays.count(overlay->key)) { \
+    return VROverlayError_InvalidHandle; \
 }
 
 #define USEHB() \
@@ -106,6 +106,11 @@ int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ cons
 
 			// Skip hiddden overlays, and those without a valid texture (eg, after calling ClearOverlayTexture).
 			if (!overlay.visible || overlay.texture.handle == nullptr)
+				continue;
+
+			// Quick hack to get around Boneworks creating overlays and setting them to an opacity of
+			// zero to hide them. Leave 1% of margin in case of weird float issues.
+			if (overlay.colour.a < 0.01)
 				continue;
 
 			// Calculate the texture's aspect ratio
@@ -182,6 +187,7 @@ EVROverlayError BaseOverlay::CreateOverlay(const char *pchOverlayKey, const char
 	OVL = data;
 
 	overlays[pchOverlayKey] = data;
+	validOverlays.insert(data);
 
 	// Set up the LibOVR layer
 	OOVR_LOGF(R"(New texture overlay created "%s" "%s")", pchOverlayKey, pchOverlayName);
@@ -213,6 +219,7 @@ EVROverlayError BaseOverlay::DestroyOverlay(VROverlayHandle_t ulOverlayHandle) {
 		highQualityOverlay = NULL;
 
 	overlays.erase(overlay->key);
+	validOverlays.erase(overlay);
 	delete overlay;
 
 	return VROverlayError_None;
@@ -415,6 +422,12 @@ EVROverlayError BaseOverlay::GetOverlayWidthInMeters(VROverlayHandle_t ulOverlay
 
 	return VROverlayError_None;
 }
+EVROverlayError BaseOverlay::SetOverlayCurvature(VROverlayHandle_t ulOverlayHandle, float fCurvature) {
+	STUBBED();
+}
+EVROverlayError BaseOverlay::GetOverlayCurvature(VROverlayHandle_t ulOverlayHandle, float *pfCurvature) {
+	STUBBED();
+}
 EVROverlayError BaseOverlay::SetOverlayAutoCurveDistanceRangeInMeters(VROverlayHandle_t ulOverlayHandle, float fMinDistanceInMeters, float fMaxDistanceInMeters) {
 	USEH();
 
@@ -475,6 +488,8 @@ EVROverlayError BaseOverlay::GetOverlayTransformType(VROverlayHandle_t ulOverlay
 	USEH();
 
 	*peTransformType = overlay->transformType;
+
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::SetOverlayTransformAbsolute(VROverlayHandle_t ulOverlayHandle, ETrackingUniverseOrigin eTrackingOrigin, const HmdMatrix34_t *pmatTrackingOriginToOverlayTransform) {
 	USEH();
@@ -497,6 +512,8 @@ EVROverlayError BaseOverlay::SetOverlayTransformTrackedDeviceRelative(VROverlayH
 	overlay->transformType = VROverlayTransform_TrackedDeviceRelative;
 	overlay->transformData.deviceRelative.device = unTrackedDevice;
 	overlay->transformData.deviceRelative.offset = *pmatTrackedDeviceToOverlayTransform;
+
+	return VROverlayError_None;
 }
 EVROverlayError BaseOverlay::GetOverlayTransformTrackedDeviceRelative(VROverlayHandle_t ulOverlayHandle, TrackedDeviceIndex_t *punTrackedDevice, HmdMatrix34_t *pmatTrackedDeviceToOverlayTransform) {
 	STUBBED();
@@ -513,6 +530,12 @@ EVROverlayError BaseOverlay::GetOverlayTransformOverlayRelative(VROverlayHandle_
 EVROverlayError BaseOverlay::SetOverlayTransformOverlayRelative(VROverlayHandle_t ulOverlayHandle, VROverlayHandle_t ulOverlayHandleParent, const HmdMatrix34_t *pmatParentOverlayToOverlayTransform) {
 	// TODO
 	return VROverlayError_None;
+}
+EVROverlayError BaseOverlay::SetOverlayTransformCursor(VROverlayHandle_t ulCursorOverlayHandle, const HmdVector2_t *pvHotspot) {
+	STUBBED();
+}
+EVROverlayError BaseOverlay::GetOverlayTransformCursor(VROverlayHandle_t ulOverlayHandle, HmdVector2_t *pvHotspot) {
+	STUBBED();
 }
 EVROverlayError BaseOverlay::ShowOverlay(VROverlayHandle_t ulOverlayHandle) {
 	USEH();
@@ -607,6 +630,18 @@ EVROverlayError BaseOverlay::GetOverlayDualAnalogTransform(VROverlayHandle_t ulO
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayDualAnalogTransform(VROverlayHandle_t ulOverlay, EDualAnalogWhich eWhich, const HmdVector2_t *pvCenter, float fRadius) {
+	STUBBED();
+}
+EVROverlayError BaseOverlay::TriggerLaserMouseHapticVibration(VROverlayHandle_t ulOverlayHandle, float fDurationSeconds, float fFrequency, float fAmplitude) {
+	STUBBED();
+}
+EVROverlayError BaseOverlay::SetOverlayCursor(VROverlayHandle_t ulOverlayHandle, VROverlayHandle_t ulCursorHandle) {
+	STUBBED();
+}
+EVROverlayError BaseOverlay::SetOverlayCursorPositionOverride(VROverlayHandle_t ulOverlayHandle, const HmdVector2_t *pvCursor) {
+	STUBBED();
+}
+EVROverlayError BaseOverlay::ClearOverlayCursorPositionOverride(VROverlayHandle_t ulOverlayHandle) {
 	STUBBED();
 }
 EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle, const Texture_t *pTexture) {
