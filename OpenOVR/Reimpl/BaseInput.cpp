@@ -492,7 +492,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 
 	/** Reads the current state into all actions. After this call, the results of Get*Action calls
 	* will be the same until the next call to UpdateActionState. */
-
+	
 	if (pSets->ulActionSet == vr::k_ulInvalidActionSetHandle)
 	{
 		pSets->ulRestrictedToDevice = vr::k_ulInvalidInputValueHandle;
@@ -536,6 +536,8 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	else
 	{
 		inputValue->isConnected = false;
+		inputValue->isSetControllerStateFromLastUpdate = false;
+		inputValue->isSetControllerState = false;
 	}
 
 	string right = "/user/hand/right";
@@ -557,6 +559,8 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	else
 	{
 		inputValueRight->isConnected = false;
+		inputValueRight->isSetControllerStateFromLastUpdate = false;
+		inputValueRight->isSetControllerState = false;
 	}
 	return VRInputError_None;
 }
@@ -696,6 +700,9 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	memset(pActionData, 0, unActionDataSize);
 	pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 	pActionData->bActive = false;
+	pActionData->bChanged = false;
+	pActionData->bState = false;
+	pActionData->fUpdateTime = 0;
 
 	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
@@ -728,7 +735,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	string name;
 	bool performRight = true;
 	vector<ActionSource*> actionSources;
-
+	
 	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
 	if (ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
 	{
@@ -753,7 +760,9 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	}
 	else
 	{
-		return VRInputError_None; // left and right controllers both not found? b/c action is not yet configured...
+		// If the action has no input, that means the action was defined in the action manifest but not defined in controller binding JSON.
+		// This probably means the binding is optional and not set up, so we will mark it as inactive and not return an error code
+		return VRInputError_None;
 	}
 
 	buttonPressedFlags = inputValue->controllerState.ulButtonPressed;
@@ -1037,13 +1046,21 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 
 	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
+	// Initialise the action data to being invalid, in case we return without setting it
+	memset(pActionData, 0, unActionDataSize);
+	pActionData->x = 0;
+	pActionData->y = 0;
+	pActionData->z = 0;
+	pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 	pActionData->bActive = false;
+	pActionData->fUpdateTime = 0;
+	pActionData->deltaX = 0;
+	pActionData->deltaY = 0;
+	pActionData->deltaZ = 0;
+	
 	if (action == vr::k_ulInvalidActionHandle)
-	{
-		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 		return VRInputError_InvalidHandle;
-	}
-
+	
 	Action *analogAction = (Action*)action;
 
 	bool validAnalogType = iequals(analogAction->type, "single") ||
@@ -1057,30 +1074,22 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		analogAction->rightInputValue == vr::k_ulInvalidInputValueHandle)
 	{
 		// If the action has no input, that means the action was defined in the action manifest but not defined in controller binding JSON.
-		// This probably means the binding is optional and not set up, so we will mark it as inactive.
-		pActionData->x = 0;
-		pActionData->y = 0;
-		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
-		pActionData->bActive = false;
-		pActionData->fUpdateTime = 0;
-		pActionData->deltaX = 0;
-		pActionData->deltaY = 0;
-		pActionData->deltaZ = 0;
-
+		// This probably means the binding is optional and not set up, so we will mark it as inactive and not return an error code
 		return VRInputError_None;
 	}
 
 	// determine input based on action path:
-	VRInputValueHandle_t activeOrigin;
+	VRInputValueHandle_t activeOrigin = vr::k_ulInvalidInputValueHandle;
 	VRControllerAxis_t *axisFromLastUpdate = nullptr;
 	VRControllerAxis_t *axis = nullptr;
 	string sourcePath;
 
 	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
-	if (analogAction->leftInputValue != k_ulInvalidInputValueHandle &&
-		analogAction->rightInputValue != k_ulInvalidInputValueHandle &&
-		ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
+	if (ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
 	{
+		if (analogAction->leftInputValue != ulRestrictToDevice && analogAction->rightInputValue != ulRestrictToDevice)
+			return VRInputError_InvalidDevice;
+
 		activeOrigin = ulRestrictToDevice;
 		InputValue *inputValue = (InputValue*)ulRestrictToDevice;
 
@@ -1112,13 +1121,16 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		axis = inputValueRight->controllerState.rAxis;
 	}
 
-
 	// determine what data to output:
 	InputValue *inputValue = (InputValue*)activeOrigin;
 	string name = inputValue->name;
 	string pathSubst = sourcePath.substr(name.size(), sourcePath.size() - name.size());
 	VRControllerAxis_t analogDataFromLastUpdate;
+	analogDataFromLastUpdate.x = 0;
+	analogDataFromLastUpdate.y = 0;
 	VRControllerAxis_t analogData;
+	analogData.x = 0;
+	analogData.y = 0;
 	if (iequals(pathSubst, "/input/trackpad") || iequals(pathSubst, "/input/joystick"))
 	{
 		analogDataFromLastUpdate = axisFromLastUpdate[0];
@@ -1133,6 +1145,10 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	{
 		analogDataFromLastUpdate = axisFromLastUpdate[2];
 		analogData = axis[2]; // grip
+	}
+	else
+	{
+		return VRInputError_InvalidDevice;
 	}
 
 	float xDelta = inputValue->isSetControllerStateFromLastUpdate ? analogDataFromLastUpdate.x - analogData.x : 0;
@@ -1156,24 +1172,23 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
 	InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
 
-	if (action == vr::k_ulInvalidActionHandle)
-	{
-		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
-		pActionData->pose.bPoseIsValid = false;
-		pActionData->pose.bDeviceIsConnected = false;
-		pActionData->bActive = false;
-		return VRInputError_InvalidHandle;
-	}
+	// Initialise the action data to being invalid, in case we return without setting it
+	memset(pActionData, 0, unActionDataSize);
+	pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
+	pActionData->pose.bPoseIsValid = false;
+	pActionData->pose.bDeviceIsConnected = false;
+	pActionData->bActive = false;
 
+	if (action == vr::k_ulInvalidActionHandle)
+		return VRInputError_InvalidHandle;
+	
 	Action *analogAction = (Action*)action;
 
 	if (analogAction->leftInputValue == k_ulInvalidInputValueHandle &&
 		analogAction->rightInputValue == k_ulInvalidInputValueHandle)
 	{
-		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
-		pActionData->pose.bPoseIsValid = false;
-		pActionData->pose.bDeviceIsConnected = false;
-		pActionData->bActive = false;
+		// If the action has no input, that means the action was defined in the action manifest but not defined in controller binding JSON.
+		// This probably means the binding is optional and not set up, so we will mark it as inactive and not return an error code
 		return VRInputError_None;
 	}
 
@@ -1182,10 +1197,11 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 
 	InputValue *inputValue;
 	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
-	if (analogAction->leftInputValue != k_ulInvalidInputValueHandle &&
-		analogAction->rightInputValue != k_ulInvalidInputValueHandle &&
-		ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
+	if (ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
 	{
+		if (analogAction->leftInputValue != ulRestrictToDevice && analogAction->rightInputValue != ulRestrictToDevice)
+			return VRInputError_InvalidDevice;
+
 		activeOrigin = ulRestrictToDevice;
 		inputValue = (InputValue*)ulRestrictToDevice;
 		trackedDeviceIndex = inputValue->trackedDeviceIndex;
@@ -1207,45 +1223,32 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 	{
 		ITrackedDevice* device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
 
-		if (device == nullptr) // device timed out / disconnected
+		if (device == nullptr) // device must have just timed out or disconnected, return without an error code
+			return VRInputError_None;
+
+		if (fPredictedSecondsFromNow != 0)
 		{
-			pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
-			pActionData->pose.bPoseIsValid = false;
-			pActionData->pose.bDeviceIsConnected = false;
-			pActionData->bActive = false;
+			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Prediction, fPredictedSecondsFromNow);
 		}
 		else
 		{
-			if (fPredictedSecondsFromNow != 0)
-			{
-				device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Prediction, fPredictedSecondsFromNow);
-			}
-			else
-			{
-				// Note that this forces dual-origin mode on the LibOVR driver (OculusDevice.cpp), but it seems
-				// perfectly stable at this point.
-				// Also note that to completely fix the input lag issue, passing TrackingStateType_Rendering into
-				// GetPose had to happen in GetPoseActionData instead of UpdateActionState.
-				device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Rendering);
-			}
-
-			pActionData->activeOrigin = activeOrigin;
-			pActionData->bActive = true;
+			// Note that this forces dual-origin mode on the LibOVR driver (OculusDevice.cpp), but it seems
+			// perfectly stable at this point.
+			// Also note that to completely fix the input lag issue, passing TrackingStateType_Rendering into
+			// GetPose had to happen in GetPoseActionData instead of UpdateActionState.
+			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Rendering);
 		}
-	}
-	else // device not found, consider it disconnected
-	{
-		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
-		pActionData->pose.bPoseIsValid = false;
-		pActionData->pose.bDeviceIsConnected = false;
-		pActionData->bActive = false;
+
+		pActionData->activeOrigin = activeOrigin;
+		pActionData->bActive = true;
 	}
 
+	// if we made it this far, device was not found, consider it disconnected, return without an error code
 	return VRInputError_None;
 }
 
 EVRInputError BaseInput::GetPoseActionDataRelativeToNow(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow, InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
-	STUBBED();
+	return GetPoseActionData(action, eOrigin, fPredictedSecondsFromNow, pActionData, unActionDataSize, ulRestrictToDevice);
 }
 EVRInputError BaseInput::GetPoseActionDataForNextFrame(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
 
