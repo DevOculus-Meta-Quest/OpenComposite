@@ -1518,11 +1518,13 @@ EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, V
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize) {
-	STUBBED();
+	// Noop here for now
+	pchNameArray = ""; // todo
+	return VRInputError_None;
 }
 EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize,
 	int32_t unStringSectionsToInclude) {
-	STUBBED();
+	return GetOriginLocalizedName(origin, pchNameArray, unNameArraySize);
 }
 EVRInputError BaseInput::GetOriginTrackedDeviceInfo(VRInputValueHandle_t origin, InputOriginInfo_t *pOriginInfo, uint32_t unOriginInfoSize) {
 
