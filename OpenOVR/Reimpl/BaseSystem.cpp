@@ -257,7 +257,9 @@ int32_t BaseSystem::GetInt32TrackedDeviceProperty(vr::TrackedDeviceIndex_t unDev
 	ITrackedDevice *dev = BackendManager::Instance().GetDevice(unDeviceIndex);
 
 	if (!dev) {
-		*pErrorL = TrackedProp_InvalidDevice;
+		if (pErrorL != nullptr) {
+			*pErrorL = TrackedProp_InvalidDevice;
+		}
 		return 0;
 	}
 

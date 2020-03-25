@@ -46,8 +46,9 @@ ovrTextureFormat vkToOvrFormat(VkFormat vk, vr::EColorSpace colourSpace) {
 		// VK_FORMAT_A2R10G10B10_UINT_PACK32
 
 	default:
-		OOVR_LOGF("Unknown Vulkan format: %d", vk);
-		ERR("Unknown Vulkan format in image!");
+		//OOVR_LOGF("Unknown Vulkan format: %d", vk);
+		//ERR("Unknown Vulkan format in image!");
+		return OVR_FORMAT_B8G8R8A8_UNORM_SRGB;
 	}
 
 	return OVR_FORMAT_UNKNOWN;

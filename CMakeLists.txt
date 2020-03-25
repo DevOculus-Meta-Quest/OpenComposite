@@ -2,7 +2,7 @@
 # CMake will look for the newest kit that isn't newer than this
 # Required to find modern D3D12 header
 if(MSVC)
-	set(CMAKE_SYSTEM_VERSION 10.0.17134.0)
+	set(CMAKE_SYSTEM_VERSION 10.0.17763.0)
 endif()
 
 cmake_minimum_required(VERSION 3.12)
@@ -76,7 +76,7 @@ add_library(ovrkernel STATIC
 	${OVRKDIR}/Src/Kernel/OVR_Allocator.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Atomic.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Callbacks.cpp
-	${OVRKDIR}/Src/Kernel/OVR_CRC32.cpp
+	#${OVRKDIR}/Src/Kernel/OVR_CRC32.cpp
 	${OVRKDIR}/Src/Kernel/OVR_DebugHelp.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Error.cpp
 	${OVRKDIR}/Src/Kernel/OVR_File.cpp
@@ -84,7 +84,7 @@ add_library(ovrkernel STATIC
 	${OVRKDIR}/Src/Kernel/OVR_JSON.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Log.cpp
 	${OVRKDIR}/Src/Kernel/OVR_mach_exc_OSX.c
-	${OVRKDIR}/Src/Kernel/OVR_Rand.cpp
+	#${OVRKDIR}/Src/Kernel/OVR_Rand.cpp
 	${OVRKDIR}/Src/Kernel/OVR_RefCount.cpp
 	${OVRKDIR}/Src/Kernel/OVR_SharedMemory.cpp
 	${OVRKDIR}/Src/Kernel/OVR_Std.cpp
@@ -107,7 +107,7 @@ add_library(ovrkernel STATIC
 	${OVRKDIR}/Src/Util/Util_Watchdog.cpp
 )
 target_include_directories(ovrkernel PUBLIC ${OVRKDIR}/Src)
-target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging/include)
+target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging) #required change for ovr_sdk_win_1.37.0 #target_include_directories(ovrkernel PRIVATE ${OVRKDIR}/../Logging/include)
 target_link_libraries(ovrkernel ovr)
 
 # Shader configuration
@@ -117,6 +117,7 @@ set(OVRK_BLITTER ${OVRKDIR}/Src/Util/Util_D3D11_Blitter.cpp)
 build_fx(${OVRKSDIR}/Blt_ps.hlsl ps_4_0 ${OVRK_BLITTER})
 build_fx(${OVRKSDIR}/Blt_ps_ms2.hlsl ps_5_0 ${OVRK_BLITTER})
 build_fx(${OVRKSDIR}/Blt_vs.hlsl vs_5_0 ${OVRK_BLITTER})
+build_fx(${OVRKSDIR}/GrayBlt_ps.hlsl ps_4_0 ${OVRK_BLITTER}) #required change for ovr_sdk_win_1.37.0
 
 # === DrvOculus ===
 add_library(DrvOculus STATIC
@@ -352,9 +353,10 @@ target_link_libraries(OCCore OpenVR ovr ovrkernel Vulkan)
 
 # Set up precompiled headers for OCCore
 if (WIN32)
-add_precompiled_header(OCCore ${CMAKE_SOURCE_DIR}/OpenOVR/stdafx.h EXCLUDE
-	${OVR_PCH_EXCLUDED}
-)
+# commented below because it was not working (parallel build issue i think)
+#add_precompiled_header(OCCore ${CMAKE_SOURCE_DIR}/OpenOVR/stdafx.h EXCLUDE
+#	${OVR_PCH_EXCLUDED}
+#)
 endif ()
 
 source_group(OpenVR REGULAR_EXPRESSION SplitOpenVRHeaders/OpenVR/interfaces/*)
@@ -371,3 +373,6 @@ add_library(OCOVR SHARED
 	${OVR_RESOURCES}
 )
 target_link_libraries(OCOVR OCCore DrvOculus)
+
+# rename file to steamvr_api when in debug mode to save a step for debugging
+set_target_properties(OCOVR PROPERTIES OUTPUT_NAME "$<$<CONFIG:Debug>:openvr_api>$<$<CONFIG:RelWithDebInfo>:OCOVR>")

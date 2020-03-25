@@ -57,7 +57,7 @@ public:
 	* HiddenAreaMesh_t->unTriangleCount set to the number of vertices.
 	*/
 	virtual vr::HiddenAreaMesh_t GetHiddenAreaMesh(vr::EVREye eEye, vr::EHiddenAreaMeshType) override;
-
+	
 	// properties
 	virtual bool GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError *pErrorL) override;
 	virtual float GetFloatTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError *pErrorL) override;

@@ -492,7 +492,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 
 	/** Reads the current state into all actions. After this call, the results of Get*Action calls
 	* will be the same until the next call to UpdateActionState. */
-
+	
 	if (pSets->ulActionSet == vr::k_ulInvalidActionSetHandle)
 	{
 		pSets->ulRestrictedToDevice = vr::k_ulInvalidInputValueHandle;
@@ -536,6 +536,8 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	else
 	{
 		inputValue->isConnected = false;
+		inputValue->isSetControllerStateFromLastUpdate = false;
+		inputValue->isSetControllerState = false;
 	}
 
 	string right = "/user/hand/right";
@@ -557,7 +559,14 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	else
 	{
 		inputValueRight->isConnected = false;
+		inputValueRight->isSetControllerStateFromLastUpdate = false;
+		inputValueRight->isSetControllerState = false;
 	}
+
+	//clear data for new round
+	_hapticTriggerOrGripPullActivationSetDuringCurrentActionState = false;
+	_hapticTriggerOrGripReleaseActivationSetDuringCurrentActionState = false;
+
 	return VRInputError_None;
 }
 
@@ -573,52 +582,52 @@ void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actio
 	string right = "/user/hand/right";
 	string pathLeftSubst = path.substr(0, left.size());
 	string pathRightSubst = path.substr(0, right.size());
-	if (iequals(pathLeftSubst, left))
+	bool isLeft = iequals(pathLeftSubst, left);
+	bool isRight = iequals(pathRightSubst, right);
+	string pathDirection = "";
+	if (isLeft)
 	{
 		GetInputSourceHandle(left.c_str(), &inputValueHandle);
 		action->leftInputValue = inputValueHandle;
-
-		// add action source to action
-		ActionSource *actionSource = new ActionSource();
-		actionSource->sourceMode = inputJson["mode"].asString();
-		actionSource->sourcePath = path;
-		actionSource->sourceDevice = pathLeftSubst; // TODO should it be left? Case might be different
-		actionSource->sourceType = sourceType;
-		actionSource->parameterSubMode = parameterSubMode;
-		actionSource->actionSetName = actionSetName;
-		Json::Value activateThreshold = inputJson["parameters"]["click_activate_threshold"];
-		if (!activateThreshold.isNull())
-			actionSource->sourceParametersActivateThreshold = stod(activateThreshold.asString());
-		Json::Value deactivateThreshold = inputJson["parameters"]["click_deactivate_threshold"];
-		if (!deactivateThreshold.isNull())
-			actionSource->sourceParametersDeactivateThreshold = stod(deactivateThreshold.asString());
-
-		action->leftActionSources.push_back(*&actionSource);
-
+		pathDirection = pathLeftSubst;
 	}
-	if (iequals(pathRightSubst, right))
+	else if (isRight)
 	{
 		GetInputSourceHandle(right.c_str(), &inputValueHandle);
 		action->rightInputValue = inputValueHandle;
+		pathDirection = pathRightSubst;
+	}
 
-		// add action source to action
-		ActionSource *actionSource = new ActionSource();
-		actionSource->sourceMode = inputJson["mode"].asString();
-		actionSource->sourcePath = path;
-		actionSource->sourceDevice = pathRightSubst; // TODO should it be right? Case might be different
-		actionSource->sourceType = sourceType;
-		actionSource->parameterSubMode = parameterSubMode;
-		actionSource->actionSetName = actionSetName;
-		Json::Value activateThreshold = inputJson["parameters"]["click_activate_threshold"];
-		if (!activateThreshold.isNull())
-			actionSource->sourceParametersActivateThreshold = stod(activateThreshold.asString());
-		Json::Value deactivateThreshold = inputJson["parameters"]["click_deactivate_threshold"];
-		if (!deactivateThreshold.isNull())
-			actionSource->sourceParametersDeactivateThreshold = stod(deactivateThreshold.asString());
 
+	// add action source to action
+	ActionSource* actionSource = new ActionSource();
+	actionSource->sourceMode = inputJson["mode"].asString();
+	actionSource->sourcePath = path;
+	actionSource->sourceDevice = pathDirection;
+	actionSource->sourceType = sourceType;
+	actionSource->parameterSubMode = parameterSubMode;
+	actionSource->actionSetName = actionSetName;
+	Json::Value activateThreshold = inputJson["parameters"]["click_activate_threshold"];
+	if (!activateThreshold.isNull())
+		actionSource->sourceParametersActivateThreshold = stod(activateThreshold.asString());
+	
+	Json::Value deactivateThreshold = inputJson["parameters"]["click_deactivate_threshold"];
+	if (!deactivateThreshold.isNull())
+		actionSource->sourceParametersDeactivateThreshold = stod(deactivateThreshold.asString());
+
+	Json::Value hapticAmplitude = inputJson["parameters"]["haptic_amplitude"];
+	if (!hapticAmplitude.isNull())
+		actionSource->sourceParametersHapticAmplitude = stod(hapticAmplitude.asString());
+
+	Json::Value hapticFrequency = inputJson["parameters"]["haptic_frequency"];
+	if (!hapticFrequency.isNull())
+		actionSource->sourceParametersHapticFrequency = stod(hapticFrequency.asString());
+
+	if (isLeft)
+		action->leftActionSources.push_back(*&actionSource);
+	else if (isRight)
 		action->rightActionSources.push_back(*&actionSource);
 
-	}
 }
 
 // helper method
@@ -696,6 +705,9 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	memset(pActionData, 0, unActionDataSize);
 	pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 	pActionData->bActive = false;
+	pActionData->bChanged = false;
+	pActionData->bState = false;
+	pActionData->fUpdateTime = 0;
 
 	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
@@ -728,7 +740,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	string name;
 	bool performRight = true;
 	vector<ActionSource*> actionSources;
-
+	
 	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
 	if (ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
 	{
@@ -753,7 +765,9 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	}
 	else
 	{
-		return VRInputError_None; // left and right controllers both not found? b/c action is not yet configured...
+		// If the action has no input, that means the action was defined in the action manifest but not defined in controller binding JSON.
+		// This probably means the binding is optional and not set up, so we will mark it as inactive and not return an error code
+		return VRInputError_None;
 	}
 
 	buttonPressedFlags = inputValue->controllerState.ulButtonPressed;
@@ -798,6 +812,16 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	bool leftJoystickNorth = _leftJoystickNorth;
 	bool leftJoystickSouth = _leftJoystickSouth;
 
+	// Unless the action defines haptic_amplitude of zero, the default haptic for grip/trigger is 20%.
+	float triggerOrGripHapticAmplitude = 0.2f;
+
+	// made up defaults
+	float triggerOrGripHapticDurationInSeconds = 0.05f;
+	float triggerOrGripHapticFrequency = 1.0f / triggerOrGripHapticDurationInSeconds;
+
+	bool performHapticOnTriggerOrGripPullActivation = false;
+	bool performHapticOnTriggerOrGripReleaseActivation = false;
+
 	// loop through all sources for this action and determine action state
 	bool bState = false;
 	bool bChanged = false;
@@ -812,6 +836,9 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 		string pathSubst = sourcePath.substr(name.size(), sourcePath.size() - name.size());
 		bool isRight = name == "/user/hand/right";
 		bool isLeft = name == "/user/hand/left";
+		bool triggerOrGripHapticIsMuted = actionSource->sourceParametersHapticAmplitude == 0;
+		bool triggerOrGripHapticAmplitudeIsSet = actionSource->sourceParametersHapticAmplitude != -1;
+		bool triggerOrGripHapticFrequencyIsSet = actionSource->sourceParametersHapticFrequency != -1;
 
 		if (iequals(pathSubst, "/input/grip") && iequals(actionSource->sourceType, "click"))
 		{
@@ -827,6 +854,14 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 					gripAxis, actionSource->sourceParametersActivateThreshold, actionSource->sourceParametersDeactivateThreshold,
 					bState, bChanged, actionSource->leftState);
 			}
+			performHapticOnTriggerOrGripPullActivation = bChanged && bState && !triggerOrGripHapticIsMuted;
+			performHapticOnTriggerOrGripReleaseActivation = bChanged && !bState && !triggerOrGripHapticIsMuted;
+			
+			if (!triggerOrGripHapticIsMuted && triggerOrGripHapticAmplitudeIsSet)
+				triggerOrGripHapticAmplitude = actionSource->sourceParametersHapticAmplitude;
+
+			if (triggerOrGripHapticFrequencyIsSet)
+				triggerOrGripHapticFrequency = actionSource->sourceParametersHapticFrequency;
 		}
 		else if (iequals(pathSubst, "/input/trigger") && iequals(actionSource->sourceType, "click"))
 		{
@@ -842,6 +877,14 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 					triggerAxis, actionSource->sourceParametersActivateThreshold, actionSource->sourceParametersDeactivateThreshold,
 					bState, bChanged, actionSource->leftState);
 			}
+			performHapticOnTriggerOrGripPullActivation = bChanged && bState && !triggerOrGripHapticIsMuted;
+			performHapticOnTriggerOrGripReleaseActivation = bChanged && !bState && !triggerOrGripHapticIsMuted;
+
+			if (!triggerOrGripHapticIsMuted && triggerOrGripHapticAmplitudeIsSet)
+				triggerOrGripHapticAmplitude = actionSource->sourceParametersHapticAmplitude;
+
+			if (triggerOrGripHapticFrequencyIsSet)
+				triggerOrGripHapticFrequency = actionSource->sourceParametersHapticFrequency;
 		}
 		else if (iequals(pathSubst, "/input/trigger") && iequals(actionSource->sourceType, "touch"))
 		{
@@ -1021,6 +1064,33 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 
 	}
 
+	// Haptic workaround:
+	// It appears that the haptic function is not called by steamvr for default grip/trigger haptics.
+	// The workaround is to do inititate it here when a grip/trigger is reached pull/release activation.
+	
+	if (performHapticOnTriggerOrGripPullActivation && !_hapticTriggerOrGripPullActivationSetDuringCurrentActionState)
+	{
+		float fAmplitude = triggerOrGripHapticAmplitude;
+		float fDurationInSeconds = triggerOrGripHapticDurationInSeconds;
+		float fFrequency = triggerOrGripHapticFrequency;
+
+		TriggerHapticVibrationAction(action, 0, fDurationInSeconds, fFrequency, fAmplitude, activeOrigin);
+
+		_hapticTriggerOrGripPullActivationSetDuringCurrentActionState = true;
+	}
+	else if (performHapticOnTriggerOrGripReleaseActivation && !_hapticTriggerOrGripReleaseActivationSetDuringCurrentActionState)
+	{
+		float fAmplitude = triggerOrGripHapticAmplitude;
+		float fDurationInSeconds = triggerOrGripHapticDurationInSeconds;
+		float fFrequency = triggerOrGripHapticFrequency;
+
+		TriggerHapticVibrationAction(action, 0, fDurationInSeconds, fFrequency, fAmplitude, activeOrigin);
+
+		_hapticTriggerOrGripReleaseActivationSetDuringCurrentActionState = true;
+	}
+
+
+
 	float nowTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 	float fUpdateTime = functionCallTimeInSeconds - nowTimeInSeconds;
 
@@ -1037,13 +1107,21 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 
 	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
+	// Initialise the action data to being invalid, in case we return without setting it
+	memset(pActionData, 0, unActionDataSize);
+	pActionData->x = 0;
+	pActionData->y = 0;
+	pActionData->z = 0;
+	pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 	pActionData->bActive = false;
+	pActionData->fUpdateTime = 0;
+	pActionData->deltaX = 0;
+	pActionData->deltaY = 0;
+	pActionData->deltaZ = 0;
+	
 	if (action == vr::k_ulInvalidActionHandle)
-	{
-		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
 		return VRInputError_InvalidHandle;
-	}
-
+	
 	Action *analogAction = (Action*)action;
 
 	bool validAnalogType = iequals(analogAction->type, "single") ||
@@ -1057,30 +1135,22 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		analogAction->rightInputValue == vr::k_ulInvalidInputValueHandle)
 	{
 		// If the action has no input, that means the action was defined in the action manifest but not defined in controller binding JSON.
-		// This probably means the binding is optional and not set up, so we will mark it as inactive.
-		pActionData->x = 0;
-		pActionData->y = 0;
-		pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
-		pActionData->bActive = false;
-		pActionData->fUpdateTime = 0;
-		pActionData->deltaX = 0;
-		pActionData->deltaY = 0;
-		pActionData->deltaZ = 0;
-
+		// This probably means the binding is optional and not set up, so we will mark it as inactive and not return an error code
 		return VRInputError_None;
 	}
 
 	// determine input based on action path:
-	VRInputValueHandle_t activeOrigin;
+	VRInputValueHandle_t activeOrigin = vr::k_ulInvalidInputValueHandle;
 	VRControllerAxis_t *axisFromLastUpdate = nullptr;
 	VRControllerAxis_t *axis = nullptr;
 	string sourcePath;
 
 	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
-	if (analogAction->leftInputValue != k_ulInvalidInputValueHandle &&
-		analogAction->rightInputValue != k_ulInvalidInputValueHandle &&
-		ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
+	if (ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
 	{
+		if (analogAction->leftInputValue != ulRestrictToDevice && analogAction->rightInputValue != ulRestrictToDevice)
+			return VRInputError_InvalidDevice;
+
 		activeOrigin = ulRestrictToDevice;
 		InputValue *inputValue = (InputValue*)ulRestrictToDevice;
 
@@ -1112,13 +1182,16 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 		axis = inputValueRight->controllerState.rAxis;
 	}
 
-
 	// determine what data to output:
 	InputValue *inputValue = (InputValue*)activeOrigin;
 	string name = inputValue->name;
 	string pathSubst = sourcePath.substr(name.size(), sourcePath.size() - name.size());
 	VRControllerAxis_t analogDataFromLastUpdate;
+	analogDataFromLastUpdate.x = 0;
+	analogDataFromLastUpdate.y = 0;
 	VRControllerAxis_t analogData;
+	analogData.x = 0;
+	analogData.y = 0;
 	if (iequals(pathSubst, "/input/trackpad") || iequals(pathSubst, "/input/joystick"))
 	{
 		analogDataFromLastUpdate = axisFromLastUpdate[0];
@@ -1133,6 +1206,10 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	{
 		analogDataFromLastUpdate = axisFromLastUpdate[2];
 		analogData = axis[2]; // grip
+	}
+	else
+	{
+		return VRInputError_InvalidDevice;
 	}
 
 	float xDelta = inputValue->isSetControllerStateFromLastUpdate ? analogDataFromLastUpdate.x - analogData.x : 0;
@@ -1156,24 +1233,23 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
 	InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
 
-	if (action == vr::k_ulInvalidActionHandle)
-	{
-		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
-		pActionData->pose.bPoseIsValid = false;
-		pActionData->pose.bDeviceIsConnected = false;
-		pActionData->bActive = false;
-		return VRInputError_InvalidHandle;
-	}
+	// Initialise the action data to being invalid, in case we return without setting it
+	memset(pActionData, 0, unActionDataSize);
+	pActionData->activeOrigin = vr::k_ulInvalidInputValueHandle;
+	pActionData->pose.bPoseIsValid = false;
+	pActionData->pose.bDeviceIsConnected = false;
+	pActionData->bActive = false;
 
+	if (action == vr::k_ulInvalidActionHandle)
+		return VRInputError_InvalidHandle;
+	
 	Action *analogAction = (Action*)action;
 
 	if (analogAction->leftInputValue == k_ulInvalidInputValueHandle &&
 		analogAction->rightInputValue == k_ulInvalidInputValueHandle)
 	{
-		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
-		pActionData->pose.bPoseIsValid = false;
-		pActionData->pose.bDeviceIsConnected = false;
-		pActionData->bActive = false;
+		// If the action has no input, that means the action was defined in the action manifest but not defined in controller binding JSON.
+		// This probably means the binding is optional and not set up, so we will mark it as inactive and not return an error code
 		return VRInputError_None;
 	}
 
@@ -1182,10 +1258,11 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 
 	InputValue *inputValue;
 	// ulRestrictToDevice may tell us input handle to look at if both inputs are available
-	if (analogAction->leftInputValue != k_ulInvalidInputValueHandle &&
-		analogAction->rightInputValue != k_ulInvalidInputValueHandle &&
-		ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
+	if (ulRestrictToDevice != vr::k_ulInvalidInputValueHandle)
 	{
+		if (analogAction->leftInputValue != ulRestrictToDevice && analogAction->rightInputValue != ulRestrictToDevice)
+			return VRInputError_InvalidDevice;
+
 		activeOrigin = ulRestrictToDevice;
 		inputValue = (InputValue*)ulRestrictToDevice;
 		trackedDeviceIndex = inputValue->trackedDeviceIndex;
@@ -1205,9 +1282,13 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 
 	if (inputValue->isConnected)
 	{
+		ITrackedDevice* device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
+
+		if (device == nullptr) // device must have just timed out or disconnected, return without an error code
+			return VRInputError_None;
+
 		if (fPredictedSecondsFromNow != 0)
 		{
-			ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
 			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Prediction, fPredictedSecondsFromNow);
 		}
 		else
@@ -1216,27 +1297,19 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 			// perfectly stable at this point.
 			// Also note that to completely fix the input lag issue, passing TrackingStateType_Rendering into
 			// GetPose had to happen in GetPoseActionData instead of UpdateActionState.
-
-			ITrackedDevice *device = BackendManager::Instance().GetDevice(inputValue->trackedDeviceIndex);
 			device->GetPose(eOrigin, &pActionData->pose, TrackingStateType_Rendering);
 		}
 
 		pActionData->activeOrigin = activeOrigin;
 		pActionData->bActive = true;
 	}
-	else // device not found, consider it disconnected
-	{
-		pActionData->activeOrigin = vr::k_ulInvalidActionHandle;
-		pActionData->pose.bPoseIsValid = false;
-		pActionData->pose.bDeviceIsConnected = false;
-		pActionData->bActive = false;
-	}
 
+	// if we made it this far, device was not found, consider it disconnected, return without an error code
 	return VRInputError_None;
 }
 
 EVRInputError BaseInput::GetPoseActionDataRelativeToNow(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow, InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
-	STUBBED();
+	return GetPoseActionData(action, eOrigin, fPredictedSecondsFromNow, pActionData, unActionDataSize, ulRestrictToDevice);
 }
 EVRInputError BaseInput::GetPoseActionDataForNextFrame(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, InputPoseActionData_t *pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice) {
 
@@ -1451,11 +1524,13 @@ EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, V
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize) {
-	STUBBED();
+	// Noop here for now
+	pchNameArray = ""; // todo
+	return VRInputError_None;
 }
 EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_OUT_STRING() char *pchNameArray, uint32_t unNameArraySize,
 	int32_t unStringSectionsToInclude) {
-	STUBBED();
+	return GetOriginLocalizedName(origin, pchNameArray, unNameArraySize);
 }
 EVRInputError BaseInput::GetOriginTrackedDeviceInfo(VRInputValueHandle_t origin, InputOriginInfo_t *pOriginInfo, uint32_t unOriginInfoSize) {
 
