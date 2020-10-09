@@ -334,7 +334,8 @@ void BaseCompositor::FadeGrid(float fSeconds, bool bFadeIn)
 	//  app loads a new level (this is how the default SteamVR Unity plugin works).
 	//
 	// Let's not bother implementing the fade (that would be a LOT of work), and just skip straight over.
-	isInSkybox = bFadeIn;
+	isInSkybox = false; // bFadeIn;
+	OOVR_LOGF("Switching to skybox? %d", int(bFadeIn))
 
 	// TODO suppress input while in this mode
 }
@@ -519,13 +520,22 @@ bool BaseCompositor::IsMotionSmoothingEnabled()
 
 bool BaseCompositor::IsCurrentSceneFocusAppLoading()
 {
-	STUBBED();
+	// I think this is what it's supposed to do? Ask if it's in the loading mode, ie whether it's in the skybox?
+	return isInSkybox;
 }
 
 ovr_enum_t BaseCompositor::SetStageOverride_Async(const char* pchRenderModelPath, const HmdMatrix34_t* pTransform,
     const OOVR_Compositor_StageRenderSettings* pRenderSettings, uint32_t nSizeOfRenderSettings)
 {
-	STUBBED();
+	// Will this cause issues if it's sent right now? As of 25/03/2020, this is only used by HL:A
+
+	VREvent_t event = {};
+	event.eventType = VREvent_Compositor_StageOverrideReady;
+	event.trackedDeviceIndex = k_unTrackedDeviceIndex_Hmd;
+
+	GetUnsafeBaseSystem()->_EnqueueEvent(event);
+
+	return VRCompositorError_None;
 }
 
 void BaseCompositor::ClearStageOverride()
@@ -535,12 +545,25 @@ void BaseCompositor::ClearStageOverride()
 
 bool BaseCompositor::GetCompositorBenchmarkResults(Compositor_BenchmarkResults* pBenchmarkResults, uint32_t nSizeOfBenchmarkResults)
 {
-	STUBBED();
+	// TODO how are we going to deal with this mess?
+	OOVR_FALSE_ABORT(nSizeOfBenchmarkResults == sizeof(*pBenchmarkResults));
+	memset(pBenchmarkResults, 0, nSizeOfBenchmarkResults);
+
+	// No idea what reasonable numbers are here, just use these for testing
+	pBenchmarkResults->m_flHmdRecommendedMegaPixelsPerSecond = 10;
+	pBenchmarkResults->m_flMegaPixelsPerSecond = 10;
+
+	return true;
 }
 
 ovr_enum_t BaseCompositor::GetLastPosePredictionIDs(uint32_t* pRenderPosePredictionID, uint32_t* pGamePosePredictionID)
 {
-	STUBBED();
+	// TODO implement
+	if (pRenderPosePredictionID)
+		*pRenderPosePredictionID = 0;
+	if (pGamePosePredictionID)
+		*pGamePosePredictionID = 0;
+	return VRCompositorError_None;
 }
 
 ovr_enum_t BaseCompositor::GetPosesForFrame(uint32_t unPosePredictionID, TrackedDevicePose_t* pPoseArray, uint32_t unPoseArrayCount)

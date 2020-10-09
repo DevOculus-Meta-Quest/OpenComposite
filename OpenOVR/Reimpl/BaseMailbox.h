@@ -9,6 +9,7 @@ class BaseMailbox {
 public:
 	enum MboxErr {
 		VR_MBox_None = 0,
+		VR_MBox_BufferTooShort = 2,
 	};
 
 	// TODO build up names and comments for these and their types

@@ -9,6 +9,12 @@ regex = re.compile(regex_src)
 arg_src = r"(?P<type>[^=]+ \**)(?P<name>\w+)(?: = (?P<default>.*))?"
 argr = re.compile(arg_src)
 
+print("struct %s {" % cname)
+print("%s_vt *vt;" % cname)
+print("}")
+
+print("struct %s_vt {" % cname)
+
 for line in fileinput.input():
 	line = line.strip()
 	match = regex.match(line)
@@ -26,5 +32,7 @@ for line in fileinput.input():
 			argnames.append(aname)
 			argnodefaults.append(atype + " " + aname)
 
-		print("%s %s::%s(%s) {\n\tSTUBBED();\n}" % (ret, cname, name, args_str))
+		#print("%s %s::%s(%s) {\n\tSTUBBED();\n}" % (ret, cname, name, args_str))
+		print("%s (*%s)(%s*, %s);" % (ret, name, cname, args_str))
 
+print("};")

@@ -493,7 +493,8 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	/** Reads the current state into all actions. After this call, the results of Get*Action calls
 	* will be the same until the next call to UpdateActionState. */
 
-	if (pSets->ulActionSet == vr::k_ulInvalidActionSetHandle)
+	// HL:A passes in an empty set list. What does that do, and do we have to do any further handling for it?
+	if (pSets && unSetCount && pSets->ulActionSet == vr::k_ulInvalidActionSetHandle)
 	{
 		pSets->ulRestrictedToDevice = vr::k_ulInvalidInputValueHandle;
 		pSets->ulSecondaryActionSet = vr::k_ulInvalidActionSetHandle;
@@ -605,15 +606,14 @@ void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actio
 	bool isLeft = iequals(pathLeftSubst, left);
 	bool isRight = iequals(pathRightSubst, right);
 	string pathDirection = "";
+	GetInputSourceHandle(left.c_str(), &inputValueHandle);
 	if (isLeft)
 	{
-		GetInputSourceHandle(left.c_str(), &inputValueHandle);
 		action->leftInputValue = inputValueHandle;
 		pathDirection = pathLeftSubst;
 	}
 	else if (isRight)
 	{
-		GetInputSourceHandle(right.c_str(), &inputValueHandle);
 		action->rightInputValue = inputValueHandle;
 		pathDirection = pathRightSubst;
 	}
@@ -732,12 +732,16 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 
 	float functionCallTimeInSeconds = BackendManager::Instance().GetTimeInSeconds();
 
+	OOVR_FALSE_ABORT(action)
+
 	if (action == vr::k_ulInvalidActionHandle)
 	{
 		return VRInputError_InvalidHandle;
 	}
 
 	Action *digitalAction = (Action*)action;
+
+	OOVR_LOGF("Poll digital action %s", digitalAction->name.c_str())
 
 	bool validDigitalType = iequals(digitalAction->type, "boolean");
 	if (!validDigitalType)
@@ -877,7 +881,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 			}
 			performHapticOnTriggerOrGripPullActivation = bChanged && bState && !triggerOrGripHapticIsMuted;
 			performHapticOnTriggerOrGripReleaseActivation = bChanged && !bState && !triggerOrGripHapticIsMuted;
-			
+
 			if (!triggerOrGripHapticIsMuted && triggerOrGripHapticAmplitudeIsSet)
 				triggerOrGripHapticAmplitude = actionSource->sourceParametersHapticAmplitude;
 
@@ -1120,6 +1124,10 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	pActionData->bChanged = bChanged;
 	pActionData->bState = bState;
 	pActionData->fUpdateTime = fUpdateTime;
+
+	if(!strcmp(digitalAction->name.c_str(), "/actions/dev/in/MenuDismiss")) {
+		OOVR_LOGF("MenuDismiss: %d %d %d %f %f", bActive, bState, bChanged, triggerAxis.x, triggerAxis.y)
+	}
 
 	return VRInputError_None;
 }
@@ -1384,7 +1392,9 @@ EVRInputError BaseInput::GetSkeletalActionData(VRActionHandle_t action, InputSke
 	return VRInputError_None;
 }
 EVRInputError BaseInput::GetDominantHand(vr::ETrackedControllerRole *peDominantHand) {
-	STUBBED();
+	// TODO make this configurable
+	*peDominantHand = TrackedControllerRole_RightHand;
+	return VRInputError_None;
 }
 EVRInputError BaseInput::SetDominantHand(vr::ETrackedControllerRole eDominantHand) {
 	STUBBED();
@@ -1726,6 +1736,13 @@ EVRInputError BaseInput::OpenBindingUI(const char *pchAppKey, VRActionSetHandle_
 	STUBBED();
 }
 
-EVRInputError BaseInput::GetBindingVariant(vr::VRInputValueHandle_t ulDevicePath, char *pchVariantArray, uint32_t unVariantArraySize) {
-	STUBBED();
+EVRInputError BaseInput::GetBindingVariant(vr::VRInputValueHandle_t ulDevicePath, char* pchVariantArray, uint32_t unVariantArraySize)
+{
+	// Note: a variant appears to be a sort of tag that is set in a layout file, such as 'singlecontroller' for
+	// some of HL:A's layout schemes.
+	// For now, just assume the default bindings don't have one. FIXME handle this properly and load it from the JSON.
+	if (unVariantArraySize > 0) {
+		pchVariantArray[0] = 0;
+	}
+	return VRInputError_None;
 }
