@@ -342,7 +342,9 @@ void BaseCompositor::FadeGrid(float fSeconds, bool bFadeIn)
 
 float BaseCompositor::GetCurrentGridAlpha()
 {
-	STUBBED();
+	// FIXME this is only for HL:A, what does it want?
+	return 0;
+	// STUBBED();
 }
 
 ovr_enum_t BaseCompositor::SetSkyboxOverride(const Texture_t* pTextures, uint32_t unTextureCount)
@@ -540,7 +542,8 @@ ovr_enum_t BaseCompositor::SetStageOverride_Async(const char* pchRenderModelPath
 
 void BaseCompositor::ClearStageOverride()
 {
-	STUBBED();
+	// Only used by HLA, are we supposed to send a message?
+	// STUBBED();
 }
 
 bool BaseCompositor::GetCompositorBenchmarkResults(Compositor_BenchmarkResults* pBenchmarkResults, uint32_t nSizeOfBenchmarkResults)

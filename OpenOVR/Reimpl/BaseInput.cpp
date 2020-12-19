@@ -13,6 +13,7 @@
 #include "Drivers/Backend.h"
 #include <map>
 #include <thread>
+#include "convert.h"
 Json::Value _actionManifest;
 Json::Value _bindingsJson;
 
@@ -87,13 +88,14 @@ EVRInputError BaseInput::SetActionManifestPath(const char *pchActionManifestPath
 	for (int index = 0; index < jsonDefaultBindings.size(); index++)
 	{
 		string controllerType = jsonDefaultBindings[index]["controller_type"].asCString();
-		if (iequals(controllerType, "oculus_touch"))
+		// Note: HL:A specifies multiple default bindings per controller, the first one is the 'normal' one?
+		// TODO how should we handle this?
+		if (iequals(controllerType, "oculus_touch") && oculusTouchIndex == -1)
 			oculusTouchIndex = index;
 		else if (iequals(controllerType, "rift"))
 			riftIndex = index;
 		else if (iequals(controllerType, "generic"))
 			genericIndex = index;
-
 	}
 
 	// prioritize what we load:
@@ -606,14 +608,15 @@ void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actio
 	bool isLeft = iequals(pathLeftSubst, left);
 	bool isRight = iequals(pathRightSubst, right);
 	string pathDirection = "";
-	GetInputSourceHandle(left.c_str(), &inputValueHandle);
 	if (isLeft)
 	{
+		GetInputSourceHandle(left.c_str(), &inputValueHandle);
 		action->leftInputValue = inputValueHandle;
 		pathDirection = pathLeftSubst;
 	}
 	else if (isRight)
 	{
+		GetInputSourceHandle(right.c_str(), &inputValueHandle);
 		action->rightInputValue = inputValueHandle;
 		pathDirection = pathRightSubst;
 	}
@@ -631,7 +634,7 @@ void BaseInput::ProcessInputSource(Json::Value inputJson, VRActionHandle_t actio
 	Json::Value activateThreshold = inputJson["parameters"]["click_activate_threshold"];
 	if (!activateThreshold.isNull())
 		actionSource->sourceParametersActivateThreshold = stod(activateThreshold.asString());
-	
+
 	Json::Value deactivateThreshold = inputJson["parameters"]["click_deactivate_threshold"];
 	if (!deactivateThreshold.isNull())
 		actionSource->sourceParametersDeactivateThreshold = stod(deactivateThreshold.asString());
@@ -1092,7 +1095,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	// Haptic workaround:
 	// It appears that the haptic function is not called by steamvr for default grip/trigger haptics.
 	// The workaround is to do inititate it here when a grip/trigger is reached pull/release activation.
-	
+
 	if (performHapticOnTriggerOrGripPullActivation && !_hapticTriggerOrGripPullActivationSetDuringCurrentActionState)
 	{
 		float fAmplitude = triggerOrGripHapticAmplitude;
@@ -1124,10 +1127,6 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	pActionData->bChanged = bChanged;
 	pActionData->bState = bState;
 	pActionData->fUpdateTime = fUpdateTime;
-
-	if(!strcmp(digitalAction->name.c_str(), "/actions/dev/in/MenuDismiss")) {
-		OOVR_LOGF("MenuDismiss: %d %d %d %f %f", bActive, bState, bChanged, triggerAxis.x, triggerAxis.y)
-	}
 
 	return VRInputError_None;
 }
@@ -1429,8 +1428,16 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t action, EVRSkeleta
 	EVRSkeletalMotionRange eMotionRange, VR_ARRAY_COUNT(unTransformArrayCount) VRBoneTransform_t *pTransformArray, uint32_t unTransformArrayCount) {
 	STUBBED();
 }
-EVRInputError BaseInput::GetSkeletalSummaryData(VRActionHandle_t action, EVRSummaryType eSummaryType, VRSkeletalSummaryData_t * pSkeletalSummaryData) {
-	STUBBED();
+EVRInputError BaseInput::GetSkeletalSummaryData(VRActionHandle_t action, EVRSummaryType eSummaryType, VRSkeletalSummaryData_t * pSkeletalSummaryData)
+{
+	// Testing only!
+	for (float& i : pSkeletalSummaryData->flFingerCurl) {
+		i = 0.2;
+	}
+	for (float& i : pSkeletalSummaryData->flFingerSplay) {
+		i = 0.5;
+	}
+	return VRInputError_None;
 }
 EVRInputError BaseInput::GetSkeletalSummaryData(VRActionHandle_t action, VRSkeletalSummaryData_t * pSkeletalSummaryData) {
 	return GetSkeletalSummaryData(action, VRSummaryType_FromDevice, pSkeletalSummaryData);
@@ -1576,6 +1583,7 @@ EVRInputError BaseInput::GetOriginLocalizedName(VRInputValueHandle_t origin, VR_
 	return GetOriginLocalizedName(origin, pchNameArray, unNameArraySize);
 }
 EVRInputError BaseInput::GetOriginTrackedDeviceInfo(VRInputValueHandle_t origin, InputOriginInfo_t *pOriginInfo, uint32_t unOriginInfoSize) {
+	OOVR_FALSE_ABORT(sizeof(InputOriginInfo_t) == unOriginInfoSize);
 
 	if (origin == vr::k_ulInvalidInputValueHandle)
 	{
@@ -1588,7 +1596,7 @@ EVRInputError BaseInput::GetOriginTrackedDeviceInfo(VRInputValueHandle_t origin,
 	TrackedDeviceIndex_t trackedDeviceIndex = input->trackedDeviceIndex;
 	pOriginInfo->devicePath = origin;
 	pOriginInfo->trackedDeviceIndex = trackedDeviceIndex;
-	//pOriginInfo->rchRenderModelComponentName // todo
+	strcpy_s(pOriginInfo->rchRenderModelComponentName, sizeof(pOriginInfo->rchRenderModelComponentName) - 1, "renderLeftHand"); // FIXME TESTING ONLY
 
 	return VRInputError_None;
 }
@@ -1722,7 +1730,13 @@ EVRInputError BaseInput::ShowBindingsForActionSet(VR_ARRAY_COUNT(unSetCount) VRA
 EVRInputError BaseInput::GetComponentStateForBinding(const char *pchRenderModelName, const char *pchComponentName,
 		const OOVR_InputBindingInfo_t *pOriginInfo, uint32_t unBindingInfoSize, uint32_t unBindingInfoCount,
 		vr::RenderModel_ComponentState_t *pComponentState) {
-	STUBBED();
+
+	// AFAIK only used on HL:Alyx - just hand out some dummy values?
+	O2S_om34(OVR::Matrix4f::Identity(), pComponentState->mTrackingToComponentRenderModel);
+	O2S_om34(OVR::Matrix4f::Identity(), pComponentState->mTrackingToComponentLocal);
+	pComponentState->uProperties = (VRComponentProperties)VRComponentProperty_IsVisible | (VRComponentProperties)VRComponentProperty_IsStatic;
+
+	return VRInputError_None;
 }
 
 bool BaseInput::IsUsingLegacyInput() {
