@@ -435,6 +435,7 @@ void BaseSystem::_OnPostFrame()
 		if (ev.type == XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
 			auto* changed = (XrEventDataSessionStateChanged*)&ev;
 			// TODO do something with the new state information
+<<<<<<< Updated upstream
 			OOVR_LOGF("Switch to state: %d", changed->state);
 
 			// If the headset is unplugged or the user decides to exit the app
@@ -472,6 +473,10 @@ void BaseSystem::_OnPostFrame()
 	}
 
 	// OOVR_LOG("Post Frame");
+=======
+		}
+	}
+>>>>>>> Stashed changes
 }
 
 void BaseSystem::_EnqueueEvent(const VREvent_t& e)
@@ -589,11 +594,19 @@ HiddenAreaMesh_t BaseSystem::GetHiddenAreaMesh(EVREye eEye, EHiddenAreaMeshType 
 
 bool BaseSystem::GetControllerState(vr::TrackedDeviceIndex_t controllerDeviceIndex, vr::VRControllerState_t* controllerState, uint32_t controllerStateSize)
 {
+<<<<<<< Updated upstream
+=======
+#ifdef OC_XR_PORT
+	// Only support IVRInput-based stuff for now
+	XR_STUBBED();
+#else
+>>>>>>> Stashed changes
 	if (sizeof(VRControllerState_t) != controllerStateSize)
 		OOVR_ABORT("Bad controller state size - was the host compiled with an older version of OpenVR?");
 
 	memset(controllerState, 0, controllerStateSize);
 
+<<<<<<< Updated upstream
 #ifdef OC_XR_PORT
 	if (!inputSystem) {
 		inputSystem = GetBaseInput();
@@ -608,6 +621,8 @@ bool BaseSystem::GetControllerState(vr::TrackedDeviceIndex_t controllerDeviceInd
 
 	return inputSystem->GetLegacyControllerState(controllerDeviceIndex, controllerState);
 #else
+=======
+>>>>>>> Stashed changes
 	ITrackedDevice* dev = BackendManager::Instance().GetDevice(controllerDeviceIndex);
 
 	if (!dev)

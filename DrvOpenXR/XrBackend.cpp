@@ -4,12 +4,16 @@
 
 #include "XrBackend.h"
 
+<<<<<<< Updated upstream
 #include <openxr/openxr_platform.h>
 
+=======
+>>>>>>> Stashed changes
 // FIXME find a better way to send the OnPostFrame call?
 #include "../OpenOVR/Reimpl/BaseSystem.h"
 #include "../OpenOVR/Reimpl/static_bases.gen.h"
 
+<<<<<<< Updated upstream
 XrBackend::XrBackend()
 {
 	memset(projectionViews, 0, sizeof(projectionViews));
@@ -23,6 +27,8 @@ XrBackend::XrBackend()
 	}
 }
 
+=======
+>>>>>>> Stashed changes
 XrBackend::~XrBackend()
 {
 	// First clear out the compositors, since they might try and access the OpenXR instance

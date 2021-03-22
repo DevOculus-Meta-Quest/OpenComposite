@@ -366,6 +366,8 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 			OOVR_ABORTF("Bad action type while remapping action %s: %d", act.fullName.c_str(), act.type);
 		}
 
+		OOVR_LOGF("Create action %s type %d", info.actionName, info.actionType);
+
 		OOVR_FAILED_XR_ABORT(xrCreateAction(act.set->xr, &info, &act.xr));
 	}
 
@@ -500,6 +502,10 @@ void BaseInput::LoadBindingsSet(const std::string& bindingsPath, const struct In
 					continue;
 				}
 
+<<<<<<< Updated upstream
+=======
+				OOVR_LOGF("Bind %p %s to %s", action.xr, action.fullName.c_str(), pathStr.c_str());
+>>>>>>> Stashed changes
 				XrPath path;
 				OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, pathStr.c_str(), &path));
 				bindings.push_back(XrActionSuggestedBinding{ action.xr, path });
@@ -693,9 +699,17 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 	aas[1].actionSet = legacyInputsSet;
 
 	XrActionsSyncInfo syncInfo = { XR_TYPE_ACTIONS_SYNC_INFO };
+<<<<<<< Updated upstream
 	syncInfo.activeActionSets = aas;
 	syncInfo.countActiveActionSets = as_count;
 	OOVR_FAILED_XR_ABORT(xrSyncActions(xr_session, &syncInfo));
+=======
+	syncInfo.activeActionSets = &aas;
+	syncInfo.countActiveActionSets = 1;
+	XrResult r = (xrSyncActions(xr_session, &syncInfo));
+	OOVR_FAILED_XR_ABORT(r);
+	// OOVR_LOGF("sync res: %d", r);
+>>>>>>> Stashed changes
 
 	return VRInputError_None;
 }
@@ -718,12 +732,20 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 {
 	Action* act = cast_AH(action);
 
+<<<<<<< Updated upstream
 	ZeroMemory(pActionData, unActionDataSize);
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
 
 	// TODO implement ulRestrictToDevice
 	OOVR_FALSE_ABORT(ulRestrictToDevice == vr::k_ulInvalidInputValueHandle);
 
+=======
+	// TODO implement ulRestrictToDevice
+
+	ZeroMemory(pActionData, unActionDataSize);
+	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
+
+>>>>>>> Stashed changes
 	XrActionStateGetInfo getInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
 	getInfo.action = act->xr;
 
@@ -737,6 +759,24 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	// TODO implement fUpdateTime
 	// TODO implement activeOrigin
 
+<<<<<<< Updated upstream
+=======
+	XrPath path;
+	OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, "/user/hand/right", &path));
+	XrInteractionProfileState prof = { XR_TYPE_INTERACTION_PROFILE_STATE };
+	OOVR_FAILED_XR_ABORT(xrGetCurrentInteractionProfile(xr_session, path, &prof));
+
+	char profStr[1000];
+	ZeroMemory(profStr, sizeof(profStr));
+	uint32_t psLen;
+	if (prof.interactionProfile)
+		OOVR_FAILED_XR_ABORT(xrPathToString(xr_instance, prof.interactionProfile, sizeof(profStr), &psLen, profStr));
+	else
+		strcpy_arr(profStr, "<null>");
+
+	OOVR_LOGF("Read from action %p %d %d '%s'", act->xr, state.currentState, state.isActive, profStr, profStr);
+
+>>>>>>> Stashed changes
 	return VRInputError_None;
 }
 
