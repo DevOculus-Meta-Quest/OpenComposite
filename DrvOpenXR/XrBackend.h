@@ -18,6 +18,8 @@ public:
 	XrBackend();
 	~XrBackend() override;
 
+	void PrepareForSessionShutdown();
+
 private:
 	std::unique_ptr<XrHMD> hmd = std::make_unique<XrHMD>();
 	std::unique_ptr<XrController> hand_left = std::make_unique<XrController>(XrController::XCT_LEFT);

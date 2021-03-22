@@ -96,6 +96,7 @@ IBackend* DrvOpenXR::CreateOpenXRBackend()
 	createInfo.enabledApiLayerCount = (sizeof(layers) / sizeof(const char*)) - 1; // Subtract the dummy value
 
 	OOVR_FAILED_XR_ABORT(xrCreateInstance(&createInfo, &xr_instance));
+	OOVR_LOG("Create instance");
 
 	// Load the function pointers for the extension functions
 	xr_ext = new XrExt();
@@ -174,6 +175,10 @@ void DrvOpenXR::SetupSession(const void* graphicsBinding)
 
 void DrvOpenXR::ShutdownSession()
 {
+	auto* backend = (XrBackend*)BackendManager::Instance().GetBackendInstance();
+	if (backend)
+		backend->PrepareForSessionShutdown();
+
 	delete xr_gbl;
 	xr_gbl = nullptr;
 
@@ -198,7 +203,12 @@ void DrvOpenXR::FullShutdown()
 	if (xr_instance) {
 		OOVR_FAILED_XR_ABORT(xrDestroyInstance(xr_instance));
 		xr_instance = XR_NULL_HANDLE;
+		OOVR_LOG("Destroy instance");
 	}
+}
+
+void DrvOpenXR::RestartSession()
+{
 }
 
 #ifdef SUPPORT_VK

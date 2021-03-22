@@ -232,6 +232,9 @@ public:
 	// Returns global, absolute high-resolution time in seconds.
 	float GetTimeInSeconds();
 
+	// Get the current backend instance
+	inline IBackend* GetBackendInstance() { return backend.get(); }
+
 private:
 	BackendManager();
 

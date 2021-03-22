@@ -435,6 +435,24 @@ void BaseSystem::_OnPostFrame()
 		if (ev.type == XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
 			auto* changed = (XrEventDataSessionStateChanged*)&ev;
 			// TODO do something with the new state information
+			OOVR_LOGF("Switch to state: %d", changed->state);
+
+			// If the headset is unplugged or the user decides to exit the app
+			if (changed->state == XR_SESSION_STATE_EXITING || changed->state == XR_SESSION_STATE_LOSS_PENDING) {
+				VREvent_t quit = { VREvent_Quit };
+				_EnqueueEvent(quit);
+			}
+
+			// This usually seems to be called when the HMD's proximity sensor ('engagement sensor' in OpenXR
+			// parlance) sees the user is no longer wearing the device. We're supposed to then wait for the
+			// runtime to tell us to start, but unfortunately owing to how OpenVR works we can't just tell
+			// the application it can't make calls for now. As such just restart the runtime, which will wait
+			// until the user puts it on again.
+			// Note: if you just ignore this event, input will break after putting the headset on again because
+			//  the application only receives input in the focused state.
+			if (changed->state == XR_SESSION_STATE_STOPPING) {
+				DrvOpenXR::RestartSession();
+			}
 		}
 	}
 
@@ -452,6 +470,8 @@ void BaseSystem::_OnPostFrame()
 	if (inputSystem) {
 		inputSystem->InternalUpdate();
 	}
+
+	// OOVR_LOG("Post Frame");
 }
 
 void BaseSystem::_EnqueueEvent(const VREvent_t& e)
