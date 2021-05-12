@@ -177,6 +177,9 @@ float  BaseSettings::GetFloat(const char * pchSection, const char * pchSettingsK
 		else if (key == kk::k_pch_SteamVR_IPD_Float) {
 			return BaseSystem::SGetIpd();
 		}
+		else if (key == kk::k_pch_SteamVR_IpdOffset_Float) {
+			return 0.0;
+		}
 	}
 
 	UNSET_SETTING();
