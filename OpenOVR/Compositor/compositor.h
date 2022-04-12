@@ -24,7 +24,7 @@ public:
 	virtual ~Compositor();
 
 	// Only copy a texture - this can be used for overlays and such
-	virtual void Invoke(const vr::Texture_t* texture) = 0;
+	virtual void Invoke(const vr::Texture_t* texture, const vr::VRTextureBounds_t* bounds) = 0;
 
 	virtual void Invoke(XruEye eye, const vr::Texture_t* texture, const vr::VRTextureBounds_t* bounds,
 	    vr::EVRSubmitFlags submitFlags, XrCompositionLayerProjectionView& viewport)
@@ -35,8 +35,7 @@ public:
 
 	virtual XrSwapchain GetSwapChain() { return chain; };
 
-	virtual unsigned int GetFlags() { return 0; }
-
+	virtual XrExtent2Df GetSrcSize() { return { (float)createInfo.width, (float)createInfo.height }; }
 	/**
 	 * Loads and unloads some context required for submitting textures to LibOVR. LoadSubmitContext is
 	 *  called before calling either Invoke or ovr_CommitTextureSwapChain, and ResetSubmitContext after

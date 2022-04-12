@@ -348,7 +348,29 @@ void BaseRenderModels::FreeTextureD3D11(void * pD3D11Texture2D) {
 }
 
 uint32_t BaseRenderModels::GetRenderModelName(uint32_t unRenderModelIndex, VR_OUT_STRING() char * pchRenderModelName, uint32_t unRenderModelNameLen) {
-	STUBBED();
+	const char* renderModelName = nullptr;
+	uint32_t strLen = 0;
+
+	switch (unRenderModelIndex) {
+	case 0:
+		renderModelName = "renderLeftHand";
+		strLen = strlen(renderModelName);
+		break;
+	case 1:
+		renderModelName = "renderRightHand";
+		strLen = strlen(renderModelName);
+		break;
+	default:
+		break;
+	}
+
+	if(pchRenderModelName && renderModelName && unRenderModelNameLen > 0)
+	{
+		strncpy(pchRenderModelName, renderModelName, unRenderModelNameLen - 1);
+		pchRenderModelName[unRenderModelNameLen - 1] = '\0';
+	}
+
+	return strLen;
 }
 
 uint32_t BaseRenderModels::GetRenderModelCount() {

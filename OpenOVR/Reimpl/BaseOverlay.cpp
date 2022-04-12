@@ -9,6 +9,7 @@
 #include "static_bases.gen.h"
 #include "Misc/Config.h"
 #include "Misc/ScopeGuard.h"
+#include "Drivers/Backend.h"
 
 using namespace std;
 using glm::vec3;
@@ -36,9 +37,7 @@ public:
 
 	// Rendering
 	Texture_t texture = {};
-#ifndef OC_XR_PORT
-	ovrLayerQuad layerQuad = {};
-#endif
+	XrCompositionLayerQuad layerQuad = { XR_TYPE_COMPOSITION_LAYER_QUAD };
 	std::unique_ptr<Compositor> compositor;
 
 	// Transform
@@ -50,6 +49,13 @@ public:
 		} deviceRelative;
 	} transformData;
 
+	MfMatrix4f overlayTransform{
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, -1.01f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+	
 	OverlayData(string key, string name) : key(key), name(name) {
 	}
 };
@@ -77,7 +83,8 @@ BaseOverlay::~BaseOverlay() {
 	}
 }
 
-int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ const* const*& layers) {
+int BaseOverlay::_BuildLayers(XrCompositionLayerBaseHeader* sceneLayer, XrCompositionLayerBaseHeader const* const*& layers)
+{
 	// Note that at least on MSVC, this shouldn't be doing any memory allocations
 	//  unless the list is expanding from new layers.
 	layerHeaders.clear();
@@ -102,6 +109,8 @@ int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ cons
 		goto done;
 	}
 
+	XrCompositionLayerBaseHeader* prevLayer = sceneLayer;
+
 	for (const auto &kv : overlays) {
 		if (kv.second) {
 			OverlayData &overlay = *kv.second;
@@ -112,47 +121,29 @@ int BaseOverlay::_BuildLayers(ovrLayerHeader_ * sceneLayer, ovrLayerHeader_ cons
 
 			// Quick hack to get around Boneworks creating overlays and setting them to an opacity of
 			// zero to hide them. Leave 1% of margin in case of weird float issues.
-			if (overlay.colour.a < 0.01)
-				continue;
+			//if (overlay.colour.a < 0.01)
+			//	continue;
 
-#ifndef OC_XR_PORT
+			if ((uint64_t)overlay.layerQuad.subImage.swapchain == 0) {
+				continue;
+			}
 			// Calculate the texture's aspect ratio
-			const ovrSizei &srcSize = overlay.layerQuad.Viewport.Size;
-			const float aspect = srcSize.h > 0 ? static_cast<float>(srcSize.w) / srcSize.h : 1.0f;
+			const XrRect2Di& srcSize = overlay.layerQuad.subImage.imageRect;
+			const float aspect = srcSize.extent.height > 0 ? (float)srcSize.extent.width / (float)srcSize.extent.height : 1.0f;
 
 			// ... and use that to set the size of the overlay, as it will appear to the user
 			// Note we shouldn't do this when setting the texture, as the user may change the width of
 			//  the overlay without changing the texture.
-			overlay.layerQuad.QuadSize.x = overlay.widthMeters;
-			overlay.layerQuad.QuadSize.y = overlay.widthMeters / aspect;
-
-			if (overlay.transformType == VROverlayTransform_TrackedDeviceRelative) {
-				TrackedDeviceIndex_t dev = overlay.transformData.deviceRelative.device;
-
-				OVR::Matrix4f offset;
-				S2O_om44(overlay.transformData.deviceRelative.offset, offset);
-
-				TrackedDevicePose_t pose{};
-
-				BaseCompositor *comp = GetUnsafeBaseCompositor();
-				BaseSystem *sys = GetUnsafeBaseSystem();
-				if (comp && sys) {
-					comp->GetSinglePoseRendering(sys->_GetRenderTrackingOrigin(), dev, &pose);
-				}
-
-				if (pose.bPoseIsValid) {
-					OVR::Matrix4f devOffset;
-					S2O_om44(pose.mDeviceToAbsoluteTracking, devOffset);
-
-					offset = devOffset * offset;
-				}
-
-				overlay.layerQuad.QuadPoseCenter = OVR::Posef(OVR::Quatf(offset), offset.GetTranslation());
-			}
+			overlay.layerQuad.size.width = overlay.widthMeters;
+			overlay.layerQuad.size.height = overlay.widthMeters / aspect;
 
 			// Finally, add it to the list of layers to be sent to LibOVR
-			layerHeaders.push_back(&overlay.layerQuad.Header);
-#endif
+			overlay.layerQuad.pose = { { 0.f, 0.f, 0.f, 1.f },
+				{ overlay.overlayTransform[0][3], overlay.overlayTransform[1][3], overlay.overlayTransform[2][3] } };
+
+			layerHeaders.push_back((XrCompositionLayerBaseHeader*)&overlay.layerQuad);
+			prevLayer->next = (XrCompositionLayerBaseHeader*)&overlay.layerQuad;
+			prevLayer = (XrCompositionLayerBaseHeader*)&overlay.layerQuad;
 		}
 	}
 
@@ -195,28 +186,13 @@ EVROverlayError BaseOverlay::CreateOverlay(const char *pchOverlayKey, const char
 	overlays[pchOverlayKey] = data;
 	validOverlays.insert(data);
 
-#ifndef OC_XR_PORT
-	// Set up the LibOVR layer
-	OOVR_LOGF(R"(New texture overlay created "%s" "%s")", pchOverlayKey, pchOverlayName);
-	data->layerQuad.Header.Type = ovrLayerType_Quad;
-	data->layerQuad.Header.Flags = ovrLayerFlag_HighQuality;
-
-	// 50cm in front from the player's nose by default, in case the game does not set the position
-	//  before it first uses it.
-	data->layerQuad.QuadPoseCenter.Position.x = 0.00f;
-	data->layerQuad.QuadPoseCenter.Position.y = 0.00f;
-	data->layerQuad.QuadPoseCenter.Position.z = -0.50f;
-	data->layerQuad.QuadPoseCenter.Orientation.x = 0;
-	data->layerQuad.QuadPoseCenter.Orientation.y = 0;
-	data->layerQuad.QuadPoseCenter.Orientation.z = 0;
-	data->layerQuad.QuadPoseCenter.Orientation.w = 1;
-
-	// Note we don't need to set the layer QuadSize, as this is set before the frame is submitted
-
-	// Contents texture starts at 0,0 - this is not overridden
-	data->layerQuad.Viewport.Pos.x = 0;
-	data->layerQuad.Viewport.Pos.y = 0;
-#endif
+	data->layerQuad.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
+	data->layerQuad.next = NULL;
+	data->layerQuad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+	data->layerQuad.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+	data->layerQuad.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+	data->layerQuad.pose = { { 0.f, 0.f, 0.f, 1.f },
+		{ 0.0f, 0.0f, -0.65f } };
 
 	return VROverlayError_None;
 }
@@ -507,9 +483,7 @@ EVROverlayError BaseOverlay::SetOverlayTransformAbsolute(VROverlayHandle_t ulOve
 	//  imagine many apps will use a different origin for their overlays.
 
 	overlay->transformType = VROverlayTransform_Absolute;
-#ifndef OC_XR_PORT
-	overlay->layerQuad.QuadPoseCenter = S2O_om34_pose(*pmatTrackingOriginToOverlayTransform);
-#endif
+	S2O_om44(*pmatTrackingOriginToOverlayTransform, overlay->overlayTransform);
 
 	return VROverlayError_None;
 }
@@ -664,13 +638,11 @@ EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle
 	USEH();
 	overlay->texture = *pTexture;
 
-	if (!oovr_global_configuration.EnableLayers())
+	if (!oovr_global_configuration.EnableLayers() || !BackendManager::Instance().IsGraphicsConfigured())
 		return VROverlayError_None;
 
-#ifndef OC_XR_PORT
 	if (!overlay->compositor) {
-		const auto size = ovr_GetFovTextureSize(*ovr::session, ovrEye_Left, ovr::hmdDesc.DefaultEyeFov[ovrEye_Left], 1);
-		overlay->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(pTexture, size));
+		overlay->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(pTexture));
 	}
 
 	overlay->compositor->LoadSubmitContext();
@@ -678,13 +650,16 @@ EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle
 		overlay->compositor->ResetSubmitContext();
 	});
 
-	overlay->compositor->Invoke(&overlay->texture);
+	overlay->compositor->Invoke(&overlay->texture, nullptr);
 
-	overlay->layerQuad.Viewport.Size = overlay->compositor->GetSrcSize();
-	overlay->layerQuad.ColorTexture = overlay->compositor->GetSwapChain();
-
-	OOVR_FAILED_OVR_ABORT(ovr_CommitTextureSwapChain(*ovr::session, overlay->layerQuad.ColorTexture));
-#endif
+	overlay->layerQuad.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+	overlay->layerQuad.subImage = {
+		overlay->compositor->GetSwapChain(),
+		{ { 0, 0 },
+			{ (int32_t)overlay->compositor->GetSrcSize().width,
+				(int32_t)overlay->compositor->GetSrcSize().height } },
+		0
+	};
 
 	return VROverlayError_None;
 }

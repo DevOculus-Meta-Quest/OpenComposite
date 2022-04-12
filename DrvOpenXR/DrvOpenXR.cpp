@@ -27,6 +27,61 @@ static XrBackend* currentBackend;
 static bool initialised = false;
 static std::unique_ptr<TemporaryGraphics> temporaryGraphics;
 
+#ifdef _WIN32
+std::string GetExeName()
+{
+	char exePath[MAX_PATH + 1] = { 0 };
+	DWORD len = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+	PathStripPathA(exePath);
+	return {exePath};
+}
+#else
+#include <libgen.h>         // basename
+#include <unistd.h>         // readlink
+#include <linux/limits.h>   // PATH_MAX
+
+std::string GetExeName()
+{
+	char exePath[PATH_MAX + 1] = { 0 };
+	ssize_t count = readlink("/proc/self/exe", exePath, PATH_MAX);
+	if (count != -1) {
+		return {basename(exePath)};
+	}
+	return {""};
+}
+#endif
+
+void DrvOpenXR::GetXRAppName(char (& appName)[128])
+{
+	std::string exeName = GetExeName();
+	if (exeName.size() > 0) {
+		std::string ocAppName{ "OpenComposite_" };
+		ocAppName.append(exeName);
+		auto pos = ocAppName.find(".exe");
+		if (pos != std::string::npos && pos > 0)
+			ocAppName = ocAppName.substr(0, pos);
+		OOVR_LOGF("Setting application name to %s", ocAppName.c_str());
+		strcpy_arr(appName, ocAppName.c_str());
+	}
+	else {
+		strcpy_arr(appName, "OpenComposite");
+	}
+}
+
+#ifdef _DEBUG
+static XrDebugUtilsMessengerEXT dbgMessenger = NULL;
+
+static XrBool32 debugCallback(
+	XrDebugUtilsMessageSeverityFlagsEXT              messageSeverity,
+	XrDebugUtilsMessageTypeFlagsEXT                  messageTypes,
+	const XrDebugUtilsMessengerCallbackDataEXT*      callbackData,
+	void*                                            userData)
+{
+	OOVR_LOGF("debugCallback %s", callbackData->message);
+	return XR_FALSE;
+}
+#endif
+
 IBackend* DrvOpenXR::CreateOpenXRBackend()
 {
 	// TODO handle something like Unity which stops and restarts the instance
@@ -56,12 +111,26 @@ IBackend* DrvOpenXR::CreateOpenXRBackend()
 	std::set<std::string> availableExtensions;
 	for (const XrExtensionProperties& ext : extensionProperties) {
 		availableExtensions.insert(ext.extensionName);
+		OOVR_LOGF("Extension: %s", ext.extensionName);
+	}
+
+	uint32_t availableLayersCount;
+	OOVR_FAILED_XR_ABORT(xrEnumerateApiLayerProperties(0, &availableLayersCount, nullptr));
+	OOVR_LOGF("Num layers available: %d ", availableLayersCount);
+	std::vector<XrApiLayerProperties> layerProperties;
+	layerProperties.resize(availableLayersCount, { XR_TYPE_API_LAYER_PROPERTIES });
+	OOVR_FAILED_XR_ABORT(xrEnumerateApiLayerProperties(
+		layerProperties.size(), &availableLayersCount, layerProperties.data()));
+	std::set<std::string> availableLayers;
+	for (const XrApiLayerProperties& layer : layerProperties) {
+		availableLayers.insert(layer.layerName);
+		OOVR_LOGF("Layer: %s", layer.layerName);
 	}
 
 	// Create the OpenXR instance - this is the overall handle that connects us to the runtime
 	// https://www.khronos.org/registry/OpenXR/specs/1.0/refguide/openxr-10-reference-guide.pdf
 	XrApplicationInfo appInfo{};
-	strcpy(appInfo.applicationName, "OpenComposite"); // TODO vary by application
+	GetXRAppName(appInfo.applicationName);
 	appInfo.applicationVersion = 1;
 	appInfo.apiVersion = XR_CURRENT_API_VERSION;
 
@@ -112,6 +181,21 @@ IBackend* DrvOpenXR::CreateOpenXRBackend()
 #endif
 
 	OOVR_FAILED_XR_ABORT(xrCreateInstance(&createInfo, &xr_instance));
+
+#ifdef _DEBUG
+	XrDebugUtilsMessengerCreateInfoEXT dbgCreateInfo{};
+	dbgCreateInfo.type = XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	dbgCreateInfo.messageSeverities = XR_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	dbgCreateInfo.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_CONFORMANCE_BIT_EXT;
+	dbgCreateInfo.next = NULL;
+	dbgCreateInfo.userData = NULL;
+	if(dbgMessenger != NULL){
+		OOVR_FAILED_XR_ABORT(xrDestroyDebugUtilsMessengerEXT(dbgMessenger));
+		dbgMessenger = NULL;
+	}
+	dbgCreateInfo.userCallback = debugCallback;
+	OOVR_FAILED_XR_ABORT(xrCreateDebugUtilsMessengerEXT(xr_instance, &dbgCreateInfo, &dbgMessenger));
+#endif
 
 	// Load the function pointers for the extension functions
 	xr_ext = new XrExt();
@@ -215,6 +299,13 @@ void DrvOpenXR::FullShutdown()
 {
 	if (xr_session)
 		ShutdownSession();
+
+#ifdef _DEBUG
+	if(dbgMessenger != NULL){
+		OOVR_FAILED_XR_ABORT(xrDestroyDebugUtilsMessengerEXT(dbgMessenger));
+		dbgMessenger = NULL;
+	}
+#endif
 
 	if (xr_instance) {
 		OOVR_FAILED_XR_ABORT(xrDestroyInstance(xr_instance));

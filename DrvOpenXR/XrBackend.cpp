@@ -22,7 +22,9 @@
 
 // FIXME find a better way to send the OnPostFrame call?
 #include "../OpenOVR/Reimpl/BaseSystem.h"
+#include "../OpenOVR/Reimpl/BaseOverlay.h"
 #include "../OpenOVR/Reimpl/static_bases.gen.h"
+#include "../OpenOVR/convert.h"
 
 XrBackend::XrBackend()
 {
@@ -72,7 +74,14 @@ void XrBackend::GetDeviceToAbsoluteTrackingPose(
     vr::TrackedDevicePose_t* poseArray,
     uint32_t poseArrayCount)
 {
-	STUBBED();
+	for(uint32_t i = 0; i < poseArrayCount; ++i){
+		ITrackedDevice* dev = GetDevice(i);
+		if (dev) {
+			dev->GetPose(toOrigin, &poseArray[i], ETrackingStateType::TrackingStateType_Rendering);
+		}else{
+			poseArray[i] = BackendManager::InvalidPose();
+		}
+	}
 }
 
 /* Submitting Frames */
@@ -224,7 +233,7 @@ void XrBackend::WaitForTrackingData()
 	XrViewLocateInfo locateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
 	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	locateInfo.displayTime = xr_gbl->nextPredictedFrameTime;
-	locateInfo.space = xr_gbl->floorSpace; // Should make no difference to the FOV
+	locateInfo.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
 	XrViewState viewState = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
 	XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
@@ -313,17 +322,43 @@ void XrBackend::SubmitFrames(bool showSkybox)
 
 	// Pass in a projection layer, otherwise nothing will show up on the screen
 	XrCompositionLayerProjection mainLayer{ XR_TYPE_COMPOSITION_LAYER_PROJECTION };
-	mainLayer.space = xr_gbl->floorSpace; // Shouldn't matter what space we use, so long it matches views->pose
+	mainLayer.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
 	mainLayer.views = projectionViews;
 	mainLayer.viewCount = 2;
 
-	XrCompositionLayerBaseHeader* headers[] = {
-		(XrCompositionLayerBaseHeader*)&mainLayer,
-	};
-	info.layers = headers;
-	info.layerCount = sizeof(headers) / sizeof(void*);
+	XrCompositionLayerBaseHeader const* const* headers;
+	XrCompositionLayerBaseHeader* app_layer = (XrCompositionLayerBaseHeader*)&mainLayer;
+	int layer_count = 0;
 
-	OOVR_FAILED_XR_ABORT(xrEndFrame(xr_session, &info));
+	BaseOverlay* overlay = GetUnsafeBaseOverlay();
+
+	for (int i = 0; i < mainLayer.viewCount; ++i) {
+		XrCompositionLayerProjectionView& layer = projectionViews[i];
+		layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+	}
+
+	if (overlay)
+	{
+		layer_count = overlay->_BuildLayers(app_layer, headers);
+	}
+	else {
+		layer_count = 1;
+		headers = &app_layer;
+	}
+
+	info.layers = headers;
+	info.layerCount = layer_count;
+
+	auto xrEndFrame_result = xrEndFrame(xr_session, &info);
+	if (xrEndFrame_result == XR_ERROR_CALL_ORDER_INVALID)
+		OOVR_SOFT_ABORTF("XR_ERROR_CALL_ORDER_INVALID");
+	else if (xrEndFrame_result == XR_ERROR_VALIDATION_FAILURE)
+		OOVR_SOFT_ABORTF("XR_ERROR_VALIDATION_FAILURE");
+	else if (xrEndFrame_result == XR_ERROR_SWAPCHAIN_RECT_INVALID) {
+		OOVR_SOFT_ABORTF("XR_ERROR_SWAPCHAIN_RECT_INVALID");
+	}
+	else
+		OOVR_FAILED_XR_ABORT(xrEndFrame_result);
 
 	BaseSystem* sys = GetUnsafeBaseSystem();
 	if (sys) {
@@ -333,12 +368,87 @@ void XrBackend::SubmitFrames(bool showSkybox)
 
 IBackend::openvr_enum_t XrBackend::SetSkyboxOverride(const vr::Texture_t* pTextures, uint32_t unTextureCount)
 {
-	STUBBED();
+	// Needed for rFactor2 loading screens
+	if (unTextureCount == 6)
+	{
+		if (!sessionActive || !renderingFrame || pTextures == nullptr)
+			return 0;
+
+		XrFrameWaitInfo waitInfo{ XR_TYPE_FRAME_WAIT_INFO };
+		XrFrameState state{ XR_TYPE_FRAME_STATE };
+
+		OOVR_FAILED_XR_ABORT(xrWaitFrame(xr_session, &waitInfo, &state));
+		xr_gbl->nextPredictedFrameTime = state.predictedDisplayTime;
+
+		// This submits a frame when a skybox override is set. This is designed around rFactor2 where the skybox is used as
+		// a loading screen and is frequently updated, and most other games probably behave in a similar manner. It'd be
+		// ideal to run a separate thread while the skybox override is set to submit frames if IVRCompositor->Submit is not
+		// being called frequently enough, and that'd need to be carefully synchronised with the main submit thread. That's
+		// not yet implemented since it's not currently worth the hassle, but if someone in the future wants to do it:
+		// TODO submit skybox frames in their own thread. 
+		XrFrameBeginInfo beginInfo{ XR_TYPE_FRAME_BEGIN_INFO };
+		OOVR_FAILED_XR_ABORT(xrBeginFrame(xr_session, &beginInfo));
+
+		static std::unique_ptr<Compositor> compositor = nullptr;
+
+		if (compositor == nullptr)
+			compositor.reset(BaseCompositor::CreateCompositorAPI(pTextures));
+
+		vr::VRTextureBounds_t bounds;
+		bounds.uMin = 0.0;
+		bounds.uMax = 1.0;
+		bounds.vMin = 1.0;
+		bounds.vMax = 0.0;
+
+		compositor->Invoke(pTextures, &bounds);
+		XrCompositionLayerQuad layerQuad = { XR_TYPE_COMPOSITION_LAYER_QUAD };
+		layerQuad.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
+		layerQuad.next = NULL;
+		layerQuad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+		layerQuad.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+		layerQuad.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+		layerQuad.pose = { { 0.f, 0.f, 0.f, 1.f },
+				{ 0.0f, 0.0f, -0.65f } };
+		layerQuad.size = { 1.0f, 1.0f / 1.333f };
+		layerQuad.subImage = {
+			compositor->GetSwapChain(),
+			{ { 0, 0 },
+				{ (int32_t)compositor->GetSrcSize().width,
+					(int32_t)compositor->GetSrcSize().height } },
+			0};
+
+		XrCompositionLayerBaseHeader* layers[1];
+		layers[0] = (XrCompositionLayerBaseHeader*)&layerQuad;
+		XrFrameEndInfo info{ XR_TYPE_FRAME_END_INFO };
+		info.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+		info.displayTime = xr_gbl->nextPredictedFrameTime;
+		info.layers = layers;
+		info.layerCount = 1;
+
+		auto xrEndFrame_result = xrEndFrame(xr_session, &info);
+		if (xrEndFrame_result == XR_ERROR_CALL_ORDER_INVALID)
+			OOVR_SOFT_ABORTF("XR_ERROR_CALL_ORDER_INVALID");
+		else if (xrEndFrame_result == XR_ERROR_VALIDATION_FAILURE)
+			OOVR_SOFT_ABORTF("XR_ERROR_VALIDATION_FAILURE");
+		else if (xrEndFrame_result == XR_ERROR_SWAPCHAIN_RECT_INVALID) {
+			OOVR_LOG("XR_ERROR_SWAPCHAIN_RECT_INVALID");
+			OOVR_SOFT_ABORTF("subImage rect: %d %d %d %d", layerQuad.subImage.imageRect.offset.x, layerQuad.subImage.imageRect.offset.y, layerQuad.subImage.imageRect.extent.width, layerQuad.subImage.imageRect.extent.height);
+		}
+		else
+			OOVR_FAILED_XR_ABORT(xrEndFrame_result /*xrEndFrame(xr_session, &info)*/);
+	}
+	else
+	{
+		OOVR_SOFT_ABORTF("Unsupported texture count");
+	}
+
+
+	return 0;
 }
 
 void XrBackend::ClearSkyboxOverride()
 {
-	STUBBED();
+	OOVR_SOFT_ABORTF("No implementation");
 }
 
 /* Misc compositor */
@@ -363,11 +473,12 @@ bool XrBackend::GetFrameTiming(OOVR_Compositor_FrameTiming* pTiming, uint32_t un
 /* #if defined(SUPPORT_DX) */
 IBackend::openvr_enum_t XrBackend::GetMirrorTextureD3D11(vr::EVREye eEye, void* pD3D11DeviceOrResource, void** ppD3D11ShaderResourceView)
 {
-	STUBBED();
+	OOVR_SOFT_ABORTF("No implementation");
+	return 0;
 }
 void XrBackend::ReleaseMirrorTextureD3D11(void* pD3D11ShaderResourceView)
 {
-	STUBBED();
+	OOVR_SOFT_ABORTF("No implementation");
 }
 /* #endif */
 /** Returns the points of the Play Area. */
@@ -401,13 +512,14 @@ bool XrBackend::GetPlayAreaPoints(vr::HmdVector3_t* points, int* count)
 /** Determine whether the bounds are showing right now **/
 bool XrBackend::AreBoundsVisible()
 {
-	STUBBED();
+	OOVR_SOFT_ABORTF("No implementation");
+	return false;
 }
 /** Set the boundaries to be visible or not (although setting this to false shouldn't affect
  * what happens if the player moves their hands too close and shows it that way) **/
 void XrBackend::ForceBoundsVisible(bool status)
 {
-	STUBBED();
+	OOVR_SOFT_ABORTF("No implementation");
 }
 
 bool XrBackend::IsInputAvailable()
@@ -512,3 +624,8 @@ void OpenComposite_Android_EventPoll()
 	BackendManager::Instance().PumpEvents();
 }
 #endif
+
+bool XrBackend::IsGraphicsConfigured()
+{
+	return usingApplicationGraphicsAPI;
+}

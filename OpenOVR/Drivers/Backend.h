@@ -121,6 +121,8 @@ public:
 	*/
 	virtual vr::HmdMatrix34_t GetEyeToHeadTransform(vr::EVREye eEye) = 0;
 
+	virtual float GetIPD() = 0;
+
 	/** Returns the number of elapsed seconds since the last recorded vsync event. This
 	*	will come from a vsync timer event in the timer if possible or from the application-reported
 	*   time if that is not available. If no vsync times are available the function will
@@ -194,7 +196,8 @@ PREPEND void ForceBoundsVisible(bool status) APPEND; \
 PREPEND void PumpEvents() APPEND; \
 /** Returns true if the runtime is focused and receiving input */ \
 PREPEND bool IsInputAvailable() APPEND; \
-
+/** Returns true if the application graphics device is being used */ \
+PREPEND bool IsGraphicsConfigured() APPEND; \
 
 /**
  * Backend is similar in concept to the OpenVR driver API, however it is

@@ -36,6 +36,15 @@ The games that I can confirm it works with are as follows:
 - VTOL VR
 - PAYDAY 2 VR
 
+OpenXR supported games (WMR and Oculus headsets):
+- Assetto Corsa
+- Assetto Corsa Competizione
+- DCS World
+- Dirt Rally 2
+- Euro Truck Sim 2
+- IL-2
+- rFactor 2
+
 It probably works in quite a few other games, but I have not tried them.
 
 ## Downloading and installation
@@ -102,6 +111,9 @@ the game to think controllers are connected, disable this option. See issue #25.
 such as the HMD or the Touch controllers. On some games, this causes a log entry to be generated every frame, which isn't great for performance
 and clutters up the log. This is potentially useful for troubleshooting, and was enabled by default before the config option existed. In general,
 unless you've been told to enable this (or you know what you're doing while troubleshooting) you don't need to enable this.
+* `enableHiddenMeshFix` - boolean, default `enabled`. Alter the coordinates of the hidden area mesh mask to fit within the view's projection. 
+The hidden area mesh mask defines a region to which the game will not draw and is used to mask off areas of the display that you typically cannot
+see in the headset. If you see odd black regions around the view then try disabling this fix.
 
 The possible types are as follows:
 

@@ -7,6 +7,8 @@
 #include "../OpenOVR/Misc/xrmoreutils.h"
 #include "../OpenOVR/Reimpl/BaseSystem.h"
 #include "../OpenOVR/convert.h"
+#include "../OpenOVR/Misc/Config.h"
+
 
 void XrHMD::GetRecommendedRenderTargetSize(uint32_t* width, uint32_t* height)
 {
@@ -27,7 +29,13 @@ vr::HmdMatrix44_t XrHMD::GetProjectionMatrix(vr::EVREye eEye, float fNearZ, floa
 	XrViewLocateInfo locateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
 	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	locateInfo.displayTime = xr_gbl->GetBestTime();
-	locateInfo.space = xr_gbl->floorSpace; // Should make no difference to the FOV
+	
+	// View space is available first when starting up, depending on the runtime implementation. We quickly get accurate
+	// values from xrLocateViews, but that doesn't help if the app only calls GetProjectionMatrix once and stores the
+	// bad values.
+	// TODo A better way to solve this would be to submit a few blank frames when we're using the temporary device to
+	// let this value settle, along with any other similar data.
+	locateInfo.space = xr_gbl->viewSpace; // Should make no difference to the FOV
 
 	XrViewState state = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
@@ -91,7 +99,9 @@ void XrHMD::GetProjectionRaw(vr::EVREye eEye, float* pfLeft, float* pfRight, flo
 	XrViewLocateInfo locateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
 	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	locateInfo.displayTime = xr_gbl->GetBestTime();
-	locateInfo.space = xr_gbl->floorSpace; // Should make no difference to the FOV
+	
+	// View space is available first when starting up
+	locateInfo.space = xr_gbl->viewSpace; // Should make no difference to the FOV
 
 	XrViewState state = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
@@ -121,6 +131,11 @@ void XrHMD::GetProjectionRaw(vr::EVREye eEye, float* pfLeft, float* pfRight, flo
 	 * can just do that and it'll match.
 	 */
 
+	// Unfortunately this can occur on WMR, from the data not being valid very early on. See the comments in
+	// GetProjectionMatrix for a further discussion of this.
+	if (fov.angleDown == 0.0f && fov.angleUp == 0.0f)
+		OOVR_LOG("Warning! FOV is 0");
+
 	*pfTop = tanf(fov.angleDown);
 	*pfBottom = tanf(fov.angleUp);
 	*pfLeft = tanf(fov.angleLeft);
@@ -134,23 +149,44 @@ bool XrHMD::ComputeDistortion(vr::EVREye eEye, float fU, float fV, vr::Distortio
 
 vr::HmdMatrix34_t XrHMD::GetEyeToHeadTransform(vr::EVREye eEye)
 {
-	XrViewLocateInfo locateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
-	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-	locateInfo.displayTime = xr_gbl->GetBestTime();
-	locateInfo.space = xr_gbl->viewSpace;
+	static XrTime time = 0;
+	static XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
 
-	XrViewState state = { XR_TYPE_VIEW_STATE };
-	uint32_t viewCount = 0;
-	XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
-	OOVR_FAILED_XR_ABORT(xrLocateViews(xr_session, &locateInfo, &state, XruEyeCount, &viewCount, views));
-	OOVR_FALSE_ABORT(viewCount == XruEyeCount);
+	if (time != xr_gbl->GetBestTime())
+	{
+		XrViewLocateInfo locateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
+		locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+		locateInfo.displayTime = xr_gbl->GetBestTime();
+		locateInfo.space = xr_gbl->viewSpace;
+
+		uint32_t viewCount = 0;
+		XrViewState viewState = { XR_TYPE_VIEW_STATE };
+		XrResult res_xrLocateViews = xrLocateViews(xr_session, &locateInfo, &viewState, XruEyeCount, &viewCount, views);
+		if (res_xrLocateViews == XR_ERROR_SESSION_NOT_RUNNING) 
+		{
+			return vr::HmdMatrix34_t();
+		}
+
+		OOVR_FAILED_XR_ABORT(res_xrLocateViews);
+		OOVR_FALSE_ABORT(viewCount == XruEyeCount);
+
+		if (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT && viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT)
+		{
+			time = xr_gbl->GetBestTime();
+		}
+	}
 
 	return G2S_m34(X2G_om34_pose(views[eEye].pose));
 }
 
 bool XrHMD::GetTimeSinceLastVsync(float* pfSecondsSinceLastVsync, uint64_t* pulFrameCounter)
 {
-	STUBBED();
+	// TODO: Use frame time statistics to give proper data
+	OOVR_LOG_ONCE("Warning: static value returned");
+	if (pfSecondsSinceLastVsync)
+		*pfSecondsSinceLastVsync = 0.011f;
+
+	return false;
 }
 
 vr::HiddenAreaMesh_t XrHMD::GetHiddenAreaMesh(vr::EVREye eEye, vr::EHiddenAreaMeshType type)
@@ -202,10 +238,21 @@ vr::HiddenAreaMesh_t XrHMD::GetHiddenAreaMesh(vr::EVREye eEye, vr::EHiddenAreaMe
 	auto* arr = new vr::HmdVector2_t[mask.indexCountOutput];
 	result.pVertexData = arr;
 
-	for (int i = 0; i < mask.indexCountOutput; i++) {
+	float ftop, fbottom, fleft, fright;
+	GetProjectionRaw(eEye, &fleft, &fright, &ftop, &fbottom);
+
+	for (uint32_t i = 0; i < mask.indexCountOutput; i++) {
 		int index = mask.indices[i];
 		XrVector2f v = mask.vertices[index];
-		arr[i] = vr::HmdVector2_t{ v.x, v.y };
+		
+		if (oovr_global_configuration.EnableHiddenMeshFix())
+		{
+			arr[i] = vr::HmdVector2_t{ (v.x - fleft) / (fright - fleft), (v.y - ftop) / (fbottom - ftop) };
+		}
+		else
+		{
+			arr[i] = vr::HmdVector2_t{ v.x, v.y };
+		}
 	}
 
 	if (type == vr::k_eHiddenAreaMesh_LineLoop) {
@@ -226,6 +273,22 @@ void XrHMD::GetPose(vr::ETrackingUniverseOrigin origin, vr::TrackedDevicePose_t*
 	// TODO use ETrackingStateType
 
 	xr_utils::PoseFromSpace(pose, xr_gbl->viewSpace, origin);
+}
+
+float XrHMD::GetIPD()
+{
+	XrViewLocateInfo locateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
+	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+	locateInfo.displayTime = xr_gbl->GetBestTime();
+	locateInfo.space = xr_gbl->viewSpace;
+
+	XrViewState state = { XR_TYPE_VIEW_STATE };
+	uint32_t viewCount = 0;
+	XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
+	OOVR_FAILED_XR_ABORT(xrLocateViews(xr_session, &locateInfo, &state, XruEyeCount, &viewCount, views));
+	OOVR_FALSE_ABORT(viewCount == XruEyeCount);
+
+	return views[vr::Eye_Right].pose.position.x - views[vr::Eye_Left].pose.position.x;
 }
 
 // Properties

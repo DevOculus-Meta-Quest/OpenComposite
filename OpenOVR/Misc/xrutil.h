@@ -47,7 +47,7 @@ public:
 	XrSpace viewSpace;
 
 	// Set by XrBackend
-	XrTime nextPredictedFrameTime = 0;
+	XrTime nextPredictedFrameTime = 1;
 
 	/**
 	 * The latest time we've observed from the runtime. This will be set before a frame is submitted, so for
@@ -56,8 +56,10 @@ public:
 	 * For stuff where the next frame time is ideal but some valid time is required, see GetBestTime().
 	 *
 	 * Note that due to poor implementation, this may lag a long way before nextPredictedFrameTime.
+	 *
+	 * Zero or negative values for XrTime will result in XR_ERROR_TIME_INVALID so initialise to 1.
 	 */
-	XrTime latestTime = 0;
+	XrTime latestTime = 1;
 
 	/**
 	 * Returns nextPredictedFrameTime if available, otherwise returns latestTime.
@@ -66,6 +68,10 @@ public:
 };
 
 XrSpace xr_space_from_tracking_origin(vr::ETrackingUniverseOrigin origin);
+XrSpace xr_space_from_ref_space_type(XrReferenceSpaceType spaceType);
+
+XrQuaternionf yRotation(XrQuaternionf &q, XrQuaternionf &r);
+void rotate_vector_by_quaternion(const XrVector3f& v, const XrQuaternionf& q, XrVector3f& vprime);
 
 extern XrInstance xr_instance;
 extern XrSession xr_session;
