@@ -29,12 +29,12 @@ vr::HmdMatrix44_t XrHMD::GetProjectionMatrix(vr::EVREye eEye, float fNearZ, floa
 	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	locateInfo.displayTime = xr_gbl->GetBestTime();
 
-	// View space is available first when starting up, depending on the runtime implementation. We quickly get accurate
+	// Seated space is available first when starting up, depending on the runtime implementation. We quickly get accurate
 	// values from xrLocateViews, but that doesn't help if the app only calls GetProjectionMatrix once and stores the
 	// bad values.
-	// TODo A better way to solve this would be to submit a few blank frames when we're using the temporary device to
+	// TODO A better way to solve this would be to submit a few blank frames when we're using the temporary device to
 	// let this value settle, along with any other similar data.
-	locateInfo.space = xr_gbl->viewSpace; // Should make no difference to the FOV
+	locateInfo.space = xr_gbl->seatedSpace; // Should make no difference to the FOV
 
 	XrViewState state = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
@@ -99,8 +99,8 @@ void XrHMD::GetProjectionRaw(vr::EVREye eEye, float* pfLeft, float* pfRight, flo
 	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	locateInfo.displayTime = xr_gbl->GetBestTime();
 
-	// View space is available first when starting up
-	locateInfo.space = xr_gbl->viewSpace; // Should make no difference to the FOV
+	// Seated space is available first when starting up
+	locateInfo.space = xr_gbl->seatedSpace; // Should make no difference to the FOV
 
 	XrViewState state = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
@@ -159,15 +159,13 @@ vr::HmdMatrix34_t XrHMD::GetEyeToHeadTransform(vr::EVREye eEye)
 
 		uint32_t viewCount = 0;
 		XrViewState viewState = { XR_TYPE_VIEW_STATE };
-		XrResult res_xrLocateViews = xrLocateViews(xr_session, &locateInfo, &viewState, XruEyeCount, &viewCount, views);
-		if (res_xrLocateViews == XR_ERROR_SESSION_NOT_RUNNING) {
-			return vr::HmdMatrix34_t();
-		}
-
-		OOVR_FAILED_XR_ABORT(res_xrLocateViews);
+		XrView _views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
+		OOVR_FAILED_XR_SOFT_ABORT(xrLocateViews(xr_session, &locateInfo, &viewState, XruEyeCount, &viewCount, _views));
 		OOVR_FALSE_ABORT(viewCount == XruEyeCount);
 
 		if (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT && viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) {
+			views[0] = _views[0];
+			views[1] = _views[1];
 			time = xr_gbl->GetBestTime();
 		}
 	}
@@ -278,10 +276,16 @@ float XrHMD::GetIPD()
 	XrViewState state = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
 	XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
-	OOVR_FAILED_XR_ABORT(xrLocateViews(xr_session, &locateInfo, &state, XruEyeCount, &viewCount, views));
+
+	OOVR_FAILED_XR_SOFT_ABORT(xrLocateViews(xr_session, &locateInfo, &state, XruEyeCount, &viewCount, views));
 	OOVR_FALSE_ABORT(viewCount == XruEyeCount);
 
-	return views[vr::Eye_Right].pose.position.x - views[vr::Eye_Left].pose.position.x;
+	static float ipd = 0.0064;
+
+	if (state.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT && state.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT)
+		ipd = views[vr::Eye_Right].pose.position.x - views[vr::Eye_Left].pose.position.x;
+
+	return ipd;
 }
 
 // Properties

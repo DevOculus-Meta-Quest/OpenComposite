@@ -237,7 +237,7 @@ void XrBackend::WaitForTrackingData()
 	XrViewState viewState = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
 	XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
-	OOVR_FAILED_XR_ABORT(xrLocateViews(xr_session, &locateInfo, &viewState, XruEyeCount, &viewCount, views));
+	OOVR_FAILED_XR_SOFT_ABORT(xrLocateViews(xr_session, &locateInfo, &viewState, XruEyeCount, &viewCount, views));
 
 	for (int eye = 0; eye < XruEyeCount; eye++) {
 		projectionViews[eye].fov = views[eye].fov;
@@ -283,7 +283,7 @@ void XrBackend::StoreEyeTexture(
 	Compositor& comp = *compPtr;
 
 	// If the session is inactive, we may be unable to write to the surface
-	if (sessionActive)
+	if (sessionActive && renderingFrame)
 		comp.Invoke((XruEye)eye, texture, bounds, submitFlags, layer);
 
 	// TODO store view somewhere and use it for submitting our frame
@@ -326,7 +326,7 @@ void XrBackend::SubmitFrames(bool showSkybox)
 	mainLayer.views = projectionViews;
 	mainLayer.viewCount = 2;
 
-	XrCompositionLayerBaseHeader const* const* headers;
+	XrCompositionLayerBaseHeader const* const* headers = nullptr;
 	XrCompositionLayerBaseHeader* app_layer = (XrCompositionLayerBaseHeader*)&mainLayer;
 	int layer_count = 0;
 
@@ -335,11 +335,13 @@ void XrBackend::SubmitFrames(bool showSkybox)
 	for (int i = 0; i < mainLayer.viewCount; ++i) {
 		XrCompositionLayerProjectionView& layer = projectionViews[i];
 		layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+		if (layer.subImage.swapchain == nullptr)
+			app_layer = nullptr;
 	}
 
 	if (overlay) {
 		layer_count = overlay->_BuildLayers(app_layer, headers);
-	} else {
+	} else if (app_layer) {
 		layer_count = 1;
 		headers = &app_layer;
 	}
@@ -347,15 +349,7 @@ void XrBackend::SubmitFrames(bool showSkybox)
 	info.layers = headers;
 	info.layerCount = layer_count;
 
-	auto xrEndFrame_result = xrEndFrame(xr_session, &info);
-	if (xrEndFrame_result == XR_ERROR_CALL_ORDER_INVALID)
-		OOVR_SOFT_ABORT("XR_ERROR_CALL_ORDER_INVALID");
-	else if (xrEndFrame_result == XR_ERROR_VALIDATION_FAILURE)
-		OOVR_SOFT_ABORT("XR_ERROR_VALIDATION_FAILURE");
-	else if (xrEndFrame_result == XR_ERROR_SWAPCHAIN_RECT_INVALID) {
-		OOVR_SOFT_ABORT("XR_ERROR_SWAPCHAIN_RECT_INVALID");
-	} else
-		OOVR_FAILED_XR_ABORT(xrEndFrame_result);
+	OOVR_FAILED_XR_SOFT_ABORT(xrEndFrame(xr_session, &info));
 
 	BaseSystem* sys = GetUnsafeBaseSystem();
 	if (sys) {
@@ -367,8 +361,11 @@ IBackend::openvr_enum_t XrBackend::SetSkyboxOverride(const vr::Texture_t* pTextu
 {
 	// Needed for rFactor2 loading screens
 	if (unTextureCount == 6) {
-		if (!sessionActive || !renderingFrame || pTextures == nullptr)
+		if (!sessionActive || pTextures == nullptr || !usingApplicationGraphicsAPI)
 			return 0;
+
+		// Make sure any unfinished frames don't call xrEndFrame after this call
+		renderingFrame = false;
 
 		XrFrameWaitInfo waitInfo{ XR_TYPE_FRAME_WAIT_INFO };
 		XrFrameState state{ XR_TYPE_FRAME_STATE };
@@ -422,16 +419,8 @@ IBackend::openvr_enum_t XrBackend::SetSkyboxOverride(const vr::Texture_t* pTextu
 		info.layers = layers;
 		info.layerCount = 1;
 
-		auto xrEndFrame_result = xrEndFrame(xr_session, &info);
-		if (xrEndFrame_result == XR_ERROR_CALL_ORDER_INVALID)
-			OOVR_SOFT_ABORT("XR_ERROR_CALL_ORDER_INVALID");
-		else if (xrEndFrame_result == XR_ERROR_VALIDATION_FAILURE)
-			OOVR_SOFT_ABORT("XR_ERROR_VALIDATION_FAILURE");
-		else if (xrEndFrame_result == XR_ERROR_SWAPCHAIN_RECT_INVALID) {
-			OOVR_LOG("XR_ERROR_SWAPCHAIN_RECT_INVALID");
-			OOVR_SOFT_ABORTF("subImage rect: %d %d %d %d", layerQuad.subImage.imageRect.offset.x, layerQuad.subImage.imageRect.offset.y, layerQuad.subImage.imageRect.extent.width, layerQuad.subImage.imageRect.extent.height);
-		} else
-			OOVR_FAILED_XR_ABORT(xrEndFrame_result /*xrEndFrame(xr_session, &info)*/);
+		OOVR_FAILED_XR_SOFT_ABORT(xrEndFrame(xr_session, &info));
+
 	} else {
 		OOVR_SOFT_ABORT("Unsupported texture count");
 	}

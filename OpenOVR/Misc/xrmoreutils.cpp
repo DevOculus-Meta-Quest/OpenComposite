@@ -12,8 +12,9 @@ void xr_utils::PoseFromSpace(vr::TrackedDevicePose_t* pose, XrSpace space, vr::E
 	auto baseSpace = xr_space_from_tracking_origin(origin);
 
 	XrSpaceVelocity velocity{ XR_TYPE_SPACE_VELOCITY };
-	XrSpaceLocation info{ XR_TYPE_SPACE_LOCATION, &velocity };
-	OOVR_FAILED_XR_ABORT(xrLocateSpace(space, baseSpace, xr_gbl->GetBestTime(), &info));
+	XrSpaceLocation info{ XR_TYPE_SPACE_LOCATION, &velocity, 0, {} };
+
+	OOVR_FAILED_XR_SOFT_ABORT(xrLocateSpace(space, baseSpace, xr_gbl->GetBestTime(), &info));
 
 	// TODO velocity
 	pose->bDeviceIsConnected = true;
