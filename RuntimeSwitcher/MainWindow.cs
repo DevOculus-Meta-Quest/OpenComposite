@@ -158,7 +158,7 @@ namespace RuntimeSwitcher
             {
                 downloads = true;
                 statusLabel.Text = "Downloading 32-bit DLL";
-                await DownloadFile(vrclient, "https://znix.xyz/OpenComposite/download.php?arch=x86");
+                await DownloadFile(vrclient, "https://ci.appveyor.com/api/projects/ZNix/openovr/artifacts/Win32/openvr_api.dll?branch=openxr&pr=false&job=Platform%3A+Win32");
             }
 
             string vrclient_x64 = ocBinPath + Path.DirectorySeparatorChar + "vrclient_x64.dll";
@@ -166,7 +166,7 @@ namespace RuntimeSwitcher
             {
                 downloads = true;
                 statusLabel.Text = "Downloading 64-bit DLL";
-                await DownloadFile(vrclient_x64, "https://znix.xyz/OpenComposite/download.php?arch=x64");
+                await DownloadFile(vrclient_x64, "https://ci.appveyor.com/api/projects/ZNix/openovr/artifacts/x64/openvr_api.dll?branch=openxr&pr=false&job=Platform%3A+x64");
             }
 
             File.WriteAllText(revisionFilePath, await UpdateChecker.GetLatestHash());
