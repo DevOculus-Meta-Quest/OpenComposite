@@ -147,7 +147,7 @@ If you find an issue, missing interface, crash etc then *please* let me know abo
 way of doing this and you'll automatically get an email when it's fixed (if you let me know
 via a different method I'll probably make an issue and send you the link to help keep track of them).
 
-If you do not or cannot create or use a GitLab account for whatever reason, you can join the Discord server and report the issue in #bugs.
+If you do not or cannot create or use a GitLab account for whatever reason, you can join the [Discord server](https://discord.gg/zYA6Tzs) and report the issue in #bugs.
 
 In any case, please include the contents your `openovr_log` file - each time you start
 a game, this is created next to the EXE file and contains potentially invaluable debugging
