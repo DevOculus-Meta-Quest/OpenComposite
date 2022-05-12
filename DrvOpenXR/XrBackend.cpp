@@ -286,6 +286,8 @@ void XrBackend::StoreEyeTexture(
 	if (sessionActive && renderingFrame)
 		comp.Invoke((XruEye)eye, texture, bounds, submitFlags, layer);
 
+	submittedEyeTextures = true;
+
 	// TODO store view somewhere and use it for submitting our frame
 
 	// If WaitGetPoses was called before the first texture was submitted, we're in a kinda weird state
@@ -300,14 +302,21 @@ void XrBackend::StoreEyeTexture(
 	}
 }
 
-void XrBackend::SubmitFrames(bool showSkybox)
+void XrBackend::SubmitFrames(bool showSkybox, bool postPresent)
 {
 	// Always pump events, even if the session isn't active - this is what makes the session active
 	// in the first place.
 	PumpEvents();
 
-	if (!renderingFrame)
+	// If we are getting calls from PostPresentHandOff then skip the calls from other functions as
+	//  there will be other data such as GUI layers to be added before ending the frame.
+	bool skipRender = postPresentStatus && !postPresent;
+	postPresentStatus = postPresent;
+
+	if (!renderingFrame || skipRender)
 		return;
+
+	// All data submitted, rendering has finished, frame can be ended.
 	renderingFrame = false;
 
 	// Make sure the OpenXR session is active before doing anything else
@@ -320,25 +329,32 @@ void XrBackend::SubmitFrames(bool showSkybox)
 	info.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
 	info.displayTime = xr_gbl->nextPredictedFrameTime;
 
-	// Pass in a projection layer, otherwise nothing will show up on the screen
-	XrCompositionLayerProjection mainLayer{ XR_TYPE_COMPOSITION_LAYER_PROJECTION };
-	mainLayer.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
-	mainLayer.views = projectionViews;
-	mainLayer.viewCount = 2;
-
 	XrCompositionLayerBaseHeader const* const* headers = nullptr;
-	XrCompositionLayerBaseHeader* app_layer = (XrCompositionLayerBaseHeader*)&mainLayer;
+	XrCompositionLayerBaseHeader* app_layer = nullptr;
+	
 	int layer_count = 0;
 
-	BaseOverlay* overlay = GetUnsafeBaseOverlay();
+	// Apps can use layers to provide GUIs and loading screens where a 3D environment is not being rendered.
+	// Only create the projection layer if we have a 3D environment to submit.
+	XrCompositionLayerProjection mainLayer{ XR_TYPE_COMPOSITION_LAYER_PROJECTION };
+	if (submittedEyeTextures) {
+		// We have eye textures so setup a projection layer
+		mainLayer.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+		mainLayer.views = projectionViews;
+		mainLayer.viewCount = 2;
 
-	for (int i = 0; i < mainLayer.viewCount; ++i) {
-		XrCompositionLayerProjectionView& layer = projectionViews[i];
-		layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-		if (layer.subImage.swapchain == XR_NULL_HANDLE)
-			app_layer = nullptr;
+		app_layer = (XrCompositionLayerBaseHeader*)&mainLayer;
+		for (int i = 0; i < mainLayer.viewCount; ++i) {
+			XrCompositionLayerProjectionView& layer = projectionViews[i];
+			layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+			if (layer.subImage.swapchain == XR_NULL_HANDLE)
+				app_layer = nullptr;
+		}
+		submittedEyeTextures = false;
 	}
 
+	// If we have an overlay then add
+	BaseOverlay* overlay = GetUnsafeBaseOverlay();
 	if (overlay) {
 		layer_count = overlay->_BuildLayers(app_layer, headers);
 	} else if (app_layer) {
@@ -346,6 +362,8 @@ void XrBackend::SubmitFrames(bool showSkybox)
 		headers = &app_layer;
 	}
 
+	// It's ok if no layers have been added at this point,
+	// it will just cause the display to be blanked
 	info.layers = headers;
 	info.layerCount = layer_count;
 
@@ -360,8 +378,10 @@ void XrBackend::SubmitFrames(bool showSkybox)
 IBackend::openvr_enum_t XrBackend::SetSkyboxOverride(const vr::Texture_t* pTextures, uint32_t unTextureCount)
 {
 	// Needed for rFactor2 loading screens
-	if (unTextureCount == 6) {
-		if (!sessionActive || pTextures == nullptr || !usingApplicationGraphicsAPI)
+	if (unTextureCount && pTextures) {
+		CheckOrInitCompositors(pTextures);
+
+		if (!sessionActive || !usingApplicationGraphicsAPI)
 			return 0;
 
 		// Make sure any unfinished frames don't call xrEndFrame after this call
@@ -611,3 +631,10 @@ bool XrBackend::IsGraphicsConfigured()
 {
 	return usingApplicationGraphicsAPI;
 }
+
+void XrBackend::OnOverlayTexture(const vr::Texture_t* texture)
+{
+	if (!usingApplicationGraphicsAPI)
+		CheckOrInitCompositors(texture);
+}
+
