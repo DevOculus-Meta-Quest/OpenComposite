@@ -1,7 +1,7 @@
 # OpenComposite (OpenXR) - Play SteamVR games without SteamVR!
 
-[![Discord](https://img.shields.io/discord/499733750209314816.svg)](https://discord.gg/zYA6Tzs)
-[![AppVeyor](https://img.shields.io/appveyor/ci/ZNix/openovr.svg)](https://ci.appveyor.com/project/ZNix/openovr)
+[![Discord](https://img.shields.io/discord/499733750209314816.svg?style=for-the-badge&logo=discord&label=discord)](https://discord.gg/zYA6Tzs)
+[![AppVeyor](https://img.shields.io/appveyor/ci/ZNix/openovr.svg?style=for-the-badge&logo=appveyor)](https://ci.appveyor.com/project/ZNix/openovr)
 
 OpenComposite OpenXR (previously known as OpenOVR - OpenVR for OculusVR - but renamed due to confusion with OpenVR) is
 an implementation of SteamVR's API - OpenVR, forwarding calls directly
@@ -30,18 +30,22 @@ of your controller.
 - The virtual keyboard does not yet.
 
 The games that I can confirm it works with are as follows:
-- Assetto Corsa
+- Autmobilista 2
+- Assetto Corsa **
 - Assetto Corsa Competizione
 - DCS World *
 - Dirt Rally 2 *
 - Euro Truck Sim 2
 - IL-2
+- Project CARS 2
 - rFactor 2
 
 \* These games use an old version of D3DCompiler_47.dll that is incompatible with some OpenXR Runtimes. 
 If you experience an error with OpenComposite resulting in a -2 error code then find the D3DCompiler_47.dll in the game install
 dir and rename to D3DCompiler_47.dll_orig. This will then use the one from your system path that should be the latest version if
 your system is up to date.
+
+\** Some Oculus headsets seem to be incompatible with OpenXR initialising with Vulkan for some games. If you have issues with AC or other games try putting initUsingVulkan=false in the opencomposite.ini (see [Configuration](https://gitlab.com/znixian/OpenOVR/-/tree/openxr#configuration-file) section for details.)
 
 It probably works in quite a few other games, but I have not tried them.
 
@@ -115,6 +119,8 @@ see in the headset. If you see odd black regions around the view then try disabl
 * `invertUsingShaders` - boolean, default `disabled`. Invert the image for display using shaders rather than replying on XR runtime and inverted FOV values. 
 Some games render the image inverted and rely on the runtime to display correctly. In OpenXR some runtimes don't do the inversion correctly.
 If so enable this option for OpenComposite to do the inversion when copying the image using shaders. This might have a minor cost in performance.
+* `initUsingVulkan` - boolean, default `true`. If available the temporary graphics adapter at start up will use Vulkan by default. This may be
+incompatible with some games. This will mostly affect Oculus headsets. 
 
 The possible types are as follows:
 
@@ -147,8 +153,7 @@ If you find an issue, missing interface, crash etc then *please* let me know abo
 way of doing this and you'll automatically get an email when it's fixed (if you let me know
 via a different method I'll probably make an issue and send you the link to help keep track of them).
 
-If you do not or cannot create or use a GitLab account for whatever reason, you can message me
-on Discord - I'm at ZNix#6217. If there is enough interest, I'll create a Discord server.
+If you do not or cannot create or use a GitLab account for whatever reason, you can join the [Discord server](https://discord.gg/zYA6Tzs) and report the issue in #bugs.
 
 In any case, please include the contents your `openovr_log` file - each time you start
 a game, this is created next to the EXE file and contains potentially invaluable debugging

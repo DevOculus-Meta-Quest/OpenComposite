@@ -343,13 +343,17 @@ add_library(OCCore STATIC
 	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRCompositor_017.h
 	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRMailbox_001.h
 	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRInputInternal_002.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRControlPanel_001.h
 	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRControlPanel_006.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_002.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_004.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_005.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_006.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_004.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_005.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_006.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperone_003.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_009.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_012.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_013.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_014.h
@@ -369,6 +373,7 @@ add_library(OCCore STATIC
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_001.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_002.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRNotifications_002.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_007.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_010.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_011.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_012.h
@@ -378,6 +383,7 @@ add_library(OCCore STATIC
 	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_017.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_018.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_019.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_002.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_004.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_005.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_006.h
@@ -386,6 +392,7 @@ add_library(OCCore STATIC
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSettings_001.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSettings_002.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSpatialAnchors_001.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_009.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_011.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_012.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_014.h
@@ -393,6 +400,7 @@ add_library(OCCore STATIC
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_016.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_017.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_019.h
+	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_001.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_003.h
 	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_005.h
 	SplitOpenVRHeaders/OpenVR/interfaces/openvr.h
@@ -438,6 +446,7 @@ endif ()
 set(OCOVR_SRC_ALL
 	OCOVR/${OCOVR_PLAT_SRC}
 	OCOVR/openvr_api.cpp
+	OCOVR/openvr_api_0_9_12.cpp
 
 	# Resources don't get nicely included in a library file
 	${OVR_RESOURCES}

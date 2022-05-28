@@ -4,6 +4,7 @@
 
 #include "DrvOpenXR.h"
 
+#include "../OpenOVR/Misc/Config.h"
 #include "../OpenOVR/Misc/android_api.h"
 #include "../OpenOVR/Misc/xr_ext.h"
 #include "../OpenOVR/Reimpl/BaseInput.h"
@@ -241,8 +242,7 @@ IBackend* DrvOpenXR::CreateOpenXRBackend()
 
 	if (!temporaryGraphics) {
 #if defined(SUPPORT_VK)
-		// If we have Vulkan prioritise that, since we need it if the application uses Vulkan
-		if (apiFlags & XR_SUPPORTED_GRAPHCIS_API_VK) {
+		if ((apiFlags & XR_SUPPORTED_GRAPHCIS_API_VK) && oovr_global_configuration.InitUsingVulkan()) {
 			temporaryGraphics = std::make_unique<TemporaryVk>();
 		}
 #endif

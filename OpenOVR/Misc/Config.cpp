@@ -8,6 +8,14 @@
 #include <locale>
 #include <string>
 
+#ifdef WIN32
+#include <direct.h>
+#define GetCurrentDir _getcwd
+#else
+#include <unistd.h>
+#define GetCurrentDir getcwd
+#endif
+
 using namespace std;
 using vr::HmdColor_t;
 
@@ -48,10 +56,14 @@ static bool parse_bool(string orig, string name, int line)
 {
 	string val = str_tolower(orig);
 
-	if (val == "true" || val == "on" || val == "enabled")
+	if (val == "true" || val == "on" || val == "enabled") {
+		OOVR_LOGF("Setting config param %s to true", name.c_str());
 		return true;
-	if (val == "false" || val == "off" || val == "disabled")
+	}
+	if (val == "false" || val == "off" || val == "disabled") {
+		OOVR_LOGF("Setting config param %s to false", name.c_str());
 		return false;
+	}
 
 	string err = "Value " + orig + " for in config file for " + name + " on line "
 	    + to_string(line) + " is not a boolean - true/on/enabled/false/off/disabled";
@@ -79,6 +91,7 @@ static HmdColor_t parse_HmdColor_t(string orig, string name, int line)
 	c.g = ((hexval(val[3]) << 4) + hexval(val[4])) / 255.0f;
 	c.b = ((hexval(val[5]) << 4) + hexval(val[6])) / 255.0f;
 
+	OOVR_LOGF("Setting config param %s to %f %f %f", name.c_str(), c.r, c.g, c.b);
 	return c;
 
 invalid:
@@ -102,6 +115,7 @@ static float parse_float(string orig, string name, int line)
 		ABORT(err);
 	}
 
+	OOVR_LOGF("Setting config param %s to %f", name.c_str(), result);
 	return result;
 }
 
@@ -116,10 +130,10 @@ int Config::ini_handler(void* user, const char* pSection,
 
 	Config* cfg = (Config*)user;
 
-#define CFGOPT(type, vname)                               \
-	if (name == #vname) {                                 \
-		cfg->vname = parse_##type(value, #vname, lineno); \
-		return true;                                      \
+#define CFGOPT(type, vname)                             \
+	if (name == #vname) {                               \
+		cfg->vname = parse_##type(value, name, lineno); \
+		return true;                                    \
 	}
 
 	if (section == "" || section == "default") {
@@ -138,6 +152,7 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, enableAppRequestedCubemap);
 		CFGOPT(bool, enableHiddenMeshFix);
 		CFGOPT(bool, invertUsingShaders);
+		CFGOPT(bool, initUsingVulkan);
 	}
 
 #undef CFGOPT
@@ -152,8 +167,12 @@ static int wini_parse(const wchar_t* filename, ini_handler handler, void* user)
 	std::string utf8filename = CHAR_CONV.to_bytes(filename);
 
 	FILE* file = fopen(utf8filename.c_str(), "r");
-	if (!file)
+	if (!file) {
+		OOVR_LOGF("No config file found at %s", utf8filename.c_str());
 		return -1;
+	}
+
+	OOVR_LOGF("Reading config file at %s", utf8filename.c_str());
 
 	int error = ini_parse_file(file, handler, user);
 	fclose(file);
@@ -184,6 +203,7 @@ Config::Config()
 		}
 	}
 
+	OOVR_LOG("Checking for global config file...");
 	wstring file = dir + L"opencomposite.ini";
 	int err = wini_parse(file.c_str(), ini_handler, this);
 #else
@@ -194,7 +214,15 @@ Config::Config()
 	if (err == -1 || err == 0) {
 		// No such file or it was parsed successfully, check the working directory
 		// for a file that overrides some properties
-		file = L"opencomposite.ini";
+		char buff[FILENAME_MAX];
+		GetCurrentDir(buff, FILENAME_MAX);
+		file = wstring(&buff[0], &buff[strlen(buff)]);
+#ifdef _WIN32
+		file += L"\\opencomposite.ini";
+#else
+		file += L"/opencomposite.ini";
+#endif
+		OOVR_LOG("Checking for app specific config file...");
 		err = wini_parse(file.c_str(), ini_handler, this);
 	}
 
