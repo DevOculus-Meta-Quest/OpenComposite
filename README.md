@@ -31,12 +31,9 @@ of your controller.
 - The virtual keyboard does not yet work in OpenGL-, DirectX12- or Vulkan-based games. This should only affect DOOM BFG and older
 versions of Vivecraft however.
 
-The games that I can confirm it works with are as follows:
-- Skyrim VR
-- VTOL VR
-- PAYDAY 2 VR
+#[Game compatibility spreadsheet](https://docs.google.com/spreadsheets/d/1s2SSuRt0oHm91RUZB-R-ef5BrfOtvP_jwDwb6FuMF9Q/edit#gid=2068512515)
 
-It probably works in quite a few other games, but I have not tried them.
+Feel free to comment on the spreadsheet for us to modify its information.
 
 ## Downloading and installation
 
