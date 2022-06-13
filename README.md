@@ -2,7 +2,14 @@
 
 [![Discord](https://img.shields.io/discord/499733750209314816.svg)](https://discord.gg/zYA6Tzs)
 [![AppVeyor](https://img.shields.io/appveyor/ci/ZNix/openovr.svg)](https://ci.appveyor.com/project/ZNix/openovr)
+# THIS IS THE OCULUS ONLY VERSION. IT IS DEPRECATED.
+# FOR ANY OTHER HEADSET MANUFACTURER, [FOLLOW THIS LINK](https://gitlab.com/znixian/OpenOVR/-/tree/master)
+---------------------------------------------
+# [GAME COMPATIBILITY SPREADSHEET](https://docs.google.com/spreadsheets/d/1s2SSuRt0oHm91RUZB-R-ef5BrfOtvP_jwDwb6FuMF9Q/edit#gid=2068512515)
 
+Feel free to comment on the spreadsheet for us to modify its information.
+
+------------------------------------------------------
 OpenComposite (previously known as OpenOVR - OpenVR for OculusVR - but renamed due to confusion with OpenVR) is
 an implementation of SteamVR's API - OpenVR, forwarding calls directly
 to the Oculus runtime. Think of it as a backwards version of ReVive, for the Rift.
@@ -30,13 +37,6 @@ might not see a controller model at all. Most games use their own hand models th
 of your controller.
 - The virtual keyboard does not yet work in OpenGL-, DirectX12- or Vulkan-based games. This should only affect DOOM BFG and older
 versions of Vivecraft however.
-
-The games that I can confirm it works with are as follows:
-- Skyrim VR
-- VTOL VR
-- PAYDAY 2 VR
-
-It probably works in quite a few other games, but I have not tried them.
 
 ## Downloading and installation
 
