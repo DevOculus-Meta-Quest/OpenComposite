@@ -31,7 +31,8 @@ of your controller.
 - The virtual keyboard does not yet work in OpenGL-, DirectX12- or Vulkan-based games. This should only affect DOOM BFG and older
 versions of Vivecraft however.
 
-#[Game compatibility spreadsheet](https://docs.google.com/spreadsheets/d/1s2SSuRt0oHm91RUZB-R-ef5BrfOtvP_jwDwb6FuMF9Q/edit#gid=2068512515)
+#COMPATIBILITY WITH GAMES.
+[Game compatibility spreadsheet](https://docs.google.com/spreadsheets/d/1s2SSuRt0oHm91RUZB-R-ef5BrfOtvP_jwDwb6FuMF9Q/edit#gid=2068512515)
 
 Feel free to comment on the spreadsheet for us to modify its information.
 
