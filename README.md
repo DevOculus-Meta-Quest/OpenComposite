@@ -4,7 +4,7 @@
 [![AppVeyor](https://img.shields.io/appveyor/ci/ZNix/openovr.svg)](https://ci.appveyor.com/project/ZNix/openovr)
 # THIS IS THE OCULUS ONLY VERSION. IT IS DEPRECATED.
 # FOR ANY OTHER HEADSET MANUFACTURER, [FOLLOW THIS LINK](https://gitlab.com/znixian/OpenOVR/-/tree/master)
-
+---------------------------------------------
 # [Game compatibility spreadsheet](https://docs.google.com/spreadsheets/d/1s2SSuRt0oHm91RUZB-R-ef5BrfOtvP_jwDwb6FuMF9Q/edit#gid=2068512515)
 
 Feel free to comment on the spreadsheet for us to modify its information.
