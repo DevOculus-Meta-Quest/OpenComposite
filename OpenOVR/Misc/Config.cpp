@@ -111,6 +111,14 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, enableLayers);
 		CFGOPT(bool, dx10Mode);
 		CFGOPT(bool, enableAppRequestedCubemap);
+
+		CFGOPT(float, leftEyePitch);
+		CFGOPT(float, leftEyeRoll);
+		CFGOPT(float, leftEyeYaw);
+		CFGOPT(float, rightEyePitch);
+		CFGOPT(float, rightEyeRoll);
+		CFGOPT(float, rightEyeYaw);
+
 	}
 
 #undef CFGOPT

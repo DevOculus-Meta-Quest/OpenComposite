@@ -19,6 +19,13 @@ public:
 	inline bool DX10Mode() const { return dx10Mode; }
 	inline bool EnableAppRequestedCubemap() const { return enableAppRequestedCubemap; }
 
+	float LeftEyePitch() const { return leftEyePitch; }
+	float LeftEyeRoll() const { return leftEyeRoll; }
+	float LeftEyeYaw() const { return leftEyeYaw; }
+	float RightEyePitch() const { return rightEyePitch; }
+	float RightEyeRoll() const { return rightEyeRoll; }
+	float RightEyeYaw() const { return rightEyeYaw; }
+
 private:
 	static int ini_handler(
 		void* user, const char* section,
@@ -42,6 +49,14 @@ private:
 
 	bool dx10Mode = false;
 	bool enableAppRequestedCubemap = true;
+
+	float leftEyePitch = 0.0f;
+	float leftEyeRoll = 0.0f;
+	float leftEyeYaw = 0.0f;
+	float rightEyePitch = 0.0f;
+	float rightEyeRoll = 0.0f;
+	float rightEyeYaw = 0.0f;
+
 };
 
 extern Config oovr_global_configuration;

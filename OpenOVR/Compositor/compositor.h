@@ -146,6 +146,9 @@ public:
 
 private:
 	GLuint fboId = 0;
+	GLuint program;
+	GLuint texLoc;
+	GLuint quadVbo;
 };
 
 class VkCompositor : public Compositor {

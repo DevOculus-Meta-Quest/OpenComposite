@@ -103,15 +103,8 @@ bool OculusHMD::ComputeDistortion(EVREye eEye, float fU, float fV, DistortionCoo
 
 HmdMatrix34_t OculusHMD::GetEyeToHeadTransform(EVREye ovr_eye) {
 	ovrEyeType eye = S2O_eye(ovr_eye);
-	ovrPosef &pose = ovr::hmdToEyeViewPose[eye];
-
-	OVR::Matrix4f transform(pose);
-	// For some bizzare reason, inverting the matrix (to go from hmd->eye
-	// to eye->hmd) breaks the view, and it's fine without it. That or I'm misunderstanding
-	// what exactly this method is supposed to return.
-
 	HmdMatrix34_t result;
-	O2S_om34(transform, result);
+	O2S_om34(ovr::hmdToEyeMatrix[eye], result);
 	return result;
 }
 
@@ -142,10 +135,10 @@ bool OculusHMD::GetTimeSinceLastVsync(float * pfSecondsSinceLastVsync, uint64_t 
 }
 
 OVR_PUBLIC_FUNCTION(ovrResult)
-ovr_GetViewportStencil(
+ovr_GetFovStencil(
 		ovrSession session,
-		const ovrViewportStencilDesc* viewportStencilDesc,
-		ovrViewportStencilMeshBuffer* outMeshBuffer);
+		const ovrFovStencilDesc* fovStencilDesc,
+		ovrFovStencilMeshBuffer* outMeshBuffer);
 
 HiddenAreaMesh_t OculusHMD::GetHiddenAreaMesh(EVREye eEye, EHiddenAreaMeshType type) {
 	// TODO should we not cache this?
@@ -161,29 +154,29 @@ HiddenAreaMesh_t OculusHMD::GetHiddenAreaMesh(EVREye eEye, EHiddenAreaMeshType t
 	}
 
 	ovrEyeType eye = eEye == Eye_Left ? ovrEye_Left : ovrEye_Right;
-	ovrViewportStencilDesc desc;
+	ovrFovStencilDesc desc;
 	desc.Eye = eye;
 	desc.FovPort = ovr::hmdDesc.DefaultEyeFov[eye];
 	desc.HmdToEyeRotation = ovr::eyeRenderDesc[eye].HmdToEyePose.Orientation;
 
 	if (type == k_eHiddenAreaMesh_Inverse) {
-		desc.StencilType = ovrViewportStencil_VisibleArea;
+		desc.StencilType = ovrFovStencil_VisibleArea;
 	}
 	else if (type == k_eHiddenAreaMesh_LineLoop) {
-		desc.StencilType = ovrViewportStencil_BorderLine;
+		desc.StencilType = ovrFovStencil_BorderLine;
 	}
 	else {
-		desc.StencilType = ovrViewportStencil_HiddenArea;
+		desc.StencilType = ovrFovStencil_HiddenArea;
 	}
 
-	ovrViewportStencilMeshBuffer mb = { 0 };
+	ovrFovStencilMeshBuffer mb = { 0 };
 	mb.AllocVertexCount = 0;
 	mb.VertexBuffer = NULL;
 	mb.AllocIndexCount = 0;
 	mb.IndexBuffer = NULL;
 
 	// Query for the size
-	ovr_GetViewportStencil(*ovr::session, &desc, &mb);
+	ovr_GetFovStencil(*ovr::session, &desc, &mb);
 
 	// Create the buffers
 	mb.AllocVertexCount = mb.UsedVertexCount;
@@ -192,7 +185,7 @@ HiddenAreaMesh_t OculusHMD::GetHiddenAreaMesh(EVREye eEye, EHiddenAreaMeshType t
 	mb.IndexBuffer = new uint16_t[mb.AllocIndexCount];
 
 	// Get the data
-	ovr_GetViewportStencil(*ovr::session, &desc, &mb);
+	ovr_GetFovStencil(*ovr::session, &desc, &mb);
 
 	// Convert the data into something usable by SteamVR
 	HiddenAreaMesh_t &result = hiddenAreaMeshes[eEye];
