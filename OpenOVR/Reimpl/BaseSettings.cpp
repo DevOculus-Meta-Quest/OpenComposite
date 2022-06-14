@@ -115,6 +115,14 @@ void  BaseSettings::SetFloat(const char * pchSection, const char * pchSettingsKe
 	if (peError)
 		*peError = VRSettingsError_None;
 
+	string section = pchSection;
+	string key = pchSettingsKey;
+	if (section == kk::k_pch_SteamVR_Section) {
+		if (key == kk::k_pch_SteamVR_IpdOffset_Float) {
+			return;
+		}
+	}
+	
 	STUBBED();
 }
 void  BaseSettings::SetString(const char * pchSection, const char * pchSettingsKey, const char * pchValue, EVRSettingsError * peError) {
@@ -176,6 +184,9 @@ float  BaseSettings::GetFloat(const char * pchSection, const char * pchSettingsK
 		}
 		else if (key == kk::k_pch_SteamVR_IPD_Float) {
 			return BaseSystem::SGetIpd();
+		}
+		else if (key == kk::k_pch_SteamVR_IpdOffset_Float) {
+			return 0.0;
 		}
 	}
 
