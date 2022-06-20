@@ -183,7 +183,8 @@ BaseInput::InputValueHandle::~InputValueHandle() = default;
 template <typename T>
 BaseInput::Registry<T>::~Registry() = default;
 template <typename T>
-BaseInput::Registry<T>::Registry(uint32_t _maxNameSize) : maxNameSize(_maxNameSize) {}
+BaseInput::Registry<T>::Registry(uint32_t _maxNameSize)
+    : maxNameSize(_maxNameSize) {}
 
 template <typename T>
 T* BaseInput::Registry<T>::LookupItem(const std::string& name) const
@@ -220,20 +221,20 @@ BaseInput::RegHandle BaseInput::Registry<T>::LookupHandle(const std::string& nam
 }
 
 template <typename T>
-std::string BaseInput::Registry<T>::ShortenOrLookupName(const std::string& longName){
+std::string BaseInput::Registry<T>::ShortenOrLookupName(const std::string& longName)
+{
 	std::string ret = lowerStr(longName);
-	if (ret.size() > maxNameSize-1){
+	if (ret.size() > maxNameSize - 1) {
 		auto iter = longNames.find(ret);
-		if (iter == longNames.end()){
+		if (iter == longNames.end()) {
 			// new name - shorten and append "_ln" + unique number (ln for Long Name)
 			std::string fullName = ret;
 			std::string unique_id = "_ln" + std::to_string(nameId);
-			ret = ret.substr(0, maxNameSize-1-unique_id.size()) + unique_id;
+			ret = ret.substr(0, maxNameSize - 1 - unique_id.size()) + unique_id;
 			longNames[fullName] = ret;
 			++nameId;
 			OOVR_LOGF("Shortened name %s to %s", fullName.c_str(), ret.c_str());
-		}
-		else{
+		} else {
 			// name has already been shortened before - find the shortened version
 			auto iter2 = handlesByName.find(iter->second);
 
@@ -254,7 +255,7 @@ T* BaseInput::Registry<T>::Initialise(const std::string& name, std::unique_ptr<T
 	std::string lowerName = lowerStr(name);
 
 	// apparently games CAN in fact have handles before initialization - Kayak VR does this
-	if (handlesByName.count(lowerName) != 0){
+	if (handlesByName.count(lowerName) != 0) {
 		// since we only generate dummy handles before initialization, make sure we only have dummy handles
 		OOVR_FALSE_ABORT((handlesByName[lowerName] & 0xFFFF0000) == 0xabcd0000);
 	}
@@ -278,9 +279,8 @@ T* BaseInput::Registry<T>::Initialise(const std::string& name, std::unique_ptr<T
 
 // ---
 
-BaseInput::BaseInput() :
-	actionSets(XR_MAX_ACTION_SET_NAME_SIZE),
-	actions(XR_MAX_ACTION_NAME_SIZE)
+BaseInput::BaseInput()
+    : actionSets(XR_MAX_ACTION_SET_NAME_SIZE), actions(XR_MAX_ACTION_NAME_SIZE)
 {
 	interactionProfiles.emplace_back(std::unique_ptr<InteractionProfile>(new OculusTouchInteractionProfile()));
 	interactionProfiles.emplace_back(std::unique_ptr<InteractionProfile>(new KhrSimpleInteractionProfile()));
