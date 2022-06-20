@@ -585,9 +585,6 @@ private:
 
 		// The maximum name size. Does not include the null terminator.
 		const uint32_t maxNameSize;
-
-		// A counter for ensuring names that are too long are unique.
-		uint8_t nameId = 0;
 	};
 
 	// See GetSyncSerial

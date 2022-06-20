@@ -229,10 +229,9 @@ std::string BaseInput::Registry<T>::ShortenOrLookupName(const std::string& longN
 		if (iter == longNames.end()) {
 			// new name - shorten and append "_ln" + unique number (ln for Long Name)
 			std::string fullName = ret;
-			std::string unique_id = "_ln" + std::to_string(nameId);
+			std::string unique_id = "_ln" + std::to_string(longNames.size());
 			ret = ret.substr(0, maxNameSize - 1 - unique_id.size()) + unique_id;
 			longNames[fullName] = ret;
-			++nameId;
 			OOVR_LOGF("Shortened name %s to %s", fullName.c_str(), ret.c_str());
 		} else {
 			// name has already been shortened before - find the shortened version
