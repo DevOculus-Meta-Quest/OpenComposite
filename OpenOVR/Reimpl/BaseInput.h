@@ -547,7 +547,7 @@ private:
 	template <typename T>
 	class Registry {
 	public:
-		Registry();
+		Registry(uint32_t _maxNameSize);
 		~Registry();
 
 		T* LookupItem(const std::string& name) const;
@@ -556,7 +556,12 @@ private:
 		T* Initialise(const std::string& name, std::unique_ptr<T> value);
 		std::vector<std::unique_ptr<T>>& GetItems() { return storage; }
 
+		// Function for shortening or looking up a shortened version of a name (if it exists)
+		// Necessary because OpenXR has defined limits on name lengths, while OpenVR appears to have no such limits
+		std::string ShortenOrLookupName(const std::string& longName);
+
 	private:
+
 		// A map of names to handles, used in the common case of not-the-first call
 		std::unordered_map<std::string, RegHandle> handlesByName;
 
@@ -573,6 +578,17 @@ private:
 
 		// The storage for all the actual items
 		std::vector<std::unique_ptr<T>> storage;
+
+		// A map for names that are too long. 
+		// For actions, these are names longer than XR_MAX_ACTION_NAME_SIZE
+		// For action sets, XR_MAX_ACTION_SET_NAME_SIZE
+		std::unordered_map<std::string, std::string> longNames;
+
+		// The maximum name size. Does not include the null terminator.
+		const uint32_t maxNameSize;
+		
+		// A counter for ensuring names that are too long are unique.
+		uint8_t nameId = 0;
 	};
 
 	// See GetSyncSerial
