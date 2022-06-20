@@ -252,11 +252,15 @@ template <typename T>
 T* BaseInput::Registry<T>::Initialise(const std::string& name, std::unique_ptr<T> value)
 {
 	std::string lowerName = lowerStr(name);
+	RegHandle handle = 0;
 
-	// apparently games CAN in fact have handles before initialization - Kayak VR does this
+	// apparently games CAN in fact grab handles before initialization - Kayak VR does this
+	// grab already created handle if it exists
 	if (handlesByName.count(lowerName) != 0) {
 		// since we only generate dummy handles before initialization, make sure we only have dummy handles
-		OOVR_FALSE_ABORT((handlesByName[lowerName] & 0xFFFF0000) == 0xabcd0000);
+		// dummy handles have no associated items
+		handle = handlesByName.find(lowerName)->second;
+		OOVR_FALSE_ABORT(itemsByHandle.find(handle) == itemsByHandle.end());
 	}
 
 	// Move the pointer into storage, so we'll own it
@@ -265,10 +269,12 @@ T* BaseInput::Registry<T>::Initialise(const std::string& name, std::unique_ptr<T
 
 	// Use pointer as handle, for ease of debugging only
 	// Since our values live as long as the registry, it's guaranteed their addresses won't repeat
-	auto handle = (RegHandle)ptr;
+	if (!handle) {
+		handle = (RegHandle)ptr;
+		handlesByName[lowerName] = handle;
+		namesByHandle[handle] = lowerName;
+	}
 
-	handlesByName[lowerName] = handle;
-	namesByHandle[handle] = lowerName;
 	itemsByName[lowerName] = ptr;
 	itemsByHandle[handle] = ptr;
 
