@@ -277,7 +277,7 @@ void VkCompositor::Invoke(XruEye eye, const vr::Texture_t* texture, const vr::VR
 
 		if (bounds.vMin > bounds.vMax) {
 			// TODO support vertically flipped images
-			XR_STUBBED(); // submitVerticallyFlipped = true;
+			// XR_STUBBED(); // submitVerticallyFlipped = true;
 			float newMax = bounds.vMin;
 			bounds.vMin = bounds.vMax;
 			bounds.vMax = newMax;
