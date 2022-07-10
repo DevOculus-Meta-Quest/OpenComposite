@@ -202,6 +202,7 @@ void VkCompositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBound
 	region.dstOffset = { 0, 0, 0 };
 	region.extent = { tex->m_nWidth, tex->m_nHeight, 1 };
 
+#if 0
 	vkCmdCopyImage(appCommandBuffer,
 	    // Valve defines a single correct image layout, which certainly
 	    //  makes things easier here.
@@ -212,26 +213,30 @@ void VkCompositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBound
 
 	    // Infromation about which subresource to copy, and which area to copy
 	    1, &region);
+#endif
 
-	// Repeat the image copy, but on the runtime side
-	// HACK: as of May 13th 2022 Monado does not support multisampling
-	// workaround: use vkCmdResolveImage if our max supported sample count is less than the texture's
-	// could theoretically keep this in place for any runtime that happens to not support multisampling
-	// note: vkCmdResolveImage doesn't support depth textures
-	if (xr_main_view(XruEyeLeft).maxSwapchainSampleCount < tex->m_nSampleCount) {
+	bool image_is_multisampled = xr_main_view(XruEyeLeft).maxSwapchainSampleCount < tex->m_nSampleCount;
+
+	if (image_is_multisampled) {
+		// HACK: As of May 13th 2022 Monado does not support multisampling, so we can't just copy the image.
+		// Instead, we do vkCmdResolveImage into the swapchain image.
+		// Todo - how do we tell which runtimes support multisampling?
+
 		vkCmdResolveImage(rtCommandBuffer,
 		    // Set in SetupMappedImages
-		    rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		    (VkImage)tex->m_nImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 
 		    // Set during the transition
 		    swapchainImages.at(currentIndex).image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 
 		    // Information about which subresource to copy, and which area to copy
 		    1, (VkImageResolve*)&region);
+
 	} else {
+		// If the image isn't multisampled, we can just copy it like normal.
 		vkCmdCopyImage(rtCommandBuffer,
 		    // Set in SetupMappedImages
-		    rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		    (VkImage)tex->m_nImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 
 		    // Set during the transition
 		    swapchainImages.at(currentIndex).image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -289,7 +294,7 @@ void VkCompositor::Invoke(XruEye eye, const vr::Texture_t* texture, const vr::VR
 
 		if (bounds.vMin > bounds.vMax) {
 			// TODO support vertically flipped images
-			XR_STUBBED(); // submitVerticallyFlipped = true;
+			// XR_STUBBED(); // submitVerticallyFlipped = true;
 			float newMax = bounds.vMin;
 			bounds.vMin = bounds.vMax;
 			bounds.vMax = newMax;
@@ -380,7 +385,7 @@ void VkCompositor::SetupMappedImages(VkCommandBuffer appCmdBuffer, std::vector<V
 
 	// Create the image on both the runtime and app sides
 	OOVR_FAILED_VK_ABORT(vkCreateImage(target->device, &imgInfo, nullptr, &rtImage));
-	OOVR_FAILED_VK_ABORT(vkCreateImage(appDevice, &imgInfo, nullptr, &appImage));
+	// OOVR_FAILED_VK_ABORT(vkCreateImage(appDevice, &imgInfo, nullptr, &appImage));
 
 	// Find how large the memory needs to be
 	VkDeviceSize imgSize = BindNextMemoryToImage(target->device, rtImage, VK_NULL_HANDLE, 0);
