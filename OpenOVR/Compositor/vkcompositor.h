@@ -36,5 +36,4 @@ private:
 	VkQueue appQueue = VK_NULL_HANDLE;
 	VkCommandPool appCommandPool = VK_NULL_HANDLE;
 	VkDeviceMemory appSharedMem = VK_NULL_HANDLE;
-	VkImage appImage = VK_NULL_HANDLE;
 };

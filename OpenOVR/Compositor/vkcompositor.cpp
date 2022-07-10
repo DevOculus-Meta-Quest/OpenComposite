@@ -75,9 +75,6 @@ VkCompositor::~VkCompositor()
 	vkDestroyCommandPool(appDevice, appCommandPool, nullptr);
 	vkDestroyCommandPool(target->device, rtCommandPool, nullptr);
 
-	if (appImage != VK_NULL_HANDLE)
-		vkDestroyImage(appDevice, appImage, nullptr);
-
 	if (rtImage != VK_NULL_HANDLE)
 		vkDestroyImage(target->device, rtImage, nullptr);
 
@@ -201,6 +198,7 @@ void VkCompositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBound
 	region.dstOffset = { 0, 0, 0 };
 	region.extent = { tex->m_nWidth, tex->m_nHeight, 1 };
 
+#if 0
 	vkCmdCopyImage(appCommandBuffer,
 	    // Valve defines a single correct image layout, which certainly
 	    //  makes things easier here.
@@ -211,26 +209,30 @@ void VkCompositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBound
 
 	    // Infromation about which subresource to copy, and which area to copy
 	    1, &region);
+#endif
 
-	// Repeat the image copy, but on the runtime side
-	// HACK: as of May 13th 2022 Monado does not support multisampling
-	// workaround: use vkCmdResolveImage if our max supported sample count is less than the texture's
-	// could theoretically keep this in place for any runtime that happens to not support multisampling
-	// note: vkCmdResolveImage doesn't support depth textures
-	if (xr_main_view(XruEyeLeft).maxSwapchainSampleCount < tex->m_nSampleCount) {
+	bool image_is_multisampled = xr_main_view(XruEyeLeft).maxSwapchainSampleCount < tex->m_nSampleCount;
+
+	if (image_is_multisampled) {
+		// HACK: As of July 2022 Monado does not support multisampling, so we can't just copy the image.
+		// Instead, we do vkCmdResolveImage into the swapchain image.
+		// Todo - how do we tell which runtimes support multisampling?
+
 		vkCmdResolveImage(rtCommandBuffer,
 		    // Set in SetupMappedImages
-		    rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		    (VkImage)tex->m_nImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 
 		    // Set during the transition
 		    swapchainImages.at(currentIndex).image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 
 		    // Information about which subresource to copy, and which area to copy
 		    1, (VkImageResolve*)&region);
+
 	} else {
+		// If the image isn't multisampled, we can just copy it like normal.
 		vkCmdCopyImage(rtCommandBuffer,
 		    // Set in SetupMappedImages
-		    rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		    (VkImage)tex->m_nImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 
 		    // Set during the transition
 		    swapchainImages.at(currentIndex).image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -367,7 +369,6 @@ void VkCompositor::SetupMappedImages(VkCommandBuffer appCmdBuffer, std::vector<V
 
 	// Create the image on both the runtime and app sides
 	OOVR_FAILED_VK_ABORT(vkCreateImage(target->device, &imgInfo, nullptr, &rtImage));
-	OOVR_FAILED_VK_ABORT(vkCreateImage(appDevice, &imgInfo, nullptr, &appImage));
 
 	// Find how large the memory needs to be
 	VkDeviceSize imgSize = BindNextMemoryToImage(target->device, rtImage, VK_NULL_HANDLE, 0);
@@ -380,7 +381,8 @@ void VkCompositor::SetupMappedImages(VkCommandBuffer appCmdBuffer, std::vector<V
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-	barrier.image = appImage;
+	barrier.image = rtImage;
+
 	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;
@@ -390,9 +392,6 @@ void VkCompositor::SetupMappedImages(VkCommandBuffer appCmdBuffer, std::vector<V
 	barrier.srcAccessMask = 0; // TODO
 	barrier.dstAccessMask = 0; // TODO
 
-	appBarriers.push_back(barrier);
-
-	barrier.image = rtImage;
 	rtBarriers.push_back(barrier);
 
 	//////////////////////////////////
@@ -430,7 +429,7 @@ void VkCompositor::SetupMappedImages(VkCommandBuffer appCmdBuffer, std::vector<V
 
 	// Bind that memory to the images
 	BindNextMemoryToImage(target->device, rtImage, rtSharedMem, 0);
-	BindNextMemoryToImage(appDevice, appImage, appSharedMem, 0);
+
 }
 
 #ifdef _WIN32
