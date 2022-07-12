@@ -356,7 +356,7 @@ void DrvOpenXR::VkGetPhysicalDevice(VkInstance instance, VkPhysicalDevice* out)
 {
 	*out = VK_NULL_HANDLE;
 
-	TemporaryVk* vk = GetTemporaryVk();
+	TemporaryVk* vk = temporaryGraphics->GetAsVk();
 	if (vk == nullptr)
 		OOVR_ABORT("Not using temporary Vulkan instance");
 
@@ -387,8 +387,4 @@ void DrvOpenXR::VkGetPhysicalDevice(VkInstance instance, VkPhysicalDevice* out)
 	OOVR_ABORT("Could not find matching Vulkan physical device for instance");
 }
 
-TemporaryVk* DrvOpenXR::GetTemporaryVk()
-{
-	return temporaryGraphics->GetAsVk();
-}
 #endif
