@@ -15,10 +15,12 @@
 #include <locale>
 #include <map>
 #include <optional>
+#include <set>
 #include <utility>
 
 #include "Misc/Input/KhrSimpleInteractionProfile.h"
 #include "Misc/Input/OculusInteractionProfile.h"
+#include "Misc/Input/ViveInteractionProfile.h"
 #include "Misc/xrmoreutils.h"
 
 using namespace vr;
@@ -288,8 +290,9 @@ T* BaseInput::Registry<T>::Initialise(const std::string& name, std::unique_ptr<T
 BaseInput::BaseInput()
     : actionSets(XR_MAX_ACTION_SET_NAME_SIZE), actions(XR_MAX_ACTION_NAME_SIZE)
 {
-	interactionProfiles.emplace_back(std::unique_ptr<InteractionProfile>(new OculusTouchInteractionProfile()));
-	interactionProfiles.emplace_back(std::unique_ptr<InteractionProfile>(new KhrSimpleInteractionProfile()));
+	interactionProfiles.emplace_back(std::make_unique<ViveWandInteractionProfile>());
+	interactionProfiles.emplace_back(std::make_unique<OculusTouchInteractionProfile>());
+	interactionProfiles.emplace_back(std::make_unique<KhrSimpleInteractionProfile>());
 }
 BaseInput::~BaseInput()
 {
@@ -332,6 +335,7 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 		OOVR_ABORT("Failed to open or parse input manifest");
 
 	// Parse the actions
+	OOVR_LOG("Parsing actions...");
 	for (Json::Value item : root["actions"]) {
 		std::unique_ptr<Action> actionPtr = std::make_unique<Action>();
 		Action& action = *actionPtr;
@@ -418,6 +422,7 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 	}
 
 	// Parse the action sets
+	OOVR_LOG("Parsing action sets...");
 	for (Json::Value item : root["action_sets"]) {
 		ActionSet set = {};
 
@@ -470,36 +475,6 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 
 		action->set = set;
 	}
-
-	// Find the default bindings file
-	// TODO load all of them, and let the OpenXR runtime choose which one to use
-	std::string bestPath;
-	int bestPriority = -1;
-	for (Json::Value item : root["default_bindings"]) {
-		std::string type = item["controller_type"].asString();
-
-		// Given the type of controller, find a priority for it
-		int priority;
-
-		if (iequals(type, "oculus_touch"))
-			priority = 3;
-		else if (iequals(type, "rift")) // This came from the previous code, where's it from?
-			priority = 2;
-		else if (iequals(type, "generic"))
-			priority = 1;
-		else
-			priority = 0;
-
-		if (priority > bestPriority) {
-			bestPath = item["binding_url"].asString();
-			bestPriority = priority;
-		}
-	}
-
-	if (bestPath.empty())
-		OOVR_ABORT("No compatible binding action specified!");
-
-	bindingsPath = dirnameOf(pchActionManifestPath) + "/" + bestPath;
 
 	//////////////////////////
 	/// Now we've got everything done, load the actions into OpenXR
@@ -555,9 +530,54 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 
 	CreateLegacyActions();
 
-	// Read the default bindings file, and load it into OpenXR
+	// load all available bindings for known interaction profiles
+	OOVR_LOG("Loading known bindings...");
+	// Map of OpenVR names (i.e. "vive_controller") to interaction profile pointers
+	std::unordered_map<std::string, InteractionProfile*> OVRNameToProfile;
 	for (const std::unique_ptr<InteractionProfile>& profile : interactionProfiles) {
-		LoadBindingsSet(*profile);
+		OVRNameToProfile[profile->GetOpenVRName()] = profile.get();
+	}
+
+	// For determining the best path for supported controllers that don't have a profile handled by the game (i.e. khr/simple_controller)
+	std::string backupPath;
+	int8_t priority = -1;
+
+	// these priorities are a bit arbitrary
+	const std::unordered_map<std::string, uint8_t> typeToPriority = {
+		{ "oculus_touch", 3 },
+		{ "knuckles", 2 },
+		{ "generic", 1 }
+	};
+
+	for (Json::Value item : root["default_bindings"]) {
+		std::string controller_type = item["controller_type"].asString();
+		std::string path = dirnameOf(pchActionManifestPath) + "/" + item["binding_url"].asString();
+
+		// look if we know about this OpenVR name
+		// have to loop through every binding type because default_bindings is an array for some reason
+		auto iter = OVRNameToProfile.find(controller_type);
+		if (iter != OVRNameToProfile.end()) {
+			LoadBindingsSet(*(iter->second), path);
+			// profile has been bound: we don't need it in our map anymore
+			OVRNameToProfile.erase(iter);
+		}
+
+		// get priority for remaining unbound profiles
+		auto iter2 = typeToPriority.find(controller_type);
+		if (iter2 != typeToPriority.end()) {
+			if (iter2->second > priority) {
+				priority = iter2->second;
+				backupPath = path;
+			}
+		} else if (priority < 0) {
+			priority = 0;
+			backupPath = path;
+		}
+	}
+
+	// remaining profiles: bind to our backup path
+	for (auto& [name, profile_ptr] : OVRNameToProfile) {
+		LoadBindingsSet(*profile_ptr, backupPath);
 	}
 
 	// Attach everything to the current session
@@ -623,8 +643,6 @@ void BaseInput::LoadEmptyManifestIfRequired()
 
 void BaseInput::BindInputsForSession()
 {
-	OOVR_LOGF("Loading bindings file %s", bindingsPath.c_str());
-
 	// Since the session has changed, any actionspaces we previously created are now invalid
 	for (const std::unique_ptr<Action>& action : actions.GetItems()) {
 		action->actionSpaces.clear();
@@ -672,8 +690,9 @@ void BaseInput::BindInputsForSession()
 	}
 }
 
-void BaseInput::LoadBindingsSet(const struct InteractionProfile& profile)
+void BaseInput::LoadBindingsSet(const struct InteractionProfile& profile, const std::string& bindingsPath)
 {
+	OOVR_LOGF("Loading bindings for %s", profile.GetPath().c_str());
 	Json::Value bindingsRoot;
 	if (!ReadJson(utf8to16(bindingsPath), bindingsRoot)) {
 		OOVR_ABORTF("Failed to read and parse JSON binding descriptor: %s", bindingsPath.c_str());
@@ -722,9 +741,8 @@ void BaseInput::LoadBindingsSet(const struct InteractionProfile& profile)
 				if (action == nullptr)
 					OOVR_ABORTF("Missing action '%s' in bindings file '%s'", actionName.c_str(), bindingsPath.c_str());
 
-				// There's probably some differences, but it looks like the SteamVR paths will 'just work' with OpenXR
-				// FIXME this doesn't with with binding boolean actions to analogue inputs
-				std::string pathStr = importBasePath + "/" + inputName;
+				// Translate path string to an appropriate path supported by this interaction profile, if necessary
+				std::string pathStr = profile.TranslateAction(importBasePath + "/" + inputName);
 
 				// Handle virtual paths - this creates the relevant virtual input for the specified path on this
 				// action set and binds the Action to it. Note we don't want to cache and reuse the same virtual input
@@ -1554,7 +1572,7 @@ EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, V
 		// 20 will be more than enough, saves a second call
 		XrPath tmp[20];
 		uint32_t count;
-		OOVR_FAILED_XR_ABORT(xrEnumerateBoundSourcesForAction(xr_session, &info, ARRAYSIZE(tmp), &count, tmp));
+		OOVR_FAILED_XR_ABORT(xrEnumerateBoundSourcesForAction(xr_session, &info, std::size(tmp), &count, tmp));
 
 		// Now for each source find the /user/hand/abc substring that it starts with
 		char buff[XR_MAX_PATH_LENGTH + 1];
@@ -1809,7 +1827,7 @@ VRInputValueHandle_t BaseInput::activeOriginFromSubaction(Action* action, const 
 		XrBoundSourcesForActionEnumerateInfo enumInfo = { XR_TYPE_BOUND_SOURCES_FOR_ACTION_ENUMERATE_INFO };
 		enumInfo.action = action->xr;
 		OOVR_FAILED_XR_ABORT(xrEnumerateBoundSourcesForAction(xr_session, &enumInfo,
-		    ARRAYSIZE(action->sources), &action->sourcesCount, action->sources));
+		    std::size(action->sources), &action->sourcesCount, action->sources));
 
 		// Convert the source paths to strings
 		char buff[256];

@@ -24,13 +24,14 @@ KhrSimpleInteractionProfile::KhrSimpleInteractionProfile()
 
 	for (const char** side = sides; *side; side++) {
 		for (const char** input = inputs; *input; input++) {
-			validPaths.emplace_back(std::string(*side) + "/" + std::string(*input));
+			validInputPaths.insert(std::string(*side) + "/" + std::string(*input));
 		}
 	}
 
-	for (const std::string& path : validPaths) {
-		validPathsSet.insert(path);
-	}
+	pathTranslationMap = {
+		{ "application_menu", "menu" },
+		{ "trigger", "select" },
+	};
 
 	PostSetup();
 }
@@ -39,21 +40,6 @@ const std::string& KhrSimpleInteractionProfile::GetPath() const
 {
 	static std::string interactionPath = "/interaction_profiles/khr/simple_controller";
 	return interactionPath;
-}
-
-const std::vector<std::string>& KhrSimpleInteractionProfile::GetValidInputPaths() const
-{
-	return validPaths;
-}
-
-bool KhrSimpleInteractionProfile::IsInputPathValid(const std::string& inputPath) const
-{
-	return validPathsSet.count(inputPath) != 0;
-}
-
-const std::vector<VirtualInputFactory>& KhrSimpleInteractionProfile::GetVirtualInputs() const
-{
-	return virtualInputs;
 }
 
 const InteractionProfile::LegacyBindings* KhrSimpleInteractionProfile::GetLegacyBindings(const std::string& handPath) const
@@ -71,4 +57,9 @@ const InteractionProfile::LegacyBindings* KhrSimpleInteractionProfile::GetLegacy
 		bindings.aimPoseAction = "input/aim/pose";
 	}
 	return &bindings;
+}
+
+const char* KhrSimpleInteractionProfile::GetOpenVRName() const
+{
+	return "generic";
 }
