@@ -7,6 +7,11 @@
 #include <fstream>
 #include <iostream>
 #include <stdarg.h>
+#include <errno.h> // errno, ENOENT, EEXIST
+#include <sys/stat.h> // stat
+#ifdef _WIN32
+#include <direct.h> // _mkdir
+#endif
 
 using namespace std;
 
@@ -40,7 +45,7 @@ static std::string format_time()
 
 	char buffer[128];
 
-	int string_size = strftime(
+	size_t string_size = strftime(
 	    buffer, sizeof(buffer),
 	    LOGGER_TIME_FORMAT,
 	    time_info);
@@ -53,6 +58,75 @@ static std::string format_time()
 
 	return std::string(buffer, buffer + string_size);
 }
+
+bool isDirExist(const std::string& path)
+{
+#if defined(_WIN32)
+	struct _stat info;
+	if (_stat(path.c_str(), &info) != 0) {
+		return false;
+	}
+	return (info.st_mode & _S_IFDIR) != 0;
+#else
+	struct stat info;
+	if (stat(path.c_str(), &info) != 0) {
+		return false;
+	}
+	return (info.st_mode & S_IFDIR) != 0;
+#endif
+}
+
+bool makePath(const std::string& path)
+{
+#if defined(_WIN32)
+	int ret = _mkdir(path.c_str());
+#else
+	mode_t mode = 0755;
+	int ret = mkdir(path.c_str(), mode);
+#endif
+	if (ret == 0)
+		return true;
+
+	switch (errno) {
+	case ENOENT:
+		// parent didn't exist, try to create it
+		{
+			size_t pos = path.find_last_of('/');
+			if (pos == std::string::npos)
+#if defined(_WIN32)
+				pos = path.find_last_of('\\');
+			if (pos == std::string::npos)
+#endif
+				return false;
+			if (!makePath(path.substr(0, pos)))
+				return false;
+		}
+		// now, try to create again
+#if defined(_WIN32)
+		return 0 == _mkdir(path.c_str());
+#else
+		return 0 == mkdir(path.c_str(), mode);
+#endif
+
+	case EEXIST:
+		// done!
+		return isDirExist(path);
+
+	default:
+		return false;
+	}
+}
+
+std::string GetEnv(const std::string& var)
+{
+	const char* val = std::getenv(var.c_str());
+	if (val == nullptr) {
+		return "";
+	} else {
+		return val;
+	}
+}
+
 
 #ifdef ANDROID
 #include <android/log.h>
@@ -68,10 +142,32 @@ void oovr_log_raw(const char* file, long line, const char* func, const char* msg
 	__android_log_print(ANDROID_LOG_INFO, "OpenComposite", "%s:%d \t %s", func, line, msg);
 #else
 	if (!stream.is_open()) {
-		stream.open("openovr_log");
+		string outputFilePath = "opencomposite.log";
+
+		// Try and write to standard location
+		// fall back to exe dir if can't create dir
+#ifdef _WIN32
+		string outputFolder = GetEnv("LOCALAPPDATA");
+		if (!outputFolder.empty())
+			outputFolder = outputFolder + "\\OpenComposite\\logs";
+		if (!outputFolder.empty() && makePath(outputFolder))
+			outputFilePath = outputFolder + "\\" + outputFilePath;
+#else
+		string outputFolder = GetEnv("XDG_STATE_HOME");
+		if (outputFolder.empty()) {
+			outputFolder = GetEnv("HOME");
+			if (!outputFolder.empty())
+				outputFolder = outputFolder + "/.local/state";
+		}
+		if (!outputFolder.empty())
+			outputFolder = outputFolder + "/OpenComposite/logs";
+		if (!outputFolder.empty() && makePath(outputFolder))
+			outputFilePath = outputFolder + "/" + outputFilePath;
+#endif
+
+		stream.open(outputFilePath.c_str());
 	}
 
-	// stream << file << ":" << line << ":" << func << "\t- " << msg << endl;
 	stream << "[" << format_time() << "] " << func << ":" << line << "\t- " << (msg ? msg : "NULL") << endl;
 
 	// Write it to stdout
