@@ -39,7 +39,6 @@
 		OOVR_ABORT_T(str.c_str(), "Stubbed func!");                        \
 	}
 
-using namespace std;
 namespace kk1 = vr::IVRSettings_001;
 namespace kk = vr::IVRSettings_002;
 

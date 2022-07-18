@@ -8,8 +8,6 @@
 #include <iostream>
 #include <stdarg.h>
 
-using namespace std;
-
 // strftime format
 #define LOGGER_TIME_FORMAT "%Y-%m-%d %H:%M:%S"
 
@@ -57,7 +55,7 @@ static std::string format_time()
 #ifdef ANDROID
 #include <android/log.h>
 #else
-static ofstream stream;
+static std::ofstream stream;
 #endif
 
 OC_NORETURN void oovr_abort_raw_va(const char* file, long line, const char* func, const char* msg, const char* title, va_list args);
@@ -72,7 +70,7 @@ void oovr_log_raw(const char* file, long line, const char* func, const char* msg
 	}
 
 	// stream << file << ":" << line << ":" << func << "\t- " << msg << endl;
-	stream << "[" << format_time() << "] " << func << ":" << line << "\t- " << (msg ? msg : "NULL") << endl;
+	stream << "[" << format_time() << "] " << func << ":" << line << "\t- " << (msg ? msg : "NULL") << std::endl;
 
 	// Write it to stdout
 	// TODO on Windows, write it into the debug log
@@ -124,7 +122,7 @@ OC_NORETURN void oovr_abort_raw_va(const char* file, long line, const char* func
 #ifdef ANDROID
 	__android_log_print(ANDROID_LOG_ERROR, "OpenComposite", "ERROR: %s:%d \t %s", func, line, buff);
 #else
-	stream << flush;
+	stream << std::flush;
 #endif
 
 	OOVR_MESSAGE(buff, title);
