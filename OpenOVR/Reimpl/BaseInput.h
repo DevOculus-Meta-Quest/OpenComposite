@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "../Misc/Input/InputData.h"
@@ -363,11 +364,6 @@ public: // INTERNAL FUNCTIONS
 	 */
 	inline uint64_t GetSyncSerial() const { return syncSerial; }
 
-	/**
-	 * Converts a hand path (/user/hand/left or /user/hand/right) into an input value handle.
-	 */
-	VRInputValueHandle_t HandPathToIVH(const std::string& path);
-
 private:
 	enum class ActionRequirement {
 		Suggested = 0, // default
@@ -453,6 +449,54 @@ private:
 		std::string slot;
 	};
 
+	struct DpadBindingInfo {
+		// Possible dpad directions
+		enum class Direction {
+			NORTH,
+			SOUTH,
+			EAST,
+			WEST,
+			CENTER
+		};
+
+		// mapping from OpenVR name to Direction
+		inline static const std::unordered_map<std::string, Direction> directionMap = {
+			{ "north", Direction::NORTH },
+			{ "east", Direction::EAST },
+			{ "south", Direction::SOUTH },
+			{ "west", Direction::WEST },
+			{ "center", Direction::CENTER }
+		};
+
+		// Map from dpad binding parent names to their corresponding actions
+		// An example parent name might be "righttrackpad-vive_controller"
+		struct ParentActions {
+			XrAction vectorAction = XR_NULL_HANDLE;
+			XrAction clickAction = XR_NULL_HANDLE;
+			XrAction touchAction = XR_NULL_HANDLE;
+		};
+		inline static std::unordered_map<std::string, ParentActions> parents;
+
+		// Deadzone for dpad. 
+		static constexpr float dpadDeadzoneRadius = 0.2;
+		
+		// These are angles for the different dpad segments.
+		// For example, the north dpad area exists between 45deg and 135deg, the east between -45deg and 45deg, etc
+		// The actual units for the angles are in radians, but they are labeled as degrees since I find degrees more intuitive to understand for humans.
+		static constexpr float angle45deg = math_pi / 4;
+		static constexpr float angle135deg = 3*math_pi /4;
+
+		// The direction for this binding.
+		Direction direction = Direction::NORTH;
+
+		// Is a click required for this binding
+		// false implies that a touch is required instead
+		bool click = false;
+
+		// The previous state for the dpad binding.
+		bool lastState = false;
+	};
+
 	struct Action {
 	private:
 		static constexpr size_t sources_size = 32;
@@ -486,12 +530,21 @@ private:
 		uint32_t sourcesCount = 0; // Number of sources in the above that are defined
 		uint64_t nextSourcesUpdate = 0; // For caching, the next value of syncSerial this should update at
 
-		// Any virtual inputs bound to this action are attached here
-		std::vector<std::unique_ptr<class VirtualInput>> virtualInputs;
-
 		// Only used in the case of Pose actions, this is the action space for each subaction path
 		// The indexes match up with allSubactionPaths
 		std::vector<XrSpace> actionSpaces;
+
+		// Only used in float/vector actions, for calculating deltas
+		struct {
+			float x = 0;
+			float y = 0;
+			float z = 0;
+		} previousState;
+
+		// list of dpad directions to check
+		// first member of the pair is the parent name, the second is the corresponding binding info
+		using DpadGrouping = std::pair<std::string, DpadBindingInfo>;
+		std::vector<DpadGrouping> dpadBindings;
 	};
 
 	enum class InputSource {
@@ -717,6 +770,11 @@ private:
 	 * consistent manner.
 	 */
 	VRInputValueHandle_t activeOriginFromSubaction(Action* action, const char* subactionPath);
+
+	/**
+	 * Get the state for a digital action, which could be bound to a DPad action.
+	 */
+	XrResult getBooleanOrDpadData(Action& action, XrActionStateGetInfo* getInfo, XrActionStateBoolean* state);
 
 	friend class InteractionProfile;
 };
