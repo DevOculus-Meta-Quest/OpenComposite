@@ -510,7 +510,7 @@ find_package(Python REQUIRED Interpreter)
 add_custom_command(
 	OUTPUT ${GENERATED_INTERFACES}
 	COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/split_headers.py ${CMAKE_SOURCE_DIR}/OpenVRHeaders ${GENERATED_DIR}
-	DEPENDS ${CMAKE_SOURCE_DIR}/scripts/split_headers.py
+	DEPENDS ${CMAKE_SOURCE_DIR}/scripts/split_headers.py ${CMAKE_SOURCE_DIR}/OpenVRHeaders/openvr-*
 	COMMENT "Splitting headers..."
 	)
 
