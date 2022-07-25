@@ -529,14 +529,14 @@ set_property(
 
 # move OCOVR to appropriate directory expected by OpenVR and call it vrclient.so
 if (WIN32)
-	set(VRCLIENT_DIR win64)
+	set(VRCLIENT_DIR bin)
 	set(VRCLIENT_NAME vrclient_x64)
 else ()
-	set(VRCLIENT_DIR linux64)
+	set(VRCLIENT_DIR bin/linux64)
 	set(VRCLIENT_NAME vrclient)
 endif ()
 
 set_target_properties(OCOVR PROPERTIES
 	PREFIX ""
-	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${VRCLIENT_DIR}
+	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VRCLIENT_DIR}
 	LIBRARY_OUTPUT_NAME ${VRCLIENT_NAME})

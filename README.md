@@ -245,7 +245,7 @@ cmake ..
 cmake --build .
 ```
 
-The resulting library will be placed at `build/bin/linux64/vrclient.so` on Linux, `build/bin/win64/vrclient_x64.dll` on Windows.
+The resulting library will be placed at `build/bin/linux64/vrclient.so` on Linux, `build/bin/vrclient_x64.dll` on Windows.
 
 ### Windows specific
 
