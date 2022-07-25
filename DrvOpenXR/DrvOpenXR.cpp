@@ -8,8 +8,8 @@
 #include "../OpenOVR/Misc/android_api.h"
 #include "../OpenOVR/Misc/xr_ext.h"
 #include "../OpenOVR/Reimpl/BaseInput.h"
-#include "generated/static_bases.gen.h"
 #include "XrBackend.h"
+#include "generated/static_bases.gen.h"
 #include "tmp_gfx/TemporaryGraphics.h"
 
 #if defined(SUPPORT_DX) && defined(SUPPORT_DX11)

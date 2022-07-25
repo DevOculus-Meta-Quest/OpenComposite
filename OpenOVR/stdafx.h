@@ -17,9 +17,9 @@
 
 #define VR_API_EXPORT 1
 //#include "OpenVR/openvr.h"
+#include "custom_types.h"
 #include "generated/interfaces/vrannotation.h"
 #include "generated/interfaces/vrtypes.h"
-#include "custom_types.h"
 
 #include "logging.h"
 
