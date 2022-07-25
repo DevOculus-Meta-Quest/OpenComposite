@@ -14,6 +14,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(XR_VALIDATION_LAYER_PATH "" CACHE STRING "A path to set XR_API_LAYER_PATH to. Setting this will enable the debug layer")
 set(XR_VALIDATION_FILE_NAME "" CACHE STRING "A filename to set XR_CORE_VALIDATION_FILE_NAME to.")
 
+# Directory for generated files, those being split headers and stubs
+set(GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
+
+# Add binary directory to include path
+# This allows including generated files like so: #include "generated/<path>"
+include_directories(${CMAKE_BINARY_DIR})
+
 # Platform-dependent flags
 # Support Vulkan on Linux instead of DirectX
 if (WIN32)
@@ -58,7 +65,7 @@ include_external_msproject(
 
 # === OpenVR Headers ===
 add_library(OpenVR INTERFACE)
-target_include_directories(OpenVR INTERFACE SplitOpenVRHeaders) # TODO make this private and put the public headers elsewhere
+target_include_directories(OpenVR INTERFACE OpenVRHeaders) # TODO make this private and put the public headers elsewhere
 
 # === Vulkan ===
 add_library(Vulkan INTERFACE)
@@ -182,6 +189,8 @@ add_library(DrvOpenXR STATIC
 	DrvOpenXR/tmp_gfx/TemporaryD3D11.h
 	DrvOpenXR/tmp_gfx/TemporaryVk.cpp
 	DrvOpenXR/tmp_gfx/TemporaryVk.h
+	${GENERATED_DIR}/interfaces/vrtypes.h
+	${GENERATED_DIR}/static_bases.gen.h
 )
 target_include_directories(DrvOpenXR PUBLIC DrvOpenXR/pub)
 target_include_directories(DrvOpenXR PRIVATE DrvOpenXR)
@@ -215,6 +224,77 @@ set(OVR_PCH_EXCLUDED
 	OpenOVR/Misc/jsoncpp.cpp
 	OpenOVR/Misc/lodepng.cpp
 )
+set(GENERATED_INTERFACES
+	${GENERATED_DIR}/interfaces/IVRApplications_002.h
+	${GENERATED_DIR}/interfaces/IVRApplications_004.h
+	${GENERATED_DIR}/interfaces/IVRApplications_005.h
+	${GENERATED_DIR}/interfaces/IVRApplications_006.h
+	${GENERATED_DIR}/interfaces/IVRControlPanel_001.h
+	${GENERATED_DIR}/interfaces/IVRChaperoneSetup_004.h
+	${GENERATED_DIR}/interfaces/IVRChaperoneSetup_005.h
+	${GENERATED_DIR}/interfaces/IVRChaperoneSetup_006.h
+	${GENERATED_DIR}/interfaces/IVRChaperone_003.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_009.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_012.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_013.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_014.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_015.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_016.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_018.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_019.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_020.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_021.h
+	${GENERATED_DIR}/interfaces/IVRCompositor_022.h
+	${GENERATED_DIR}/interfaces/IVRDriverManager_001.h
+	${GENERATED_DIR}/interfaces/IVRExtendedDisplay_001.h
+	${GENERATED_DIR}/interfaces/IVRInput_003.h
+	${GENERATED_DIR}/interfaces/IVRInput_004.h
+	${GENERATED_DIR}/interfaces/IVRInput_005.h
+	${GENERATED_DIR}/interfaces/IVRInput_006.h
+	${GENERATED_DIR}/interfaces/IVRIOBuffer_001.h
+	${GENERATED_DIR}/interfaces/IVRIOBuffer_002.h
+	${GENERATED_DIR}/interfaces/IVRNotifications_002.h
+	${GENERATED_DIR}/interfaces/IVROverlay_007.h
+	${GENERATED_DIR}/interfaces/IVROverlay_010.h
+	${GENERATED_DIR}/interfaces/IVROverlay_011.h
+	${GENERATED_DIR}/interfaces/IVROverlay_012.h
+	${GENERATED_DIR}/interfaces/IVROverlay_013.h
+	${GENERATED_DIR}/interfaces/IVROverlay_014.h
+	${GENERATED_DIR}/interfaces/IVROverlay_016.h
+	${GENERATED_DIR}/interfaces/IVROverlay_017.h
+	${GENERATED_DIR}/interfaces/IVROverlay_018.h
+	${GENERATED_DIR}/interfaces/IVROverlay_019.h
+	${GENERATED_DIR}/interfaces/IVRRenderModels_002.h
+	${GENERATED_DIR}/interfaces/IVRRenderModels_004.h
+	${GENERATED_DIR}/interfaces/IVRRenderModels_005.h
+	${GENERATED_DIR}/interfaces/IVRRenderModels_006.h
+	${GENERATED_DIR}/interfaces/IVRResources_001.h
+	${GENERATED_DIR}/interfaces/IVRScreenshots_001.h
+	${GENERATED_DIR}/interfaces/IVRSettings_001.h
+	${GENERATED_DIR}/interfaces/IVRSettings_002.h
+	${GENERATED_DIR}/interfaces/IVRSpatialAnchors_001.h
+	${GENERATED_DIR}/interfaces/IVRSystem_009.h
+	${GENERATED_DIR}/interfaces/IVRSystem_011.h
+	${GENERATED_DIR}/interfaces/IVRSystem_012.h
+	${GENERATED_DIR}/interfaces/IVRSystem_014.h
+	${GENERATED_DIR}/interfaces/IVRSystem_015.h
+	${GENERATED_DIR}/interfaces/IVRSystem_016.h
+	${GENERATED_DIR}/interfaces/IVRSystem_017.h
+	${GENERATED_DIR}/interfaces/IVRSystem_019.h
+	${GENERATED_DIR}/interfaces/IVRTrackedCamera_001.h
+	${GENERATED_DIR}/interfaces/IVRTrackedCamera_003.h
+	${GENERATED_DIR}/interfaces/IVRTrackedCamera_005.h
+	${GENERATED_DIR}/interfaces/openvr.h
+	${GENERATED_DIR}/interfaces/version.h
+	${GENERATED_DIR}/interfaces/vrannotation.h
+	${GENERATED_DIR}/interfaces/vrtypes.h
+
+	## OpenVR Driver headers
+	${GENERATED_DIR}/interfaces/driver_itrackeddevicedriverprovider.h
+	${GENERATED_DIR}/interfaces/driver_IVRServerDriverHost_005.h
+	${GENERATED_DIR}/interfaces/driver_ITrackedDeviceServerDriver_005.h
+	)
+
 add_library(OCCore STATIC
 	# This file is used to generate the precompiled headers
 	OpenOVR/stdafx.cpp
@@ -274,7 +354,7 @@ add_library(OCCore STATIC
 	OpenOVR/Reimpl/CVRSystem.cpp
 	OpenOVR/Reimpl/CVRMailbox.cpp
 	OpenOVR/Reimpl/CVRControlPanel.cpp
-	OpenOVR/Reimpl/stubs.gen.cpp
+	${GENERATED_DIR}/stubs.gen.cpp
 
 	# Base classes
 	OpenOVR/Reimpl/BaseServerDriverHost.cpp OpenOVR/Reimpl/BaseServerDriverHost.h
@@ -322,7 +402,7 @@ add_library(OCCore STATIC
 	OpenOVR/Reimpl/BaseMailbox.h
 	OpenOVR/Reimpl/BaseControlPanel.h
 	OpenOVR/Reimpl/Interfaces.h
-	OpenOVR/Reimpl/static_bases.gen.h
+	${GENERATED_DIR}/static_bases.gen.h
 	OpenOVR/resources.h
 	OpenOVR/stdafx.h
 	OpenOVR/steamvr_abi.h
@@ -335,83 +415,16 @@ add_library(OCCore STATIC
 	OpenOVR/Drivers/Backend.h
 
 	# While not actually part of OCCore, list all the OpenVR interfaces here so they are easily accessable in IDE
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRClientCore_002.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRClientCore_003.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRCompositor_017.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRMailbox_001.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRInputInternal_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRControlPanel_001.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRControlPanel_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperone_003.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_009.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_012.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_013.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_014.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_015.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_016.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_018.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_019.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_020.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_021.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_022.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRDriverManager_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRExtendedDisplay_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_003.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRNotifications_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_007.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_010.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_011.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_012.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_013.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_014.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_016.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_017.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_018.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_019.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRResources_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRScreenshots_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSettings_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSettings_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSpatialAnchors_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_009.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_011.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_012.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_014.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_015.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_016.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_017.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_019.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_003.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/openvr.h
-	SplitOpenVRHeaders/OpenVR/interfaces/version.h
-	SplitOpenVRHeaders/OpenVR/interfaces/vrannotation.h
-	SplitOpenVRHeaders/OpenVR/interfaces/vrtypes.h
-
-	# OpenVR Driver headers
-	SplitOpenVRHeaders/OpenVR/interfaces/driver_itrackeddevicedriverprovider.h
-	SplitOpenVRHeaders/OpenVR/interfaces/driver_IVRServerDriverHost_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/driver_ITrackedDeviceServerDriver_005.h
+	OpenVRHeaders/custom_interfaces/IVRClientCore_002.h
+	OpenVRHeaders/custom_interfaces/IVRClientCore_003.h
+	OpenVRHeaders/custom_interfaces/IVRCompositor_017.h
+	OpenVRHeaders/custom_interfaces/IVRMailbox_001.h
+	OpenVRHeaders/custom_interfaces/IVRInputInternal_002.h
+	OpenVRHeaders/custom_interfaces/IVRControlPanel_006.h
+	${GENERATED_INTERFACES}
 )
-target_include_directories(OCCore PUBLIC OpenOVR) # TODO make this private and put the public headers elsewhere
-target_include_directories(OCCore PRIVATE BundledLibs)
+target_include_directories(OCCore PUBLIC OpenOVR)  # TODO make this private and put the public headers elsewhere
+target_include_directories(OCCore PRIVATE BundledLibs OpenVRHeaders)
 target_compile_definitions(OCCore PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS})
 
 target_link_libraries(OCCore OpenVR OpenXR Vulkan glm)
@@ -425,9 +438,9 @@ endif ()
 target_precompile_headers(OCCore PRIVATE ${CMAKE_SOURCE_DIR}/OpenOVR/stdafx.h)
 set_source_files_properties(${OVR_PCH_EXCLUDED} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
-source_group(OpenVR REGULAR_EXPRESSION SplitOpenVRHeaders/OpenVR/interfaces/*)
-source_group(OpenVR\\Drivers REGULAR_EXPRESSION SplitOpenVRHeaders/OpenVR/interfaces/driver_*)
-source_group(OpenVR\\Custom REGULAR_EXPRESSION SplitOpenVRHeaders/OpenVR/custom_interfaces/*)
+source_group(OpenVR REGULAR_EXPRESSION ${GENERATED_DIR}/interfaces)
+source_group(OpenVR\\Drivers REGULAR_EXPRESSION ${GENERATED_DIR}/interfaces/driver_*)
+source_group(OpenVR\\Custom REGULAR_EXPRESSION OpenVRHeaders/custom_interfaces/*)
 source_group(Interfaces REGULAR_EXPRESSION OpenOVR/Reimpl/Base*)
 source_group(Interfaces\\Declarations REGULAR_EXPRESSION OpenOVR/Reimpl/CVR*)
 
@@ -485,5 +498,45 @@ else ()
 	target_link_libraries(OCOVR PUBLIC -ldl)
 endif ()
 
+# needed for generated files
+target_include_directories(OCOVR PRIVATE OpenOVR/Reimpl)
+
 # Required because the compositor header needs the platform-specific structures enabled via defines
 target_compile_definitions(OCOVR PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS})
+
+find_package(Python REQUIRED Interpreter)
+
+# Command for running header splitting script
+add_custom_command(
+	OUTPUT ${GENERATED_INTERFACES}
+	COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/split_headers.py ${CMAKE_SOURCE_DIR}/OpenVRHeaders ${GENERATED_DIR}
+	DEPENDS ${CMAKE_SOURCE_DIR}/scripts/split_headers.py
+	COMMENT "Splitting headers..."
+	)
+
+# Command for running stub generator
+add_custom_command(
+	OUTPUT ${GENERATED_DIR}/stubs.gen.cpp ${GENERATED_DIR}/static_bases.gen.h
+	COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/stubs.py ${CMAKE_SOURCE_DIR}/OpenOVR/Reimpl ${CMAKE_SOURCE_DIR}/OpenVRHeaders ${GENERATED_DIR}
+	DEPENDS ${CMAKE_SOURCE_DIR}/scripts/stubs.py ${CMAKE_SOURCE_DIR}/scripts/stubs/* ${GENERATED_INTERFACES}
+	COMMENT "Generating stubs..."
+	)
+
+# Allows clean target to delete generated files too
+set_property(
+	TARGET OCCore
+	APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${GENERATED_DIR};${CMAKE_BINARY_DIR}/bin)
+
+# move OCOVR to appropriate directory expected by OpenVR and call it vrclient.so
+if (WIN32)
+	set(VRCLIENT_DIR win64)
+	set(VRCLIENT_NAME vrclient_x64)
+else ()
+	set(VRCLIENT_DIR linux64)
+	set(VRCLIENT_NAME vrclient)
+endif ()
+
+set_target_properties(OCOVR PROPERTIES
+	PREFIX ""
+	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${VRCLIENT_DIR}
+	LIBRARY_OUTPUT_NAME ${VRCLIENT_NAME})

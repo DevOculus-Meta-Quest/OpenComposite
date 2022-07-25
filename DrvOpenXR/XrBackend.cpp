@@ -23,7 +23,7 @@
 // FIXME find a better way to send the OnPostFrame call?
 #include "../OpenOVR/Reimpl/BaseOverlay.h"
 #include "../OpenOVR/Reimpl/BaseSystem.h"
-#include "../OpenOVR/Reimpl/static_bases.gen.h"
+#include "generated/static_bases.gen.h"
 #include "../OpenOVR/convert.h"
 
 XrBackend::XrBackend()
