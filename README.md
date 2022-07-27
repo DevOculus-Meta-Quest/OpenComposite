@@ -3,6 +3,8 @@
 [![Discord](https://img.shields.io/discord/499733750209314816.svg?style=for-the-badge&logo=discord&label=discord)](https://discord.gg/zYA6Tzs)
 [![AppVeyor](https://img.shields.io/appveyor/ci/ZNix/openovr.svg?style=for-the-badge&logo=appveyor)](https://ci.appveyor.com/project/ZNix/openovr)
 
+[TOC]
+
 OpenComposite OpenXR (previously known as OpenOVR - OpenVR for OculusVR - but renamed due to confusion with OpenVR) is
 an implementation of SteamVR's API - OpenVR, forwarding calls directly
 to the OpenXR runtime. Think of it as a backwards version of ReVive, for the OpenXR compatible headsets.
@@ -51,10 +53,10 @@ It probably works in quite a few other games, but I have not tried them.
 
 ## Downloading and installation
 
-### Windows 
-
 OpenComposite can either be installed system-wide (all SteamVR-based games will use it automatically) or per-game (replace a DLL
 file for each game, this usually must be done each time said game is updated).
+
+(Note that these instructions are intended for Windows, Linux users can scroll down to the [Linux specific](linux-specific-info) section)
 
 ### System-wide installation
 
@@ -84,7 +86,7 @@ you'll be able to switch back by starting SteamVR. This will make updating much 
 If you have any questions, feel free to jump on our Discord server:
 [![Discord](https://img.shields.io/discord/499733750209314816.svg)](https://discord.gg/zYA6Tzs)
 
-### Linux
+### Linux-specific info
 
 There are no builds available for Linux at this time: you'll have to build it manually for now (see the section below on compiling).
 After compiling, there are a few steps you'll have to follow:
@@ -234,17 +236,8 @@ text can be found in `LICENCE_DEBUG_BREAK.txt`.
 
 ## Compiling (**for developers**)
 
-Download the Source Code from [GitLab](https://gitlab.com/znixian/OpenOVR) - it's under the GPLv3 licence.
-This project is compiled with CMake, so it can be compiled using a standard CMake build process.
-From the command line on Linux, after navigating to the source directory, such a build process might look like this:
-
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-
+Download the Source Code from [GitLab](https://gitlab.com/znixian/OpenOVR/-/tree/openxr-input-refactor) - it's under the GPLv3 licence.
+This project is built with CMake and follows a standard build process, so tools like CLion can be used to build it.
 The resulting library will be placed at `build/bin/linux64/vrclient.so` on Linux, `build/bin/vrclient_x64.dll` on Windows.
 
 ### Windows specific
@@ -272,7 +265,14 @@ OpenOVR: (or whatever folder you cloned/downloaded the repo into)
 
 ### Linux specific
 
-OpenComposite will search for Vulkan installed via your package manager. Cloning the Vulkan SDK is not necessary.
+OpenComposite will search for Vulkan installed via your package manager. Cloning the Vulkan SDK is not necessary. 
+If not using an IDE with CMake support, a set of commands to successfully compile might look like this after navigating to the source directory:
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
 
 ### Miscellaneous
 
@@ -289,7 +289,7 @@ classes, which implement a binary-compatible version of one version of that inte
 `GVRSystem_015`, `GVRCompositor_022`), along with C-like `FnTable`s for them (which allow compatibility
 with other languages, very notably C#).
 
-These scripts are automatically run when buildling the project. If you have added or removed OpenVR headers this will cause Visual Studio to rebuild
+These scripts are automatically run when buildling the project. If you have added or removed OpenVR headers this will cause CMake to rebuild
 the project, otherwise it will only rebuild a couple of files which is very quick.
 
 ### Using the interface splitter
