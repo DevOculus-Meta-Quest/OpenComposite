@@ -455,16 +455,37 @@ set_property(
 	TARGET OCCore
 	APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${GENERATED_DIR};${CMAKE_BINARY_DIR}/bin)
 
-# move OCOVR to appropriate directory expected by OpenVR and call it vrclient.so
+if ( CMAKE_SIZEOF_VOID_P EQUAL 8) # 64 bit build - void pointer is 8 bits on 64 bit
+	set(is_64bit_build true)
+else()
+	set(is_64bit_build false)
+endif()
+
+# Move OCOVR to appropriate directory expected by OpenVR and rename it to vrclient (or vrclient_x64)
+# This enables marking the build directory as the OpenVR runtime path.
+# For example, you can set the VR_OVERRIDE variable to the build dir (VR_OVERRIDE=<path to build dir>) when launching an app.
+# see VR_LoadHmdSystemInternal() from openvr_api_public.cpp in the OpenVR repo for the expected paths.
 if (WIN32)
 	set(VRCLIENT_DIR bin)
-	set(VRCLIENT_NAME vrclient_x64)
+	if ( is_64bit_build )
+		set(VRCLIENT_NAME vrclient_x64)
+	else()
+		set(VRCLIENT_NAME vrclient)
+	endif()
 else ()
-	set(VRCLIENT_DIR bin/linux64)
 	set(VRCLIENT_NAME vrclient)
+	if ( is_64bit_build )
+		set(VRCLIENT_DIR bin/linux64)
+	else()
+		set(VRCLIENT_DIR bin)
+	endif()
 endif ()
-
 set_target_properties(OCOVR PROPERTIES
 	PREFIX ""
 	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VRCLIENT_DIR}
 	LIBRARY_OUTPUT_NAME ${VRCLIENT_NAME})
+
+# ensure output directory exists
+get_target_property(output_dir OCOVR LIBRARY_OUTPUT_DIRECTORY)
+add_custom_command(TARGET OCOVR
+	PRE_LINK COMMAND ${CMAKE_COMMAND} -E make_directory ${output_dir})
