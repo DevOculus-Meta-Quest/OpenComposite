@@ -32,6 +32,28 @@ using namespace vr;
 // On Android, the application must supply a function to load the contents of a file
 #include "Misc/android_api.h"
 
+/**
+ * Macro for creating an Action object from a handle and verifying isn't invalid.
+ * If it is invalid, it will cause the surrounding function to return VRInputError_InvalidHandle.
+ * action_var_name is the name of the resulting Action object if the handle isn't invalid.
+ */
+#define CREATE_ACTION_FROM_HANDLE(action_var_name, handle)              \
+	Action* action_var_name = cast_AH(handle);                          \
+	if (!action_var_name) {                                             \
+		OOVR_LOGF("WARNING: Invalid action handle %d passed!", handle); \
+		return VRInputError_InvalidHandle;                              \
+	}
+
+/**
+ * Same as CREATE_ACTION_FROM_HANDLE but for ActionSets.
+ */
+#define CREATE_ACTION_SET_FROM_HANDLE(action_var_name, handle)              \
+	ActionSet* action_var_name = cast_ASH(handle);                          \
+	if (!action_var_name) {                                                 \
+		OOVR_LOGF("WARNING: Invalid action set handle %d passed!", handle); \
+		return VRInputError_InvalidHandle;                                  \
+	}
+
 // This is a duplicate from BaseClientCore.cpp
 static bool ReadJson(const std::wstring& path, Json::Value& result)
 {
@@ -1187,7 +1209,7 @@ XrResult BaseInput::getBooleanOrDpadData(Action& action, XrActionStateGetInfo* g
 EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigitalActionData_t* pActionData, uint32_t unActionDataSize,
     VRInputValueHandle_t ulRestrictToDevice)
 {
-	Action* act = cast_AH(action);
+	CREATE_ACTION_FROM_HANDLE(act, action);
 
 	ZeroMemory(pActionData, unActionDataSize);
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
@@ -1227,7 +1249,7 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalogActionData_t* pActionData, uint32_t unActionDataSize,
     VRInputValueHandle_t ulRestrictToDevice)
 {
-	Action* act = cast_AH(action);
+	CREATE_ACTION_FROM_HANDLE(act, action);
 
 	ZeroMemory(pActionData, unActionDataSize);
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
@@ -1305,7 +1327,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
     InputPoseActionData_t* pActionData, uint32_t unActionDataSize, VRInputValueHandle_t ulRestrictToDevice)
 {
-	Action* act = cast_AH(action);
+	CREATE_ACTION_FROM_HANDLE(act, action);
 
 	ZeroMemory(pActionData, unActionDataSize);
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
@@ -1400,7 +1422,7 @@ EVRInputError BaseInput::GetSkeletalActionData(VRActionHandle_t actionHandle, In
 	// sets unActionDataSize to what we're expecting so we don't have to handle that here.
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*out));
 
-	Action* action = cast_AH(actionHandle);
+	CREATE_ACTION_FROM_HANDLE(action, actionHandle);
 
 	// Zero out the output data, leaving:
 	// bActive = false
@@ -1475,7 +1497,7 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t actionHandle, EVRS
     EVRSkeletalMotionRange eMotionRange, VR_ARRAY_COUNT(unTransformArrayCount) VRBoneTransform_t* pTransformArray, uint32_t unTransformArrayCount)
 {
 	ZeroMemory(pTransformArray, sizeof(VRBoneTransform_t) * unTransformArrayCount);
-	Action* action = cast_AH(actionHandle);
+	CREATE_ACTION_FROM_HANDLE(action, actionHandle);
 
 	// FIXME remove
 	// Hand labs is in parent transform space, and usually 'with controller' motion range
@@ -1657,7 +1679,7 @@ EVRInputError BaseInput::DecompressSkeletalBoneData(const void* pvCompressedBuff
 EVRInputError BaseInput::TriggerHapticVibrationAction(VRActionHandle_t action, float fStartSecondsFromNow, float fDurationSeconds,
     float fFrequency, float fAmplitude, VRInputValueHandle_t ulRestrictToDevice)
 {
-	Action* act = cast_AH(action);
+	CREATE_ACTION_FROM_HANDLE(act, action);
 
 	if (act->type != ActionType::Vibration) {
 		OOVR_ABORTF("Cannot trigger vibration on non-vibration (type=%d) action '%s'", act->type, act->fullName.c_str());
@@ -1692,8 +1714,8 @@ EVRInputError BaseInput::TriggerHapticVibrationAction(VRActionHandle_t action, f
 EVRInputError BaseInput::GetActionOrigins(VRActionSetHandle_t actionSetHandle, VRActionHandle_t digitalActionHandle,
     VR_ARRAY_COUNT(originOutCount) VRInputValueHandle_t* originsOut, uint32_t originOutCount)
 {
-	ActionSet* set = cast_ASH(actionSetHandle);
-	Action* act = cast_AH(digitalActionHandle);
+	CREATE_ACTION_SET_FROM_HANDLE(set, actionSetHandle);
+	CREATE_ACTION_FROM_HANDLE(act, digitalActionHandle);
 
 	// TODO find something that passes in non-matching values and see what results it wants, or try it with SteamVR
 	if (act->set != set) {
@@ -1778,7 +1800,7 @@ EVRInputError BaseInput::GetActionBindingInfo(VRActionHandle_t actionHandle, OOV
 
 	// FIXME support any number of sources
 	// TODO does this support passing in unBindingInfoSize=0 and reading the required size? Check with SteamVR.
-	const Action* action = cast_AH(actionHandle);
+	CREATE_ACTION_FROM_HANDLE(action, actionHandle);
 
 	XrBoundSourcesForActionEnumerateInfo enumInfo = { XR_TYPE_BOUND_SOURCES_FOR_ACTION_ENUMERATE_INFO };
 	enumInfo.action = action->xr;
