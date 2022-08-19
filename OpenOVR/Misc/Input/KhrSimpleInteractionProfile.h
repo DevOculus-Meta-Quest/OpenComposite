@@ -1,14 +1,14 @@
 //
-// Created by ZNix on 24/03/2021.
+// Created by znix on 17/04/2022.
 //
 
 #pragma once
 
 #include "InteractionProfile.h"
 
-class OculusTouchInteractionProfile : public InteractionProfile {
+class KhrSimpleInteractionProfile : public InteractionProfile {
 public:
-	OculusTouchInteractionProfile();
+	KhrSimpleInteractionProfile();
 
 	const std::string& GetPath() const override;
 	const char* GetOpenVRName() const override;

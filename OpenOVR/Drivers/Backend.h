@@ -1,6 +1,6 @@
 #pragma once
 #include "../OpenOVR/custom_types.h" // TODO move this into the OpenVR tree
-#include "OpenVR/interfaces/vrtypes.h"
+#include "generated/interfaces/vrtypes.h"
 #include <memory>
 
 // for OOVR_Compositor_FrameTiming
@@ -149,6 +149,10 @@ public:
                                                                                                                                                    \
 	PREPEND ITrackedDevice* GetDevice(                                                                                                             \
 	    vr::TrackedDeviceIndex_t index) APPEND;                                                                                                    \
+                                                                                                                                                   \
+	/* Get the first (and hopefully only) device of a given hand type, or nullptr */                                                               \
+	PREPEND ITrackedDevice* GetDeviceByHand(                                                                                                       \
+	    ITrackedDevice::HandType hand) APPEND;                                                                                                     \
                                                                                                                                                    \
 	PREPEND void GetDeviceToAbsoluteTrackingPose(                                                                                                  \
 	    vr::ETrackingUniverseOrigin toOrigin,                                                                                                      \

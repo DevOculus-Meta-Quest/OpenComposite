@@ -1,14 +1,10 @@
-//
-// Created by ZNix on 24/03/2021.
-//
-
 #pragma once
 
 #include "InteractionProfile.h"
 
-class OculusTouchInteractionProfile : public InteractionProfile {
+class ViveWandInteractionProfile : public InteractionProfile {
 public:
-	OculusTouchInteractionProfile();
+	ViveWandInteractionProfile();
 
 	const std::string& GetPath() const override;
 	const char* GetOpenVRName() const override;

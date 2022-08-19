@@ -4,10 +4,13 @@
 // FIXME don't do that, it's ugly and slows down the build when modifying headers
 #include "../BaseCommon.h"
 
-#include "../Misc/Input/InteractionProfile.h"
+#include "../Drivers/Backend.h"
 #include "../Misc/json/json.h"
+#include <array>
 #include <map>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "../Misc/Input/InputData.h"
@@ -138,6 +141,11 @@ struct OOVR_InputBindingInfo_t {
 };
 
 class BaseInput {
+public:
+	// Ctor/dtor
+	BaseInput();
+	~BaseInput();
+
 public:
 	typedef vr::VRInputValueHandle_t VRInputValueHandle_t;
 	typedef vr::EVRInputError EVRInputError;
@@ -323,9 +331,13 @@ public: // INTERNAL FUNCTIONS
 	/**
 	 * Similar to setting the manifest, but doesn't actually load one. Equivalent to passing in a blank manifest.
 	 *
+	 * If a manifest is already loaded, this does nothing. It should be called when a function from the legacy
+	 * input system is used. That way, games that belatedly load their manifests won't be mis-identified as using
+	 * the legacy system (previously this was called after the first frame).
+	 *
 	 * Used for games that don't use the input system.
 	 */
-	void LoadEmptyManifest();
+	void LoadEmptyManifestIfRequired();
 
 	/**
 	 * Update the input stuff, called by BaseSystem.
@@ -351,11 +363,6 @@ public: // INTERNAL FUNCTIONS
 	 * is current or not.
 	 */
 	inline uint64_t GetSyncSerial() const { return syncSerial; }
-
-	/**
-	 * Converts a hand path (/user/hand/left or /user/hand/right) into an input value handle.
-	 */
-	VRInputValueHandle_t HandPathToIVH(const std::string& path);
 
 private:
 	enum class ActionRequirement {
@@ -429,6 +436,8 @@ private:
 	 */
 	// TODO delete this and move the documentation to OOVR_InputBindingInfo_t
 	struct ActionSource {
+		~ActionSource(); // Must be defined non-inline to avoid it ending up in stubs.gen.cpp
+
 		std::string svrPathName; // Full SteamVR path name for this input, eg '/user/hand/left/input/trackpad'
 		std::string svrDevicePathName; // The device path from svrPathName, eg '/user/hand/left'
 		std::string svrInputPathName; // The input path from svrPathName, eg '/input/trigger'
@@ -440,7 +449,61 @@ private:
 		std::string slot;
 	};
 
+	struct DpadBindingInfo {
+		// Possible dpad directions
+		enum class Direction {
+			NORTH,
+			SOUTH,
+			EAST,
+			WEST,
+			CENTER
+		};
+
+		// mapping from OpenVR name to Direction
+		inline static const std::unordered_map<std::string, Direction> directionMap = {
+			{ "north", Direction::NORTH },
+			{ "east", Direction::EAST },
+			{ "south", Direction::SOUTH },
+			{ "west", Direction::WEST },
+			{ "center", Direction::CENTER }
+		};
+
+		// Map from dpad binding parent names to their corresponding actions
+		// An example parent name might be "righttrackpad-vive_controller"
+		struct ParentActions {
+			XrAction vectorAction = XR_NULL_HANDLE;
+			XrAction clickAction = XR_NULL_HANDLE;
+			XrAction touchAction = XR_NULL_HANDLE;
+		};
+		inline static std::unordered_map<std::string, ParentActions> parents;
+
+		// Deadzone for dpad.
+		static constexpr float dpadDeadzoneRadius = 0.2;
+
+		// These are angles for the different dpad segments.
+		// For example, the north dpad area exists between 45deg and 135deg, the east between -45deg and 45deg, etc
+		// The actual units for the angles are in radians, but they are labeled as degrees since I find degrees more intuitive to understand for humans.
+		static constexpr float angle45deg = math_pi / 4;
+		static constexpr float angle135deg = 3 * math_pi / 4;
+
+		// The direction for this binding.
+		Direction direction = Direction::NORTH;
+
+		// Is a click required for this binding
+		// false implies that a touch is required instead
+		bool click = false;
+
+		// The previous state for the dpad binding.
+		bool lastState = false;
+	};
+
 	struct Action {
+	private:
+		static constexpr size_t sources_size = 32;
+
+	public:
+		~Action(); // Must be defined non-inline to avoid it ending up in stubs.gen.cpp
+
 		// Since the list of VirtualInputs cannot be copied (only moved) we might as well make the
 		// whole struct non-copyable to make the error messages easier to follow.
 		Action() = default;
@@ -456,25 +519,144 @@ private:
 
 		XrAction xr = XR_NULL_HANDLE;
 
-		// Any virtual inputs bound to this action are attached here
-		std::vector<std::unique_ptr<VirtualInput>> virtualInputs;
+		// If this is a skeletal action, what hand it's bound to - this is set in the actions
+		// manifest itself, not a binding file.
+		ITrackedDevice::HandType skeletalHand = ITrackedDevice::HAND_NONE;
 
-		// Only used in the case of Pose actions
-		XrSpace actionSpace = XR_NULL_HANDLE;
+		// The action sources (paths like /user/hand/left/input/select/click, specifying an output of a physical
+		// control) this action is bound to. This is cached, and is updated by activeOriginFromSubaction.
+		XrPath sources[sources_size] = {};
+		std::string sourceNames[sources_size] = {};
+		uint32_t sourcesCount = 0; // Number of sources in the above that are defined
+		uint64_t nextSourcesUpdate = 0; // For caching, the next value of syncSerial this should update at
+
+		// Only used in the case of Pose actions, this is the action space for each subaction path
+		// The indexes match up with allSubactionPaths
+		std::vector<XrSpace> actionSpaces;
+
+		// Only used in float/vector actions, for calculating deltas
+		struct {
+			float x = 0;
+			float y = 0;
+			float z = 0;
+		} previousState;
+
+		// list of dpad directions to check
+		// first member of the pair is the parent name, the second is the corresponding binding info
+		using DpadGrouping = std::pair<std::string, DpadBindingInfo>;
+		std::vector<DpadGrouping> dpadBindings;
 	};
 
-	struct InputValue {
+	enum class InputSource {
+		INVALID,
+		HAND_LEFT,
+		HAND_RIGHT,
+		// HMD and Gamepad can go in here if necessary
+	};
+
+	struct InputValueHandle {
+		InputValueHandle();
+		~InputValueHandle();
+
+		/**
+		 * The full path of this handle, eg /user/hand/left/input/select/value.
+		 *
+		 * This is what was passed to GetInputSourceHandle.
+		 */
+		std::string path;
+
+		/**
+		 * If this is a valid input source (eg in /user/hand/left or a child thereof) this specifies
+		 * what that input source is.
+		 */
+		InputSource type = InputSource::INVALID;
+
+		/**
+		 * If this is a valid input source, this specifies the path of the input device it is mounted on as
+		 * an OpenXR path atom. If it is not, this is XR_NULL_PATH.
+		 *
+		 * This will match one of the paths from allSubactionPaths.
+		 *
+		 * Eg /user/hand/left.
+		 */
+		XrPath devicePath = XR_NULL_PATH;
+
+		/**
+		 * A string version of #devicePath. Null corresponds to an empty string.
+		 */
+		std::string devicePathString;
+	};
+
+	using RegHandle = uint64_t;
+
+	// For keeping track of string-lookup based stuff: actions, actionsets, and inputvaluehandles.
+	// These basically serve two purposes: storing useful stuff that OpenComposite inserts, and associating
+	//  a name the game made up and we don't support with a consistent handle.
+	// Think of this as being used for something like XrPath: the application can convert a string into a
+	//  handle and that handle must be both unique for that string, and constant across calls with the same
+	//  string supplied.
+	// Additionally, some magic strings that OpenComposite loads are associated with additional data.
+	// These provide an opaque handle for a given string. If that string has an object associated with it then
+	//  it's that pointer (to make debugging easier, since you just cast to inspect the contents) or a dummy
+	//  value of a constant plus some randomisation otherwise.
+	// Handle-to-object lookups are always done through an unsorted map (no pointer cases, just in case the
+	//  memory behind the dummy values are somehow allocated and the performance cost should be very
+	//  small), the handle being the pointer solely for debugging.
+	template <typename T>
+	class Registry {
+	public:
+		Registry(uint32_t _maxNameSize);
+		~Registry();
+
+		T* LookupItem(const std::string& name) const;
+		T* LookupItem(RegHandle handle) const;
+		RegHandle LookupHandle(const std::string& name);
+		T* Initialise(const std::string& name, std::unique_ptr<T> value);
+		std::vector<std::unique_ptr<T>>& GetItems() { return storage; }
+
+		// Function for shortening or looking up a shortened version of a name (if it exists)
+		// Necessary because OpenXR has defined limits on name lengths, while OpenVR appears to have no such limits
+		std::string ShortenOrLookupName(const std::string& longName);
+
+	private:
+		// A map of names to handles, used in the common case of not-the-first call
+		std::unordered_map<std::string, RegHandle> handlesByName;
+
+		// Reverse-lookup for debugging
+		std::unordered_map<RegHandle, std::string> namesByHandle;
+
+		// Handles to their associated item, or nothing
+		std::unordered_map<RegHandle, T*> itemsByHandle;
+
+		// Also for bonus performance, name to handle directly. Access time is more
+		// important than memory usage here, as there won't be many actual items (maybe
+		// single-digit thousands at most).
+		std::unordered_map<std::string, T*> itemsByName;
+
+		// The storage for all the actual items
+		std::vector<std::unique_ptr<T>> storage;
+
+		// A map for names that are too long.
+		// For actions, these are names longer than XR_MAX_ACTION_NAME_SIZE
+		// For action sets, XR_MAX_ACTION_SET_NAME_SIZE
+		std::unordered_map<std::string, std::string> longNames;
+
+		// The maximum name size. Does not include the null terminator.
+		const uint32_t maxNameSize;
 	};
 
 	// See GetSyncSerial
 	uint64_t syncSerial = 0;
 
 	bool hasLoadedActions = false;
+	std::string loadedActionsPath;
 	bool usingLegacyInput = false;
-	std::map<std::string, std::unique_ptr<ActionSet>> actionSets;
-	std::map<std::string, std::unique_ptr<Action>> actions;
+	std::vector<std::unique_ptr<class InteractionProfile>> interactionProfiles;
+	Registry<ActionSet> actionSets;
+	Registry<Action> actions;
 
-	std::string bindingsPath;
+	// TODO convert to Registry
+	std::unordered_map<std::string, std::unique_ptr<InputValueHandle>> inputHandleRegistry;
 
 	XrActionSet legacyInputsSet = XR_NULL_HANDLE;
 
@@ -484,9 +666,17 @@ private:
 	 */
 	std::vector<XrPath> allSubactionPaths;
 
-	void LoadBindingsSet(const struct InteractionProfile& profile, std::vector<XrActionSuggestedBinding>& bindings);
+	/**
+	 * String version of allSubactionPaths.
+	 */
+	std::vector<std::string> allSubactionPathNames = {
+		"/user/hand/left",
+		"/user/hand/right",
+	};
 
-	void AddLegacyBindings(InteractionProfile& profile, std::vector<XrActionSuggestedBinding>& bindings);
+	void LoadBindingsSet(const class InteractionProfile& profile, const std::string& bindingsPath);
+
+	void CreateLegacyActions();
 
 	/**
 	 * Convert a tracked device index to 0=left 1=right -1=other
@@ -494,31 +684,100 @@ private:
 	static int DeviceIndexToHandId(vr::TrackedDeviceIndex_t idx);
 
 	struct LegacyControllerActions {
+		~LegacyControllerActions(); // Must be defined non-inline to avoid it ending up in stubs.gen.cpp
+
 		std::string handPath; // eg /user/hand/left
 		XrPath handPathXr;
+		ITrackedDevice::HandType handType;
 
-		XrAction system; // Oculus button
-		XrAction menu, menuTouch; // Upper button on touch controller - B/Y
-		XrAction btnA, btnATouch; // Lower button on touch controller - A/X
+		// Matches up with EVRButtonId
+		XrAction system; // 'system' button, on Vive the SteamVR buttons, on Oculus Touch the menu button on the left controller
+		XrAction menu, menuTouch; // Upper button on touch controller (B/Y), application button on Vive
+		XrAction btnA, btnATouch; // Lower button on touch controller - A/X, not present on Vive
 
 		XrAction stickX, stickY, stickBtn, stickBtnTouch; // Axis0
-		XrAction trigger, triggerTouch; // Axis1
-		XrAction grip; // Axis2
+
+		// For the trigger and grip, we use separate actions for digital and analogue input. If the physical input is analogue it
+		// saves us from having to implement hysteresis (and the runtime probably knows what the appropriate thresholds are better
+		// than we do) and generally gives more flexibility on exotic hardware, as the user can rebind them separately.
+		XrAction trigger, triggerClick, triggerTouch; // Axis1
+		XrAction grip, gripClick; // Axis2
 
 		XrAction haptic;
 
 		// Note: the 'grip' pose runs along the axis of the Touch controller, the 'aim' pose comes
 		// straight out the front if you're holding it neutral. They correspond to the old Oculus
 		// and SteamVR poses.
+		// Note: The skeletal input functions all work inside the grip space, not sure if SteamVR does it this way.
 		XrAction gripPoseAction, aimPoseAction;
 		XrSpace gripPoseSpace, aimPoseSpace;
 	};
 	LegacyControllerActions legacyControllers[2] = {};
 
+	// From https://github.com/ValveSoftware/openvr/wiki/Hand-Skeleton
+	// Used as indexes into the skeleton output data
+	enum HandSkeletonBone {
+		eBone_Root = 0,
+		eBone_Wrist,
+		eBone_Thumb0,
+		eBone_Thumb1,
+		eBone_Thumb2,
+		eBone_Thumb3,
+		eBone_IndexFinger0,
+		eBone_IndexFinger1,
+		eBone_IndexFinger2,
+		eBone_IndexFinger3,
+		eBone_IndexFinger4,
+		eBone_MiddleFinger0,
+		eBone_MiddleFinger1,
+		eBone_MiddleFinger2,
+		eBone_MiddleFinger3,
+		eBone_MiddleFinger4,
+		eBone_RingFinger0,
+		eBone_RingFinger1,
+		eBone_RingFinger2,
+		eBone_RingFinger3,
+		eBone_RingFinger4,
+		eBone_PinkyFinger0,
+		eBone_PinkyFinger1,
+		eBone_PinkyFinger2,
+		eBone_PinkyFinger3,
+		eBone_PinkyFinger4,
+		eBone_Aux_Thumb,
+		eBone_Aux_IndexFinger,
+		eBone_Aux_MiddleFinger,
+		eBone_Aux_RingFinger,
+		eBone_Aux_PinkyFinger,
+		eBone_Count
+	};
+
+	void ConvertHandModelSpace(const std::vector<XrHandJointLocationEXT>& joints, const bool is_right, VRBoneTransform_t* out_transforms);
+	void ConvertHandParentSpace(const std::vector<XrHandJointLocationEXT>& joints, const bool is_right, VRBoneTransform_t* out_transforms);
+
+	XrHandTrackerEXT handTrackers[2] = { XR_NULL_HANDLE, XR_NULL_HANDLE };
+
 	// Utility functions
-	static Action* cast_AH(VRActionHandle_t);
-	static ActionSet* cast_ASH(VRActionSetHandle_t);
-	static vr::TrackedDeviceIndex_t cast_IVH(VRInputValueHandle_t);
-	static VRInputValueHandle_t devToIVH(vr::TrackedDeviceIndex_t index);
-	VRInputValueHandle_t activeOriginToIVH(XrPath path);
+	Action* cast_AH(VRActionHandle_t);
+	ActionSet* cast_ASH(VRActionSetHandle_t);
+	static InputValueHandle* cast_IVH(VRInputValueHandle_t);
+	static ITrackedDevice* ivhToDev(VRInputValueHandle_t handle);
+	VRInputValueHandle_t devToIVH(vr::TrackedDeviceIndex_t index);
+	static bool checkRestrictToDevice(vr::VRInputValueHandle_t restrict, XrPath subactionPath);
+
+	/**
+	 * Get the 'activeOrigin' corresponding to a particular sub-action path on a given action.
+	 *
+	 * in OpenVR the application knows exactly what input source caused the action, while on OpenXR
+	 * we only know what subaction caused it. So if you have two buttons on the same controller
+	 * bound, we can't tell which one was pressed. Therefore this will pick one in an arbitrary but
+	 * consistent manner.
+	 */
+	VRInputValueHandle_t activeOriginFromSubaction(Action* action, const char* subactionPath);
+
+	/**
+	 * Get the state for a digital action, which could be bound to a DPad action.
+	 */
+	XrResult getBooleanOrDpadData(Action& action, XrActionStateGetInfo* getInfo, XrActionStateBoolean* state);
+
+	friend class InteractionProfile;
 };

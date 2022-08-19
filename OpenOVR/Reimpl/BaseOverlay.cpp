@@ -8,10 +8,9 @@
 #include "Misc/Config.h"
 #include "Misc/ScopeGuard.h"
 #include "convert.h"
-#include "static_bases.gen.h"
+#include "generated/static_bases.gen.h"
 #include <string>
 
-using namespace std;
 using glm::mat4;
 using glm::vec3;
 
@@ -210,7 +209,7 @@ EVROverlayError BaseOverlay::DestroyOverlay(VROverlayHandle_t ulOverlayHandle)
 	USEH();
 
 	if (highQualityOverlay == ulOverlayHandle)
-		highQualityOverlay = NULL;
+		highQualityOverlay = vr::k_ulOverlayHandleInvalid;
 
 	overlays.erase(overlay->key);
 	validOverlays.erase(overlay);
@@ -240,7 +239,7 @@ uint32_t BaseOverlay::GetOverlayKey(VROverlayHandle_t ulOverlayHandle, char* pch
 		if (pError)
 			*pError = VROverlayError_InvalidHandle;
 		if (unBufferSize != 0)
-			pchValue[0] = NULL;
+			pchValue = 0;
 		return 0;
 	}
 
@@ -268,7 +267,7 @@ uint32_t BaseOverlay::GetOverlayName(VROverlayHandle_t ulOverlayHandle, VR_OUT_S
 		if (pError)
 			*pError = VROverlayError_InvalidHandle;
 		if (unBufferSize != 0)
-			pchValue[0] = NULL;
+			pchValue[0] = 0;
 		return 0;
 	}
 
@@ -620,7 +619,7 @@ bool BaseOverlay::PollNextOverlayEvent(VROverlayHandle_t ulOverlayHandle, VREven
 	VREvent_t e = overlay->eventQueue.front();
 	overlay->eventQueue.pop();
 
-	memcpy(pEvent, &e, min((uint32_t)sizeof(e), eventSize));
+	memcpy(pEvent, &e, std::min((uint32_t)sizeof(e), eventSize));
 
 	return true;
 }

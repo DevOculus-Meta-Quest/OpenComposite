@@ -3,8 +3,8 @@
 #include "BaseSettings.h"
 #include "BaseSystem.h"
 #include "Misc/Config.h"
-#include "OpenVR/interfaces/IVRSettings_001.h"
-#include "OpenVR/interfaces/IVRSettings_002.h"
+#include "generated/interfaces/IVRSettings_001.h"
+#include "generated/interfaces/IVRSettings_002.h"
 #include <string>
 
 #ifndef OC_XR_PORT
@@ -39,7 +39,6 @@
 		OOVR_SOFT_ABORT(str.c_str());                                      \
 	}
 
-using namespace std;
 namespace kk1 = vr::IVRSettings_001;
 namespace kk = vr::IVRSettings_002;
 

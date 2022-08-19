@@ -5,15 +5,17 @@ if (MSVC)
 	set(CMAKE_SYSTEM_VERSION 10.0.17134.0)
 endif ()
 
-cmake_minimum_required(VERSION 3.10.2)
+cmake_minimum_required(VERSION 3.16)
 project(OpenComposite)
-
-include(scripts/pch.cmake)
+set(CMAKE_CXX_STANDARD 20)
 
 # Options
 
 set(XR_VALIDATION_LAYER_PATH "" CACHE STRING "A path to set XR_API_LAYER_PATH to. Setting this will enable the debug layer")
 set(XR_VALIDATION_FILE_NAME "" CACHE STRING "A filename to set XR_CORE_VALIDATION_FILE_NAME to.")
+
+# Directory for generated files, those being split headers and stubs
+set(GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
 
 # Platform-dependent flags
 # Support Vulkan on Linux instead of DirectX
@@ -59,7 +61,7 @@ include_external_msproject(
 
 # === OpenVR Headers ===
 add_library(OpenVR INTERFACE)
-target_include_directories(OpenVR INTERFACE SplitOpenVRHeaders) # TODO make this private and put the public headers elsewhere
+target_include_directories(OpenVR INTERFACE OpenVRHeaders) # TODO make this private and put the public headers elsewhere
 
 # === Vulkan ===
 add_library(Vulkan INTERFACE)
@@ -90,9 +92,6 @@ else ()
 		target_link_libraries(Vulkan INTERFACE -lvulkan)
 	endif ()
 
-	# Unfortunately we also need to link against the std::filesystem implementation
-	# FIXME this hardcodes the GNU C++ library, make it work with LLVM's libc++
-	target_link_libraries(Vulkan INTERFACE -lstdc++fs)
 endif ()
 
 # === OpenXR ===
@@ -183,8 +182,11 @@ add_library(DrvOpenXR STATIC
 	DrvOpenXR/tmp_gfx/TemporaryD3D11.h
 	DrvOpenXR/tmp_gfx/TemporaryVk.cpp
 	DrvOpenXR/tmp_gfx/TemporaryVk.h
+	# Ensuring vrtypes.h exists should mean the rest of our generated interfaces exists
+	${GENERATED_DIR}/interfaces/vrtypes.h
+	${GENERATED_DIR}/static_bases.gen.h
 )
-target_include_directories(DrvOpenXR PUBLIC DrvOpenXR/pub)
+target_include_directories(DrvOpenXR PUBLIC DrvOpenXR/pub ${CMAKE_BINARY_DIR})
 target_include_directories(DrvOpenXR PRIVATE DrvOpenXR)
 target_link_libraries(DrvOpenXR PUBLIC OpenVR OpenXR glm)
 target_compile_definitions(DrvOpenXR PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS} -D_CRT_SECURE_NO_WARNINGS)
@@ -199,17 +201,26 @@ endif ()
 
 # === OCCore ===
 # TODO: precompiled headers
-set(OVR_RESOURCES
-	OpenOVR/resources.rc
-)
+if (WIN32)
+	set(OVR_RESOURCES
+		OpenOVR/resources.rc
+	)
+else ()
+	enable_language(ASM)
+	set_property(SOURCE OpenOVR/Misc/resources_linux.s APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp")
+	set_property(SOURCE OpenOVR/Misc/resources_linux.s SET PROPERTY INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}")
+	set(OVR_RESOURCES
+		OpenOVR/Misc/resources_linux.s
+	)
+endif ()
 set(OVR_PCH_EXCLUDED
 	OpenOVR/Misc/ini.c
 	OpenOVR/Misc/jsoncpp.cpp
 	OpenOVR/Misc/lodepng.cpp
 )
+
 add_library(OCCore STATIC
-	# Use when doing PCH
-	# Place it above everything else, so it gets built first
+	# This file is used to generate the precompiled headers
 	OpenOVR/stdafx.cpp
 
 	OpenOVR/Compositor/compositor.cpp
@@ -232,7 +243,9 @@ add_library(OCCore STATIC
 	OpenOVR/Misc/Keyboard/VRKeyboard.cpp
 	OpenOVR/Misc/Input/InteractionProfile.cpp
 	OpenOVR/Misc/Input/OculusInteractionProfile.cpp
-	OpenOVR/Misc/Input/AnalogueToDigitalInput.cpp
+	OpenOVR/Misc/Input/KhrSimpleInteractionProfile.cpp
+	OpenOVR/Misc/Input/ViveInteractionProfile.cpp
+	OpenOVR/Misc/Input/IndexControllerInteractionProfile.cpp
 	OpenOVR/OpenOVR.cpp
 	OpenOVR/Reimpl/BaseApplications.cpp
 	OpenOVR/Reimpl/BaseChaperone.cpp
@@ -241,6 +254,7 @@ add_library(OCCore STATIC
 	OpenOVR/Reimpl/BaseCompositor.cpp
 	OpenOVR/Reimpl/BaseExtendedDisplay.cpp
 	OpenOVR/Reimpl/BaseInput.cpp
+	OpenOVR/Reimpl/BaseInput_Hand.cpp
 	OpenOVR/Reimpl/BaseInputInternal.cpp
 	OpenOVR/Reimpl/BaseOverlay.cpp
 	OpenOVR/Reimpl/BaseOverlayView.cpp
@@ -266,7 +280,7 @@ add_library(OCCore STATIC
 	OpenOVR/Reimpl/CVRSystem.cpp
 	OpenOVR/Reimpl/CVRMailbox.cpp
 	OpenOVR/Reimpl/CVRControlPanel.cpp
-	OpenOVR/Reimpl/stubs.gen.cpp
+	${GENERATED_DIR}/stubs.gen.cpp
 
 	# Base classes
 	OpenOVR/Reimpl/BaseServerDriverHost.cpp OpenOVR/Reimpl/BaseServerDriverHost.h
@@ -276,9 +290,6 @@ add_library(OCCore STATIC
 
 	# Exclude from the PCH requirement
 	${OVR_PCH_EXCLUDED}
-
-	# Resources
-	${OVR_RESOURCES}
 
 	# Headers
 	OpenOVR/BaseCommon.h
@@ -297,7 +308,7 @@ add_library(OCCore STATIC
 	OpenOVR/Misc/Keyboard/VRKeyboard.h
 	OpenOVR/Misc/Input/InteractionProfile.h
 	OpenOVR/Misc/Input/OculusInteractionProfile.h
-	OpenOVR/Misc/Input/AnalogueToDigitalInput.h
+	OpenOVR/Misc/Input/KhrSimpleInteractionProfile.h
 	OpenOVR/Misc/lodepng.h
 	OpenOVR/Misc/ScopeGuard.h
 	OpenOVR/Reimpl/BaseApplications.h
@@ -317,7 +328,7 @@ add_library(OCCore STATIC
 	OpenOVR/Reimpl/BaseMailbox.h
 	OpenOVR/Reimpl/BaseControlPanel.h
 	OpenOVR/Reimpl/Interfaces.h
-	OpenOVR/Reimpl/static_bases.gen.h
+	${GENERATED_DIR}/static_bases.gen.h
 	OpenOVR/resources.h
 	OpenOVR/stdafx.h
 	OpenOVR/steamvr_abi.h
@@ -330,83 +341,17 @@ add_library(OCCore STATIC
 	OpenOVR/Drivers/Backend.h
 
 	# While not actually part of OCCore, list all the OpenVR interfaces here so they are easily accessable in IDE
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRClientCore_002.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRClientCore_003.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRCompositor_017.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRMailbox_001.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRInputInternal_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRControlPanel_001.h
-	SplitOpenVRHeaders/OpenVR/custom_interfaces/IVRControlPanel_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRApplications_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperoneSetup_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRChaperone_003.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_009.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_012.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_013.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_014.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_015.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_016.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_018.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_019.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_020.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_021.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRCompositor_022.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRDriverManager_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRExtendedDisplay_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_003.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRInput_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRIOBuffer_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRNotifications_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_007.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_010.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_011.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_012.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_013.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_014.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_016.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_017.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_018.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVROverlay_019.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_004.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRRenderModels_006.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRResources_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRScreenshots_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSettings_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSettings_002.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSpatialAnchors_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_009.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_011.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_012.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_014.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_015.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_016.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_017.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRSystem_019.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_001.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_003.h
-	SplitOpenVRHeaders/OpenVR/interfaces/IVRTrackedCamera_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/openvr.h
-	SplitOpenVRHeaders/OpenVR/interfaces/version.h
-	SplitOpenVRHeaders/OpenVR/interfaces/vrannotation.h
-	SplitOpenVRHeaders/OpenVR/interfaces/vrtypes.h
-
-	# OpenVR Driver headers
-	SplitOpenVRHeaders/OpenVR/interfaces/driver_itrackeddevicedriverprovider.h
-	SplitOpenVRHeaders/OpenVR/interfaces/driver_IVRServerDriverHost_005.h
-	SplitOpenVRHeaders/OpenVR/interfaces/driver_ITrackedDeviceServerDriver_005.h
+	OpenVRHeaders/custom_interfaces/IVRClientCore_002.h
+	OpenVRHeaders/custom_interfaces/IVRClientCore_003.h
+	OpenVRHeaders/custom_interfaces/IVRCompositor_017.h
+	OpenVRHeaders/custom_interfaces/IVRMailbox_001.h
+	OpenVRHeaders/custom_interfaces/IVRInputInternal_002.h
+	OpenVRHeaders/custom_interfaces/IVRControlPanel_006.h
+	# Ensuring vrtypes.h exists should mean the rest of our generated interfaces exists
+	${GENERATED_DIR}/interfaces/vrtypes.h
 )
-target_include_directories(OCCore PUBLIC OpenOVR) # TODO make this private and put the public headers elsewhere
-target_include_directories(OCCore PRIVATE BundledLibs)
+target_include_directories(OCCore PUBLIC OpenOVR ${CMAKE_BINARY_DIR})  # TODO make this private and put the public headers elsewhere
+target_include_directories(OCCore PRIVATE BundledLibs OpenVRHeaders)
 target_compile_definitions(OCCore PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS})
 
 target_link_libraries(OCCore OpenVR OpenXR Vulkan glm)
@@ -417,15 +362,12 @@ if (NOT WIN32 AND NOT ANDROID)
 endif ()
 
 # Set up precompiled headers for OCCore
-if (WIN32)
-add_precompiled_header(OCCore ${CMAKE_SOURCE_DIR}/OpenOVR/stdafx.h EXCLUDE
-	${OVR_PCH_EXCLUDED}
-)
-endif ()
+target_precompile_headers(OCCore PRIVATE ${CMAKE_SOURCE_DIR}/OpenOVR/stdafx.h)
+set_source_files_properties(${OVR_PCH_EXCLUDED} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
-source_group(OpenVR REGULAR_EXPRESSION SplitOpenVRHeaders/OpenVR/interfaces/*)
-source_group(OpenVR\\Drivers REGULAR_EXPRESSION SplitOpenVRHeaders/OpenVR/interfaces/driver_*)
-source_group(OpenVR\\Custom REGULAR_EXPRESSION SplitOpenVRHeaders/OpenVR/custom_interfaces/*)
+source_group(OpenVR REGULAR_EXPRESSION ${GENERATED_DIR}/interfaces)
+source_group(OpenVR\\Drivers REGULAR_EXPRESSION ${GENERATED_DIR}/interfaces/driver_*)
+source_group(OpenVR\\Custom REGULAR_EXPRESSION OpenVRHeaders/custom_interfaces/*)
 source_group(Interfaces REGULAR_EXPRESSION OpenOVR/Reimpl/Base*)
 source_group(Interfaces\\Declarations REGULAR_EXPRESSION OpenOVR/Reimpl/CVR*)
 
@@ -474,11 +416,81 @@ endif ()
 # See the comment at the top about -fvisibility=hidden
 if (WIN32)
 else ()
-	target_link_libraries(OCOVR PRIVATE -Wl,-Bsymbolic -Wl,-Bsymbolic-functions)
+	target_link_options(OCOVR PRIVATE -Wl,-Bsymbolic -Wl,-Bsymbolic-functions)
+
+	# Ensure all required symbols are actually found, don't produce a binary that can't be loaded
+	target_link_options(OCOVR PRIVATE -z defs)
 
 	# Oh, and we need dlopen
 	target_link_libraries(OCOVR PUBLIC -ldl)
 endif ()
 
+# needed for generated files
+target_include_directories(OCOVR PRIVATE OpenOVR/Reimpl)
+
 # Required because the compositor header needs the platform-specific structures enabled via defines
 target_compile_definitions(OCOVR PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS})
+
+find_package(Python REQUIRED Interpreter)
+
+# glob for all openvr headers
+file(GLOB openvr-headers CONFIGURE_DEPENDS LIST_DIRECTORIES false ${CMAKE_SOURCE_DIR}/OpenVRHeaders/openvr-*)
+
+# glob for stub generator libraries
+file(GLOB stub-deps CONFIGURE_DEPENDS LIST_DIRECTORIES false ${CMAKE_SOURCE_DIR}/scripts/stubs/*)
+
+# Command for running header splitting script
+add_custom_command(
+	OUTPUT ${GENERATED_DIR}/interfaces/vrtypes.h
+	COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/split_headers.py ${CMAKE_SOURCE_DIR}/OpenVRHeaders ${GENERATED_DIR}
+	DEPENDS ${CMAKE_SOURCE_DIR}/scripts/split_headers.py ${openvr-headers}
+	COMMENT "Splitting headers..."
+	)
+
+# Command for running stub generator
+add_custom_command(
+	OUTPUT ${GENERATED_DIR}/stubs.gen.cpp ${GENERATED_DIR}/static_bases.gen.h
+	COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/stubs.py ${CMAKE_SOURCE_DIR}/OpenOVR/Reimpl ${CMAKE_SOURCE_DIR}/OpenVRHeaders ${GENERATED_DIR}
+	DEPENDS ${CMAKE_SOURCE_DIR}/scripts/stubs.py ${stub-deps} ${GENERATED_DIR}/interfaces/vrtypes.h
+	COMMENT "Generating stubs..."
+	)
+
+# Allows clean target to delete generated files too
+set_property(
+	TARGET OCCore
+	APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${GENERATED_DIR};${CMAKE_BINARY_DIR}/bin)
+
+if ( CMAKE_SIZEOF_VOID_P EQUAL 8) # 64 bit build - void pointer is 8 bits on 64 bit
+	set(is_64bit_build true)
+else()
+	set(is_64bit_build false)
+endif()
+
+# Move OCOVR to appropriate directory expected by OpenVR and rename it to vrclient (or vrclient_x64)
+# This enables marking the build directory as the OpenVR runtime path.
+# For example, you can set the VR_OVERRIDE variable to the build dir (VR_OVERRIDE=<path to build dir>) when launching an app.
+# see VR_LoadHmdSystemInternal() from openvr_api_public.cpp in the OpenVR repo for the expected paths.
+if (WIN32)
+	set(VRCLIENT_DIR bin)
+	if ( is_64bit_build )
+		set(VRCLIENT_NAME vrclient_x64)
+	else()
+		set(VRCLIENT_NAME vrclient)
+	endif()
+else ()
+	set(VRCLIENT_NAME vrclient)
+	if ( is_64bit_build )
+		set(VRCLIENT_DIR bin/linux64)
+	else()
+		set(VRCLIENT_DIR bin)
+	endif()
+endif ()
+set_target_properties(OCOVR PROPERTIES
+	PREFIX ""
+	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VRCLIENT_DIR}
+	LIBRARY_OUTPUT_NAME ${VRCLIENT_NAME})
+
+# ensure output directory exists
+get_target_property(output_dir OCOVR LIBRARY_OUTPUT_DIRECTORY)
+add_custom_command(TARGET OCOVR
+	PRE_LINK COMMAND ${CMAKE_COMMAND} -E make_directory ${output_dir})

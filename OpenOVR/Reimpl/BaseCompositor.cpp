@@ -11,33 +11,20 @@ using glm::mat4;
 using glm::quat;
 using glm::vec3;
 using glm::vec4;
-using namespace std;
 
 #include "BaseCompositor.h"
 #include "BaseOverlay.h"
 
 // For the left and right hand constants - TODO move them to their own file
 #include "BaseSystem.h"
-#include "static_bases.gen.h"
-
-#ifndef OC_XR_PORT
-
-// Need the LibOVR Vulkan headers for the GetVulkan[Device|Instance]ExtensionsRequired methods
-#ifdef SUPPORT_VK
-#include "OVR_CAPI_Vk.h"
-#endif
-
-#ifdef SUPPORT_DX
-#include "OVR_CAPI_D3D.h"
-#endif
-
-#endif
+#include "generated/static_bases.gen.h"
 
 // FIXME find a nice way to clean this up
 #ifdef SUPPORT_VK
 #include "../../DrvOpenXR/pub/DrvOpenXR.h"
 #endif
 
+#include "BaseClientCore.h"
 #include "Drivers/Backend.h"
 #include "Misc/ScopeGuard.h"
 
@@ -124,7 +111,7 @@ ovr_enum_t BaseCompositor::GetLastPoses(TrackedDevicePose_t* renderPoseArray, ui
 
 	ETrackingUniverseOrigin origin = GetTrackingSpace();
 
-	for (uint32_t i = 0; i < max(gamePoseArrayCount, renderPoseArrayCount); i++) {
+	for (uint32_t i = 0; i < std::max(gamePoseArrayCount, renderPoseArrayCount); i++) {
 		TrackedDevicePose_t* renderPose = NULL;
 		TrackedDevicePose_t* gamePose = NULL;
 
@@ -216,10 +203,7 @@ Compositor* BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture)
 #endif
 #ifdef SUPPORT_VK
 	case TextureType_Vulkan: {
-		auto* vk = DrvOpenXR::GetTemporaryVk();
-		if (vk == nullptr)
-			OOVR_ABORT("Not using temporary Vulkan instance");
-		comp = new VkCompositor(texture, vk);
+		comp = new VkCompositor(texture);
 		break;
 	}
 #endif
@@ -239,6 +223,10 @@ Compositor* BaseCompositor::CreateCompositorAPI(const vr::Texture_t* texture)
 
 ovr_enum_t BaseCompositor::Submit(EVREye eye, const Texture_t* texture, const VRTextureBounds_t* bounds, EVRSubmitFlags submitFlags)
 {
+	if (BaseClientCore::appType == vr::VRApplication_Background) {
+		OOVR_ABORT("Error - application with type VRApplication_Background should not be submitting!");
+	}
+
 	bool isFirstEye = !leftEyeSubmitted && !rightEyeSubmitted;
 
 	bool eyeState = false;

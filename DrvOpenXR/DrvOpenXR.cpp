@@ -7,8 +7,8 @@
 #include "../OpenOVR/Misc/android_api.h"
 #include "../OpenOVR/Misc/xr_ext.h"
 #include "../OpenOVR/Reimpl/BaseInput.h"
-#include "../OpenOVR/Reimpl/static_bases.gen.h"
 #include "XrBackend.h"
+#include "generated/static_bases.gen.h"
 #include "tmp_gfx/TemporaryGraphics.h"
 #include "../OpenOVR/Misc/Config.h"
 
@@ -71,7 +71,7 @@ void DrvOpenXR::GetXRAppName(char (&appName)[128])
 #ifdef _DEBUG
 static XrDebugUtilsMessengerEXT dbgMessenger = NULL;
 
-static XrBool32 debugCallback(
+static XrBool32 XRAPI_CALL debugCallback(
     XrDebugUtilsMessageSeverityFlagsEXT messageSeverity,
     XrDebugUtilsMessageTypeFlagsEXT messageTypes,
     const XrDebugUtilsMessengerCallbackDataEXT* callbackData,
@@ -177,6 +177,9 @@ IBackend* DrvOpenXR::CreateOpenXRBackend()
 	// If the visibility mask is available use it, otherwise no big deal
 	if (availableExtensions.count(XR_KHR_VISIBILITY_MASK_EXTENSION_NAME))
 		extensions.push_back(XR_KHR_VISIBILITY_MASK_EXTENSION_NAME);
+
+	if (availableExtensions.count(XR_EXT_HAND_TRACKING_EXTENSION_NAME))
+		extensions.push_back(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
 
 	const char* const layers[] = {
 #ifdef XR_VALIDATION_LAYER_PATH
@@ -291,6 +294,10 @@ void DrvOpenXR::SetupSession(const void* graphicsBinding)
 	// Setup the OpenXR globals, which uses the current session so we have to do this last
 	xr_gbl = new XrSessionGlobals();
 
+	// Print the current version for diagnostic purposes
+	OOVR_LOGF("Started OpenXR session on runtime '%s', hand tracking supported: %d",
+	    xr_gbl->systemProperties.systemName, xr_gbl->handTrackingProperties.supportsHandTracking);
+
 	// If required, re-setup the input system for this new session
 	BaseInput* input = GetUnsafeBaseInput();
 	if (input)
@@ -351,7 +358,7 @@ void DrvOpenXR::VkGetPhysicalDevice(VkInstance instance, VkPhysicalDevice* out)
 {
 	*out = VK_NULL_HANDLE;
 
-	TemporaryVk* vk = GetTemporaryVk();
+	TemporaryVk* vk = temporaryGraphics->GetAsVk();
 	if (vk == nullptr)
 		OOVR_ABORT("Not using temporary Vulkan instance");
 
@@ -382,8 +389,4 @@ void DrvOpenXR::VkGetPhysicalDevice(VkInstance instance, VkPhysicalDevice* out)
 	OOVR_ABORT("Could not find matching Vulkan physical device for instance");
 }
 
-TemporaryVk* DrvOpenXR::GetTemporaryVk()
-{
-	return temporaryGraphics->GetAsVk();
-}
 #endif

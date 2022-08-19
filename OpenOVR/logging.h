@@ -42,7 +42,7 @@ void oovr_soft_abort_raw(const char* file, long line, const char* func, int* hit
  */
 #define OOVR_SOFT_ABORTF(msg, ...)                                                                      \
 	do {                                                                                                \
-		int soft_abort_hit_count = 0;                                                                   \
+		static int soft_abort_hit_count = 0;                                                            \
 		oovr_soft_abort_raw(__FILE__, __LINE__, __FUNCTION__, &soft_abort_hit_count, msg, __VA_ARGS__); \
 	} while (0)
 
@@ -120,7 +120,7 @@ void oovr_message_raw(const char* message, const char* title);
 
 // Yay for there not being a PI constant in the standard
 // (technically it has absolutely nothing to do with logging but this is a convenient place to put it)
-const extern float math_pi;
+constexpr float math_pi = 3.14159265358979323846f;
 
 // Again unrelated and just putting it here because everything can use it. This makes using
 // strcpy_s more convenient on arrays in a cross-platform way.
