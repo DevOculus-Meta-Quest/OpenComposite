@@ -22,9 +22,11 @@
 #include <set>
 #include <utility>
 
+#include "Misc/Input/HolographicInteractionProfile.h"
 #include "Misc/Input/IndexControllerInteractionProfile.h"
 #include "Misc/Input/KhrSimpleInteractionProfile.h"
 #include "Misc/Input/OculusInteractionProfile.h"
+#include "Misc/Input/ReverbG2InteractionProfile.h"
 #include "Misc/Input/ViveInteractionProfile.h"
 #include "Misc/xrmoreutils.h"
 
@@ -206,7 +208,6 @@ static std::string pathFromParts(const std::initializer_list<std::string>& parts
 }
 
 // Must be defined non-inline to avoid it ending up in stubs.gen.cpp
-BaseInput::LegacyControllerActions::~LegacyControllerActions() = default;
 BaseInput::Action::~Action() = default;
 BaseInput::ActionSource::~ActionSource() = default;
 BaseInput::InputValueHandle::InputValueHandle() = default;
@@ -321,6 +322,10 @@ T* BaseInput::Registry<T>::Initialise(const std::string& name, std::unique_ptr<T
 BaseInput::BaseInput()
     : actionSets(XR_MAX_ACTION_SET_NAME_SIZE), actions(XR_MAX_ACTION_NAME_SIZE)
 {
+	if (xr_ext->G2Controller_Available())
+		interactionProfiles.emplace_back(std::make_unique<ReverbG2InteractionProfile>());
+
+	interactionProfiles.emplace_back(std::make_unique<HolographicInteractionProfile>());
 	interactionProfiles.emplace_back(std::make_unique<IndexControllerInteractionProfile>());
 	interactionProfiles.emplace_back(std::make_unique<ViveWandInteractionProfile>());
 	interactionProfiles.emplace_back(std::make_unique<OculusTouchInteractionProfile>());
@@ -570,7 +575,8 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 	// Map of OpenVR names (i.e. "vive_controller") to interaction profile pointers
 	std::unordered_map<std::string, InteractionProfile*> OVRNameToProfile;
 	for (const std::unique_ptr<InteractionProfile>& profile : interactionProfiles) {
-		OVRNameToProfile[profile->GetOpenVRName()] = profile.get();
+		if (profile->GetOpenVRName().has_value())
+			OVRNameToProfile[profile->GetOpenVRName().value()] = profile.get();
 	}
 
 	// For determining the best path for supported controllers that don't have a profile handled by the game (i.e. khr/simple_controller)
@@ -804,9 +810,11 @@ void BaseInput::LoadBindingsSet(const struct InteractionProfile& profile, const 
 					}
 
 					// check if parent is in dpadBindingParens
-					// get parent name: remove /user/hand and /input/ parts, add openvr name (so we don't i.e. confuse dpad bindings from the knuckles joystick with dpad bindings from the oculus joystick)
+					// get parent name: remove /user/hand and /input/ parts, add end of openxr path (so we don't i.e. confuse dpad bindings from the knuckles joystick with dpad bindings from the oculus joystick)
 					std::string to_delete[] = { "/user/hand/", "/input/" };
-					std::string parentName = importBasePath + "-" + profile.GetOpenVRName() + "-dpad-parent";
+					auto& path = profile.GetPath();
+					std::string end = path.substr(path.rfind("/") + 1);
+					std::string parentName = importBasePath + "-" + end + "-dpad-parent";
 					for (const auto& str : to_delete) {
 						parentName.replace(parentName.find(str), str.size(), "");
 					}
@@ -849,14 +857,17 @@ void BaseInput::LoadBindingsSet(const struct InteractionProfile& profile, const 
 					} else {
 						// touch dpad
 						dpad_info.click = false;
-						if (parent_iter->second.touchAction == XR_NULL_HANDLE) {
+						std::string touchPath = profile.TranslateAction(importBasePath + "/touch");
+						if (!profile.IsInputPathValid(touchPath)) {
+							OOVR_LOGF("WARNING: Path %s does not exist for the touch dpad.", touchPath.c_str());
+						} else if (parent_iter->second.touchAction == XR_NULL_HANDLE) {
 							std::string touch_name = parentName + "-touch";
 							strcpy_arr(info.actionName, touch_name.c_str());
 							info.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
 							strcpy_arr(info.localizedActionName, touch_name.c_str());
 							OOVR_FAILED_XR_ABORT(xrCreateAction(action->set->xr, &info, &parent_iter->second.touchAction));
 							XrPath suggested_path;
-							OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, profile.TranslateAction(importBasePath + "/touch").c_str(), &suggested_path));
+							OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, touchPath.c_str(), &suggested_path));
 							bindings.push_back(XrActionSuggestedBinding{ parent_iter->second.touchAction, suggested_path });
 						}
 					}
@@ -1193,11 +1204,14 @@ XrResult BaseInput::getBooleanOrDpadData(Action& action, XrActionStateGetInfo* g
 			getInfo->action = iter->second.clickAction;
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session, getInfo, &click_state));
 			active = click_state.currentState;
-		} else {
+		} else if (iter->second.touchAction != XR_NULL_HANDLE) {
 			XrActionStateBoolean touch_state{ XR_TYPE_ACTION_STATE_BOOLEAN };
 			getInfo->action = iter->second.touchAction;
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session, getInfo, &touch_state));
 			active = touch_state.currentState;
+		} else {
+			// touch dpad, but our dpad parent doesn't have a touch input
+			active = true;
 		}
 
 		if (active && within_bounds) {
@@ -2180,12 +2194,6 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	grip.x = readFloat(ctrl.grip);
 	grip.y = 0;
 
-	// TODO implement the DPad actions
-	OOVR_LOG_ONCE("DPad emulation not yet implemented");
-#ifndef XR_STUBBED
-#error todo
-#endif
-
 	return true;
 }
 
@@ -2248,7 +2256,34 @@ void BaseInput::GetHandSpace(vr::TrackedDeviceIndex_t index, XrSpace& space)
 	space = ctrl.aimPoseSpace;
 }
 
-bool BaseInput::IsActionsLoaded()
+bool BaseInput::AreActionsLoaded()
 {
 	return hasLoadedActions;
+}
+
+void BaseInput::UpdateInteractionProfile()
+{
+	XrInteractionProfileState state{ XR_TYPE_INTERACTION_PROFILE_STATE };
+	XrPath path;
+	xrStringToPath(xr_instance, "/user/hand/left", &path);
+	xrGetCurrentInteractionProfile(xr_session, path, &state);
+	if (state.interactionProfile == XR_NULL_PATH) {
+		xrStringToPath(xr_instance, "/user/hand/right", &path);
+		xrGetCurrentInteractionProfile(xr_session, path, &state);
+	}
+	if (state.interactionProfile != XR_NULL_PATH) {
+		uint32_t tmp;
+		char path_name[XR_MAX_PATH_LENGTH];
+		xrPathToString(xr_instance, state.interactionProfile, XR_MAX_PATH_LENGTH, &tmp, path_name);
+
+		for (auto& profile : interactionProfiles) {
+			if (profile->GetPath() == path_name) {
+				activeProfile = profile.get();
+				OOVR_LOGF("Using interaction profile: %s", path_name);
+				break;
+			}
+		}
+	} else {
+		activeProfile = nullptr;
+	}
 }

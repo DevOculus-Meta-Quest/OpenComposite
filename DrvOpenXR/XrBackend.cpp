@@ -21,6 +21,7 @@
 #endif
 
 // FIXME find a better way to send the OnPostFrame call?
+#include "../OpenOVR/Reimpl/BaseInput.h"
 #include "../OpenOVR/Reimpl/BaseOverlay.h"
 #include "../OpenOVR/Reimpl/BaseSystem.h"
 #include "../OpenOVR/convert.h"
@@ -732,6 +733,17 @@ void XrBackend::PumpEvents()
 			default:
 				// suppress clion warning about missing branches
 				break;
+			}
+		}
+
+		if (ev.type == XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED) {
+			auto input = GetUnsafeBaseInput();
+			if (input)
+				input->UpdateInteractionProfile();
+			auto system = GetUnsafeBaseSystem();
+			if (system) {
+				VREvent_t profile = { VREvent_TrackedDeviceUpdated, 0 };
+				system->_EnqueueEvent(profile);
 			}
 		}
 	}
