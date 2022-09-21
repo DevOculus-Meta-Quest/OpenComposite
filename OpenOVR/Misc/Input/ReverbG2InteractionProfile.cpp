@@ -19,6 +19,7 @@ ReverbG2InteractionProfile::ReverbG2InteractionProfile()
 		"/input/thumbstick/x",
 		"/input/thumbstick/y",
 		"/input/thumbstick/click",
+		"/input/thumbstick",
 		"/input/grip/pose",
 		"/input/aim/pose",
 		"/output/haptic",
@@ -40,6 +41,7 @@ ReverbG2InteractionProfile::ReverbG2InteractionProfile()
 	pathTranslationMap = {
 		{ "grip", "squeeze" },
 		{ "joystick", "thumbstick" },
+		{ "trackpad", "thumbstick" },
 		{ "pull", "value" },
 		{ "grip/click", "squeeze/value" },
 		{ "trigger/click", "trigger/value" },
@@ -74,7 +76,7 @@ const InteractionProfile::LegacyBindings* ReverbG2InteractionProfile::GetLegacyB
 	LegacyBindings& bindings = allBindings[hand];
 
 	if (!bindings.menu) {
-		bindings.menu = "input/menu/click";
+		bindings.system = "input/menu/click";
 		bindings.stickX = "input/thumbstick/x";
 		bindings.stickY = "input/thumbstick/y";
 		bindings.stickBtn = "input/thumbstick/click";
@@ -84,10 +86,11 @@ const InteractionProfile::LegacyBindings* ReverbG2InteractionProfile::GetLegacyB
 		bindings.gripPoseAction = "input/grip/pose";
 		bindings.aimPoseAction = "input/aim/pose";
 
-		// TODO: figure out mappings for buttons on controllers
 		if (handPath == "/user/hand/left") {
+			bindings.menu "input/y/click";
 			bindings.btnA = "input/x/click";
 		} else {
+			bindings.menu = "input/b/click";
 			bindings.btnA = "input/a/click";
 		}
 	}
