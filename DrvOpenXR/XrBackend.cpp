@@ -21,10 +21,10 @@
 #endif
 
 // FIXME find a better way to send the OnPostFrame call?
-#include "../OpenOVR/Reimpl/BaseInput.h"
 #include "../OpenOVR/Reimpl/BaseOverlay.h"
 #include "../OpenOVR/Reimpl/BaseSystem.h"
 #include "../OpenOVR/convert.h"
+#include "Misc/Input/InteractionProfile.h"
 #include "generated/static_bases.gen.h"
 
 #include "generated/interfaces/IVRCompositor_018.h"
@@ -734,12 +734,8 @@ void XrBackend::PumpEvents()
 				// suppress clion warning about missing branches
 				break;
 			}
-		}
-
-		if (ev.type == XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED) {
-			auto input = GetUnsafeBaseInput();
-			if (input)
-				input->UpdateInteractionProfile();
+		} else if (ev.type == XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED) {
+			UpdateInteractionProfile();
 			auto system = GetUnsafeBaseSystem();
 			if (system) {
 				VREvent_t profile = { VREvent_TrackedDeviceUpdated, 0 };
@@ -798,4 +794,48 @@ void XrBackend::OnOverlayTexture(const vr::Texture_t* texture)
 {
 	if (!usingApplicationGraphicsAPI)
 		CheckOrInitCompositors(texture);
+}
+
+void XrBackend::UpdateInteractionProfile()
+{
+	// info for hands - [0] is left, [1] is right
+	struct HandInfo {
+		const char* name;
+		const XrController::XrControllerType hand;
+		std::unique_ptr<XrController>& controller;
+	};
+	HandInfo hand_info[2] = {
+		{ .name = "/user/hand/left", .hand = XrController::XCT_LEFT, .controller = hand_left },
+		{ .name = "/user/hand/right", .hand = XrController::XCT_RIGHT, .controller = hand_right }
+	};
+
+	for (HandInfo& info : hand_info) {
+		XrPath path;
+		OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, info.name, &path));
+
+		XrInteractionProfileState state{ XR_TYPE_INTERACTION_PROFILE_STATE };
+		OOVR_FAILED_XR_ABORT(xrGetCurrentInteractionProfile(xr_session, path, &state));
+
+		if (state.interactionProfile == XR_NULL_PATH) {
+			// No interaction profile detected - controller must not be connected!
+			OOVR_LOGF("No interaction profile detected for path %s", info.name);
+			info.controller.reset();
+			continue;
+		}
+
+		char profile_name[XR_MAX_PATH_LENGTH];
+		uint32_t tmp;
+		OOVR_FAILED_XR_ABORT(xrPathToString(xr_instance, state.interactionProfile, XR_MAX_PATH_LENGTH, &tmp, profile_name));
+
+		for (const std::unique_ptr<InteractionProfile>& profile : InteractionProfile::GetProfileList()) {
+			if (profile->GetPath() == profile_name) {
+				OOVR_LOGF("%s - Using interaction profile: %s", info.name, profile_name);
+				if (!info.controller) {
+					info.controller = std::make_unique<XrController>(info.hand, *profile);
+					hmd->setInteractionProfile(profile.get());
+				}
+				break;
+			}
+		}
+	}
 }

@@ -104,16 +104,23 @@ public:
 	template <typename T>
 	requires(in_variant<T, property_types>::value)
 	    std::optional<T> GetProperty(vr::ETrackedDeviceProperty property, ITrackedDevice::HandType hand)
+	const
 	{
 		using enum ITrackedDevice::HandType;
 		if (hand != HAND_NONE && propertiesMap.contains(property)) {
-			hand_values_type ret = propertiesMap[property];
+			hand_values_type ret = propertiesMap.at(property);
 			return std::get<T>((hand == HAND_RIGHT && ret.right.has_value()) ? ret.right.value() : ret.left);
 		} else if (hmdPropertiesMap.contains(property)) {
-			return std::get<T>(hmdPropertiesMap[property]);
+			return std::get<T>(hmdPropertiesMap.at(property));
 		}
 		return std::nullopt;
 	}
+
+	/**
+	 * Returns a list of all recognized interaction profiles.
+	 */
+	using InteractionProfileList = std::vector<std::unique_ptr<InteractionProfile>>;
+	static const InteractionProfileList& GetProfileList();
 
 protected:
 	struct LegacyBindings {
@@ -164,4 +171,9 @@ protected:
 	// - Prop_ModelNumber_String
 	// - Prop_ControllerType_String
 	std::unordered_map<vr::ETrackedDeviceProperty, hand_values_type<property_types>> propertiesMap;
+
+	/**
+	 * A list of all recognized interaction profiles.
+	 */
+	inline static InteractionProfileList profiles;
 };

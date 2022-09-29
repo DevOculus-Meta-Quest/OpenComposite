@@ -27,6 +27,7 @@
 static XrBackend* currentBackend;
 static bool initialised = false;
 static std::unique_ptr<TemporaryGraphics> temporaryGraphics;
+static std::shared_ptr<BaseInput> temporaryInput;
 
 #ifdef _WIN32
 std::string GetExeName()
@@ -301,10 +302,17 @@ void DrvOpenXR::SetupSession(const void* graphicsBinding)
 	OOVR_LOGF("Started OpenXR session on runtime '%s', hand tracking supported: %d",
 	    xr_gbl->systemProperties.systemName, xr_gbl->handTrackingProperties.supportsHandTracking);
 
-	// If required, re-setup the input system for this new session
-	BaseInput* input = GetUnsafeBaseInput();
-	if (input)
-		input->BindInputsForSession();
+	// Use the temporary session created for graphics to figure out what our controllers are
+	if (temporaryGraphics) {
+		temporaryInput = GetCreateBaseInput();
+		temporaryInput->SetupTemporaryInputs();
+		currentBackend->UpdateInteractionProfile();
+	} else {
+		BaseInput* input = GetUnsafeBaseInput();
+		if (input)
+			// If required, re-setup the input system for this new session
+			input->BindInputsForSession();
+	}
 
 	currentBackend->OnSessionCreated();
 }
@@ -333,6 +341,10 @@ void DrvOpenXR::ShutdownSession()
 	// Destroy the graphics after destroying the session, otherwise when the runtime goes to destroy it's swapchain
 	// it will be sad, in a probably SEGFAULT-y way.
 	temporaryGraphics.reset();
+	if (temporaryInput) {
+		temporaryInput->EndTemporarySession();
+		temporaryInput.reset();
+	}
 }
 
 void DrvOpenXR::FullShutdown()

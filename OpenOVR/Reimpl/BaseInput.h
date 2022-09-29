@@ -5,6 +5,7 @@
 #include "../BaseCommon.h"
 
 #include "Drivers/Backend.h"
+#include "Misc/Input/InteractionProfile.h"
 #include "Misc/json/json.h"
 #include <array>
 #include <map>
@@ -15,7 +16,6 @@
 #include <vector>
 
 #include "Misc/Input/InputData.h"
-#include "Misc/Input/InteractionProfile.h"
 #include "Misc/Input/LegacyControllerActions.h"
 
 typedef vr::EVRSkeletalTrackingLevel OOVR_EVRSkeletalTrackingLevel;
@@ -363,22 +363,14 @@ public: // INTERNAL FUNCTIONS
 
 	bool AreActionsLoaded();
 
-	// Gets a property from the current active interaction profile, if there is an active profile and if the property is known.
-	// A hand type of HAND_NONE will grab an HMD property.
-	template <typename T>
-	std::optional<T> GetProperty(vr::ETrackedDeviceProperty property, ITrackedDevice::HandType hand)
-	{
-		return (activeProfile) ? activeProfile->GetProperty<T>(property, hand) : std::nullopt;
-	}
-
-	// Requests the current interaction profile from the runtime
-	void UpdateInteractionProfile();
-
 	/**
 	 * Get a number that increments each time xrSyncActions is called. Can be used to check if a cached input value
 	 * is current or not.
 	 */
 	inline uint64_t GetSyncSerial() const { return syncSerial; }
+
+	void SetupTemporaryInputs();
+	void EndTemporarySession();
 
 private:
 	enum class ActionRequirement {
@@ -667,7 +659,6 @@ private:
 	bool hasLoadedActions = false;
 	std::string loadedActionsPath;
 	bool usingLegacyInput = false;
-	std::vector<std::unique_ptr<InteractionProfile>> interactionProfiles;
 	Registry<ActionSet> actionSets;
 	Registry<Action> actions;
 	bool allowSetDominantHand = false;
@@ -769,7 +760,5 @@ private:
 	 */
 	XrResult getBooleanOrDpadData(Action& action, XrActionStateGetInfo* getInfo, XrActionStateBoolean* state);
 
-	InteractionProfile* activeProfile = nullptr;
-
-	friend InteractionProfile;
+	bool inTemporarySession = false;
 };

@@ -19,15 +19,10 @@
 #include <map>
 #include <math.h>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <utility>
 
-#include "Misc/Input/HolographicInteractionProfile.h"
-#include "Misc/Input/IndexControllerInteractionProfile.h"
-#include "Misc/Input/KhrSimpleInteractionProfile.h"
-#include "Misc/Input/OculusInteractionProfile.h"
-#include "Misc/Input/ReverbG2InteractionProfile.h"
-#include "Misc/Input/ViveInteractionProfile.h"
 #include "Misc/xrmoreutils.h"
 
 using namespace vr;
@@ -60,6 +55,10 @@ using namespace vr;
 			return VRInputError_InvalidHandle;                       \
 		}                                                            \
 	} while (0)
+
+#define CHECK_IN_TEMP_SESSION \
+	if (inTemporarySession)   \
+	return VRInputError_None
 
 // This is a duplicate from BaseClientCore.cpp
 static bool ReadJson(const std::wstring& path, Json::Value& result)
@@ -322,15 +321,6 @@ T* BaseInput::Registry<T>::Initialise(const std::string& name, std::unique_ptr<T
 BaseInput::BaseInput()
     : actionSets(XR_MAX_ACTION_SET_NAME_SIZE), actions(XR_MAX_ACTION_NAME_SIZE)
 {
-	if (xr_ext->G2Controller_Available())
-		interactionProfiles.emplace_back(std::make_unique<ReverbG2InteractionProfile>());
-
-	interactionProfiles.emplace_back(std::make_unique<HolographicInteractionProfile>());
-	interactionProfiles.emplace_back(std::make_unique<IndexControllerInteractionProfile>());
-	interactionProfiles.emplace_back(std::make_unique<ViveWandInteractionProfile>());
-	interactionProfiles.emplace_back(std::make_unique<OculusTouchInteractionProfile>());
-	interactionProfiles.emplace_back(std::make_unique<KhrSimpleInteractionProfile>());
-
 	// Initialise the subaction path constants
 	for (const std::string& str : allSubactionPathNames) {
 		XrPath path;
@@ -350,7 +340,6 @@ BaseInput::~BaseInput()
 EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath)
 {
 	OOVR_LOGF("Loading manifest file '%s'", pchActionManifestPath);
-
 
 	//////////////
 	//// Load the actions from the manifest file
@@ -574,7 +563,7 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 	OOVR_LOG("Loading known bindings...");
 	// Map of OpenVR names (i.e. "vive_controller") to interaction profile pointers
 	std::unordered_map<std::string, InteractionProfile*> OVRNameToProfile;
-	for (const std::unique_ptr<InteractionProfile>& profile : interactionProfiles) {
+	for (const std::unique_ptr<InteractionProfile>& profile : InteractionProfile::GetProfileList()) {
 		if (profile->GetOpenVRName().has_value())
 			OVRNameToProfile[profile->GetOpenVRName().value()] = profile.get();
 	}
@@ -623,20 +612,6 @@ EVRInputError BaseInput::SetActionManifestPath(const char* pchActionManifestPath
 
 	// Attach everything to the current session
 	BindInputsForSession();
-
-	// Print the input profile for debugging
-	XrInteractionProfileState ips = { XR_TYPE_INTERACTION_PROFILE_STATE };
-	xrGetCurrentInteractionProfile(xr_session, legacyControllers[0].handPathXr, &ips);
-	char inputProfile[128];
-	ZeroMemory(inputProfile, sizeof(inputProfile));
-	uint32_t len;
-	if (ips.interactionProfile == XR_NULL_PATH)
-		strcpy(inputProfile, "<OC NULL>");
-	else
-		OOVR_FAILED_XR_ABORT(xrPathToString(xr_instance, ips.interactionProfile,
-		    sizeof(inputProfile) - 1, &len, inputProfile));
-	OOVR_LOGF("Using input profile: '%s'\n", inputProfile);
-
 	return vr::VRInputError_None;
 }
 
@@ -654,7 +629,7 @@ void BaseInput::LoadEmptyManifestIfRequired()
 	CreateLegacyActions();
 
 	// Load in the suggested bindings for the legacy input actions
-	for (const std::unique_ptr<InteractionProfile>& profile : interactionProfiles) {
+	for (const std::unique_ptr<InteractionProfile>& profile : InteractionProfile::GetProfileList()) {
 		std::vector<XrActionSuggestedBinding> bindings;
 		for (const auto& legacyController : legacyControllers) {
 			profile->AddLegacyBindings(legacyController, bindings);
@@ -681,6 +656,10 @@ void BaseInput::BindInputsForSession()
 	// This can happen if the session restarts (so DrvOpenXR calls this) but the inputs haven't
 	// been set up.
 	if (!hasLoadedActions)
+		return;
+
+	// If we're in the temporary session, we don't actually want to bind anything
+	if (inTemporarySession)
 		return;
 
 	// Since the session has changed, any actionspaces we previously created are now invalid
@@ -1094,6 +1073,7 @@ EVRInputError BaseInput::UpdateActionState(VR_ARRAY_COUNT(unSetCount) VRActiveAc
 
 	OOVR_FALSE_ABORT(sizeof(*pSets) == unSizeOfVRSelectedActionSet_t);
 
+	CHECK_IN_TEMP_SESSION;
 	// Make sure all the ActionSets have the same priority, since we don't have any way around that right now
 	if (unSetCount > 1) {
 		int priority = pSets[0].nPriority;
@@ -1240,6 +1220,8 @@ EVRInputError BaseInput::GetDigitalActionData(VRActionHandle_t action, InputDigi
 	ZeroMemory(pActionData, unActionDataSize);
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
 
+	CHECK_IN_TEMP_SESSION;
+
 	XrActionStateGetInfo getInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
 	getInfo.action = act->xr;
 
@@ -1279,6 +1261,8 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 
 	ZeroMemory(pActionData, unActionDataSize);
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
+
+	CHECK_IN_TEMP_SESSION;
 
 	XrActionStateGetInfo getInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
 	getInfo.action = act->xr;
@@ -1357,6 +1341,8 @@ EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUni
 
 	ZeroMemory(pActionData, unActionDataSize);
 	OOVR_FALSE_ABORT(unActionDataSize == sizeof(*pActionData));
+
+	CHECK_IN_TEMP_SESSION;
 
 	// Skeletons go through the legacy input thing, since they're tightly bound to either hand
 	if (act->type == ActionType::Skeleton) {
@@ -1455,6 +1441,8 @@ EVRInputError BaseInput::GetSkeletalActionData(VRActionHandle_t actionHandle, In
 	// activeOrigin = vr::k_ulInvalidActionHandle
 	ZeroMemory(out, unActionDataSize);
 
+	CHECK_IN_TEMP_SESSION;
+
 	// If there's no action, say there's nothing on it
 	if (action == nullptr) {
 		return vr::VRInputError_None;
@@ -1551,6 +1539,8 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t actionHandle, EVRS
 	// Check for the right number of bones
 	OOVR_FALSE_ABORT(unTransformArrayCount == 31);
 
+	CHECK_IN_TEMP_SESSION;
+
 	// If there's no action, leave the transforms zeroed out
 	if (action == nullptr) {
 		return vr::VRInputError_None;
@@ -1593,6 +1583,8 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t actionHandle, EVRS
 EVRInputError BaseInput::GetSkeletalSummaryData(VRActionHandle_t actionHandle, EVRSummaryType eSummaryType, VRSkeletalSummaryData_t* pSkeletalSummaryData)
 {
 	GET_ACTION_FROM_HANDLE(action, actionHandle);
+
+	CHECK_IN_TEMP_SESSION;
 
 	if (action == nullptr) {
 		return vr::VRInputError_None;
@@ -2127,6 +2119,9 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 {
 	*state = {};
 
+	if (inTemporarySession)
+		return true;
+
 	// FIXME implement packetNum
 	static int i = 0;
 	state->unPacketNum = i++; // Not exactly thread safe
@@ -2261,29 +2256,79 @@ bool BaseInput::AreActionsLoaded()
 	return hasLoadedActions;
 }
 
-void BaseInput::UpdateInteractionProfile()
+void BaseInput::SetupTemporaryInputs()
 {
-	XrInteractionProfileState state{ XR_TYPE_INTERACTION_PROFILE_STATE };
-	XrPath path;
-	xrStringToPath(xr_instance, "/user/hand/left", &path);
-	xrGetCurrentInteractionProfile(xr_session, path, &state);
-	if (state.interactionProfile == XR_NULL_PATH) {
-		xrStringToPath(xr_instance, "/user/hand/right", &path);
-		xrGetCurrentInteractionProfile(xr_session, path, &state);
-	}
-	if (state.interactionProfile != XR_NULL_PATH) {
-		uint32_t tmp;
-		char path_name[XR_MAX_PATH_LENGTH];
-		xrPathToString(xr_instance, state.interactionProfile, XR_MAX_PATH_LENGTH, &tmp, path_name);
+	OOVR_LOGF("Setting up temporary inputs...");
+	inTemporarySession = true;
 
-		for (auto& profile : interactionProfiles) {
-			if (profile->GetPath() == path_name) {
-				activeProfile = profile.get();
-				OOVR_LOGF("Using interaction profile: %s", path_name);
-				break;
-			}
-		}
-	} else {
-		activeProfile = nullptr;
+	XrActionSetCreateInfo set_info{ XR_TYPE_ACTION_SET_CREATE_INFO };
+	strcpy_s(set_info.actionSetName, XR_MAX_ACTION_SET_NAME_SIZE, "temp-set");
+	strcpy_s(set_info.localizedActionSetName, XR_MAX_LOCALIZED_ACTION_SET_NAME_SIZE, "Temporary Set");
+	XrActionSet tempSet;
+	OOVR_FAILED_XR_ABORT(xrCreateActionSet(xr_instance, &set_info, &tempSet));
+
+	XrActionCreateInfo act_info{ XR_TYPE_ACTION_CREATE_INFO };
+	strcpy_s(act_info.actionName, XR_MAX_ACTION_NAME_SIZE, "temp-act");
+	strcpy_s(act_info.localizedActionName, XR_MAX_LOCALIZED_ACTION_NAME_SIZE, "Temporary Action");
+	act_info.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
+	act_info.countSubactionPaths = allSubactionPaths.size();
+	act_info.subactionPaths = allSubactionPaths.data();
+	XrAction tempAction;
+	OOVR_FAILED_XR_ABORT(xrCreateAction(tempSet, &act_info, &tempAction));
+
+	for (const std::unique_ptr<InteractionProfile>& profile : InteractionProfile::GetProfileList()) {
+		XrActionSuggestedBinding suggestions[2] = {
+			{ .action = tempAction },
+			{ .action = tempAction },
+		};
+
+		// find a click (boolean) path for each hand
+		auto find_path = [&](std::string hand) {
+			return std::ranges::find_if(profile->GetValidInputPaths(),
+			    [&](std::string s) {
+				    return s.find("/click") != s.npos && s.find(hand) != s.npos;
+			    });
+		};
+		auto l_path = find_path("/hand/left");
+		OOVR_FALSE_ABORT(l_path != profile->GetValidInputPaths().end());
+
+		auto r_path = find_path("/hand/right");
+		OOVR_FALSE_ABORT(r_path != profile->GetValidInputPaths().end());
+
+		OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, l_path->c_str(), &suggestions[0].binding));
+		OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, r_path->c_str(), &suggestions[1].binding));
+
+		XrInteractionProfileSuggestedBinding info{ XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
+		OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, profile->GetPath().c_str(), &info.interactionProfile));
+		info.countSuggestedBindings = 2;
+		info.suggestedBindings = suggestions;
+		OOVR_FAILED_XR_ABORT(xrSuggestInteractionProfileBindings(xr_instance, &info));
 	}
+
+	// Attach and sync our action set so that the interaction profile gets updated
+	XrSessionActionSetsAttachInfo info{ XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO };
+	info.countActionSets = 1;
+	info.actionSets = &tempSet;
+	OOVR_FAILED_XR_ABORT(xrAttachSessionActionSets(xr_session, &info));
+
+	XrActionsSyncInfo sync_info{ XR_TYPE_ACTIONS_SYNC_INFO };
+	std::vector<XrActiveActionSet> active_sets;
+	for (XrPath path : allSubactionPaths) {
+		active_sets.push_back({ .actionSet = tempSet, .subactionPath = path });
+	}
+	sync_info.countActiveActionSets = active_sets.size();
+	sync_info.activeActionSets = active_sets.data();
+
+	OOVR_FAILED_XR_ABORT(xrSyncActions(xr_session, &sync_info));
+
+	// Destroying the action set also gets rid of the attached action.
+	// The action set doesn't seem to have to be actually living to get the interaction profile!
+	OOVR_FAILED_XR_ABORT(xrDestroyActionSet(tempSet));
+
+	// next time PumpEvents is called, we'll update the interaction profile!
+}
+
+void BaseInput::EndTemporarySession()
+{
+	inTemporarySession = false;
 }
