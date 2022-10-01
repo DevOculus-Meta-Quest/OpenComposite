@@ -6,6 +6,7 @@
 
 #include "XrDriverPrivate.h"
 
+#include "Misc/Input/InteractionProfile.h"
 #include "XrTrackedDevice.h"
 
 // This warning tells us that a method (GetPose) was overridden by one of our parent classes
@@ -70,6 +71,11 @@ public:
 	uint32_t GetStringTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, char* pchValue,
 	    uint32_t unBufferSize, vr::ETrackedPropertyError* pErrorL) override;
 	int32_t GetInt32TrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError* pErrorL) override;
+	void setInteractionProfile(InteractionProfile* profile);
+	InteractionProfile* getInteractionProfile();
+
+private:
+	InteractionProfile* profile = nullptr;
 };
 
 #pragma warning(pop)

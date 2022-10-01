@@ -298,11 +298,22 @@ float XrHMD::GetIPD()
 	return ipd;
 }
 
+#define TRY_PROP(type)                                                             \
+	do {                                                                           \
+		if (profile) {                                                             \
+			std::optional<type> ret = profile->GetProperty<type>(prop, HAND_NONE); \
+			if (ret.has_value())                                                   \
+				return *ret;                                                       \
+		}                                                                          \
+	} while (0)
+
 // Properties
 bool XrHMD::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError* pErrorL)
 {
 	if (pErrorL)
 		*pErrorL = vr::TrackedProp_Success;
+
+	TRY_PROP(bool);
 
 	switch (prop) {
 	case vr::Prop_DeviceProvidesBatteryStatus_Bool:
@@ -329,6 +340,8 @@ float XrHMD::GetFloatTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::
 	if (pErrorL)
 		*pErrorL = vr::TrackedProp_Success;
 
+	TRY_PROP(float);
+
 	switch (prop) {
 	case vr::Prop_DisplayFrequency_Float:
 		return 90.0; // TODO use the real value
@@ -354,7 +367,7 @@ float XrHMD::GetFloatTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::
 		break;
 	}
 
-	return XrTrackedDevice::GetInt32TrackedDeviceProperty(prop, pErrorL);
+	return XrTrackedDevice::GetFloatTrackedDeviceProperty(prop, pErrorL);
 }
 
 uint32_t XrHMD::GetStringTrackedDeviceProperty(vr::ETrackedDeviceProperty prop,
@@ -363,6 +376,16 @@ uint32_t XrHMD::GetStringTrackedDeviceProperty(vr::ETrackedDeviceProperty prop,
 
 	if (pErrorL)
 		*pErrorL = vr::TrackedProp_Success;
+
+	if (profile) {
+		std::optional<std::string> ret = profile->GetProperty<std::string>(prop, HAND_NONE);
+		if (ret.has_value()) {
+			if (value != NULL && bufferSize > 0) {
+				strcpy_s(value, bufferSize, ret->c_str());
+			}
+			return (uint32_t)ret->size() + 1;
+		}
+	}
 
 #define PROP(in, out)                                                                                      \
 	do {                                                                                                   \
@@ -377,18 +400,6 @@ uint32_t XrHMD::GetStringTrackedDeviceProperty(vr::ETrackedDeviceProperty prop,
 	PROP(vr::Prop_RegisteredDeviceType_String, "oculus/F00BAAF00F");
 	PROP(vr::Prop_RenderModelName_String, "oculusHmdRenderModel");
 
-	BaseInput* input = GetUnsafeBaseInput();
-
-	if (input) {
-		std::optional<std::string> ret = input->GetProperty<std::string>(prop, ITrackedDevice::HAND_NONE);
-		if (ret.has_value()) {
-			if (value != NULL && bufferSize > 0) {
-				strcpy_s(value, bufferSize, ret->c_str());
-			}
-			return ret->size() + 1;
-		}
-	}
-
 	return XrTrackedDevice::GetStringTrackedDeviceProperty(prop, value, bufferSize, pErrorL);
 }
 
@@ -396,6 +407,8 @@ int32_t XrHMD::GetInt32TrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr
 {
 	if (pErrorL)
 		*pErrorL = vr::TrackedProp_Success;
+
+	TRY_PROP(int32_t);
 
 	switch (prop) {
 	case vr::Prop_DeviceClass_Int32:
@@ -409,4 +422,15 @@ int32_t XrHMD::GetInt32TrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr
 	}
 
 	return ITrackedDevice::GetInt32TrackedDeviceProperty(prop, pErrorL);
+}
+
+void XrHMD::setInteractionProfile(InteractionProfile* profile)
+{
+	if (this->profile != profile)
+		this->profile = profile;
+}
+
+InteractionProfile* XrHMD::getInteractionProfile()
+{
+	return profile;
 }
