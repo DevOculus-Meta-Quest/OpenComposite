@@ -63,6 +63,8 @@ OculusTouchInteractionProfile::OculusTouchInteractionProfile()
 
 	hmdPropertiesMap = {
 		{ vr::Prop_ManufacturerName_String, "Oculus" },
+		{ vr::Prop_ControllerType_String, "rift" },
+		{ vr::Prop_ExpectedControllerType_String, "oculus_touch" },
 	};
 
 	propertiesMap = {
