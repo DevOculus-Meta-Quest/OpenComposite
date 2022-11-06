@@ -322,10 +322,7 @@ void VkCompositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBound
 	endSingleTimeCommands(tex->m_pDevice, appCommandPool, appCommandBuffer, tex->m_pQueue);
 
 	// Wait until the swapchain is ready - this makes sure the compositor isn't writing to it
-	// We don't have to pass in currentIndex since it uses the oldest acquired-but-not-waited-on
-	// image, so we should be careful with concurrency here.
-	XrSwapchainImageWaitInfo waitInfo{ XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO };
-	OOVR_FAILED_XR_ABORT(xrWaitSwapchainImage(chain, &waitInfo));
+	WaitForSwapchain();
 
 	// Release the swapchain - OpenXR will use the last-released image in a swapchain
 	XrSwapchainImageReleaseInfo releaseInfo{ XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
