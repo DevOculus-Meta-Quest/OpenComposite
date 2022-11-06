@@ -11,10 +11,20 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
+struct ShaderConstData {
+	float offsetX, offsetY;
+	float scaleX, scaleY;
+};
+
 constexpr char fs_shader_code[] = R"_(
 Texture2D shaderTexture : register(t0);
 
 SamplerState SampleType : register(s0);
+
+cbuffer ConstData : register(b0) {
+	float2 offset;
+	float2 scale;
+};
 
 struct psIn {
 	float4 pos : SV_POSITION;
@@ -24,9 +34,11 @@ struct psIn {
 psIn vs_fs(uint vI : SV_VERTEXID)
 {
 	psIn output;
-    output.tex = float2(vI&1,vI>>1);
-    output.pos = float4((output.tex.x-0.5f)*2,-(output.tex.y-0.5f)*2,0,1);
-	output.tex.y = 1.0f - output.tex.y;
+	// Note: if offset=(0,0) and scale=(1,1) then we won't invert the image, those
+	// values come from the viewport vMin/vMax which are the 'wrong way around'.
+	float2 basePos = float2(vI&1,vI>>1);
+	output.tex = offset + basePos * scale;
+	output.pos = float4((basePos.x-0.5f)*2,-(basePos.y-0.5f)*2,0,1);
 	return output;
 }
 
@@ -129,6 +141,14 @@ DX11Compositor::DX11Compositor(ID3D11Texture2D* initial)
 
 	// Create the texture sampler state.
 	OOVR_FAILED_DX_ABORT(device->CreateSamplerState(&samplerDesc, &quad_sampleState));
+
+	// Create a constant buffer, to store the source area of the texture
+	D3D11_BUFFER_DESC constantBufferDesc = {};
+	constantBufferDesc.ByteWidth = sizeof(ShaderConstData);
+	constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	constantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	constantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	OOVR_FAILED_DX_ABORT(device->CreateBuffer(&constantBufferDesc, nullptr, &constBuffer));
 }
 
 DX11Compositor::~DX11Compositor()
@@ -319,7 +339,15 @@ void DX11Compositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBou
 	if (bounds && bounds->vMin > bounds->vMax && oovr_global_configuration.InvertUsingShaders() && !swapchain_rtvs.empty()) {
 		auto* src = (ID3D11Texture2D*)texture->handle;
 
-		OOVR_FAILED_DX_ABORT(device->CreateShaderResourceView(src, nullptr, &quad_texture_view));
+		// We must specify srvDesc when the game supplies a typeless format, otherwise we get the
+		// error E_INVALIDARG 0x80070057 (putting this here for ease of searching later).
+		// See https://learn.microsoft.com/en-gb/windows/win32/api/d3d11/ns-d3d11-d3d11_shader_resource_view_desc#remarks
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		OOVR_FAILED_DX_ABORT(device->CreateShaderResourceView(src, &srvDesc, &quad_texture_view));
 
 		float blend_factor[4] = { 1.f, 1.f, 1.f, 1.f };
 		context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
@@ -340,25 +368,36 @@ void DX11Compositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBou
 		context->RSGetState(&pRSState);
 		context->RSSetState(nullptr);
 
-		D3D11_VIEWPORT viewport = CD3D11_VIEWPORT(src, swapchain_rtvs[currentIndex]);
+		D3D11_VIEWPORT viewport = CD3D11_VIEWPORT(imagesHandles[currentIndex].texture, swapchain_rtvs[currentIndex]);
 		context->RSSetViewports(1, &viewport);
-		D3D11_RECT rects[1];
-		rects[0].top = 0;
-		rects[0].left = 0;
-		rects[0].bottom = createInfo.height;
-		rects[0].right = createInfo.width;
-		context->RSSetScissorRects(1, rects);
+
+		// We could - and previously sort-of did - clip the texture using the scissor rectangle.
+		// When adding support for side-by-side rendered eyes, I switched to passing this in via
+		// a constant buffer, on the idea that maybe it's faster to not render scissor-clipped
+		// pixels? I haven't tested the performance difference though, so I'm probably wrong :P
+		context->RSSetScissorRects(0, nullptr);
 
 		// Set up for rendering
 		context->OMSetRenderTargets(1, &swapchain_rtvs[currentIndex], nullptr);
 		float clear_colour[4] = { 0.f, 0.f, 0.f, 0.f };
 		context->ClearRenderTargetView(swapchain_rtvs[currentIndex], clear_colour);
 
+		// Update the source region in the constant buffer
+		D3D11_MAPPED_SUBRESOURCE mappedConstData = {};
+		context->Map(constBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedConstData);
+		ShaderConstData* constData = (ShaderConstData*)mappedConstData.pData;
+		constData->offsetX = bounds->uMin;
+		constData->offsetY = bounds->vMin;
+		constData->scaleX = bounds->uMax - bounds->uMin;
+		constData->scaleY = bounds->vMax - bounds->vMin;
+		context->Unmap(constBuffer, 0);
+
 		// Set the active shaders and constant buffers.
 		context->PSSetShaderResources(0, 1, &quad_texture_view);
 		context->VSSetShader(fs_vshader, nullptr, 0);
 		context->PSSetShader(fs_pshader, nullptr, 0);
 		context->PSSetSamplers(0, 1, &quad_sampleState);
+		context->VSSetConstantBuffers(0, 1, &constBuffer);
 
 		// Set up the mesh's information
 		D3D11_PRIMITIVE_TOPOLOGY currTopology;
