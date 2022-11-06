@@ -62,6 +62,11 @@ public:
 	static const ProfileList& GetProfileList();
 
 	/**
+	 * Lookup an interaction profile from it's path, as returned by GetPath.
+	 */
+	static InteractionProfile* GetProfileByPath(const std::string& name);
+
+	/**
 	 * Get the path of the profile as used by xrSuggestInteractionProfileBindings, for
 	 * example /interaction_profiles/khr/simple_controller.
 	 */
@@ -109,9 +114,9 @@ public:
 	 * If hand == HAND_NONE, this will retrieve the HMD version of the property.
 	 */
 	template <typename T>
-	requires(in_variant<T, property_types>::value)
-	    std::optional<T> GetProperty(vr::ETrackedDeviceProperty property, ITrackedDevice::HandType hand)
-	const
+	    requires(in_variant<T, property_types>::value)
+	std::optional<T> GetProperty(vr::ETrackedDeviceProperty property, ITrackedDevice::HandType hand)
+	    const
 	{
 		using enum ITrackedDevice::HandType;
 		if (hand != HAND_NONE && propertiesMap.contains(property)) {

@@ -65,13 +65,31 @@ XrBackend::XrBackend(bool useVulkanTmpGfx, bool useD3D11TmpGfx)
 
 	OOVR_FALSE_ABORT(temporaryGraphics);
 
-	// setup the device indexes
-	for (vr::TrackedDeviceIndex_t i = 0; i < vr::k_unMaxTrackedDeviceCount; i++) {
-		ITrackedDevice* dev = GetDevice(i);
+	// If the game asks for headset properties before we've been able to find out what interaction profile
+	// to use, just fall back on a good guess.
+	// This is incredibly horrible, but sniff out the current runtime, and use that to determine what
+	// HMD is most likely in use.
+	XrInstanceProperties runtimeProperties = { XR_TYPE_INSTANCE_PROPERTIES };
+	OOVR_FAILED_XR_ABORT(xrGetInstanceProperties(xr_instance, &runtimeProperties));
+	std::string runtimeName = runtimeProperties.runtimeName;
 
-		if (dev)
-			dev->InitialiseDevice(i);
+	// For HMDs we don't yet have interaction profiles for:
+	// Varjo's one takes the form "Varjo OpenXR Runtime <version>"
+	// The unofficial Pimax driver returns "PimaxXR (Unofficial) <version>"
+
+	InteractionProfile* fallbackInteractionProfile;
+	if (runtimeName.find("Windows Mixed Reality") != std::string::npos) {
+		// Most of our WMR users seem to use the G2, so assume that
+		fallbackInteractionProfile = InteractionProfile::GetProfileByPath("/interaction_profiles/hp/mixed_reality_controller");
+	} else {
+		// Guess that we have an Oculus system by default, since it's pretty
+		// similar to most devices on the market in terms of controls.
+		// It's runtime name is "Oculus <version>"
+		fallbackInteractionProfile = InteractionProfile::GetProfileByPath("/interaction_profiles/oculus/touch_controller");
 	}
+
+	hmd->InitialiseDevice(0);
+	hmd->SetInteractionProfile(fallbackInteractionProfile);
 }
 
 XrBackend::~XrBackend()
