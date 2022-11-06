@@ -277,9 +277,10 @@ void DrvOpenXR::SetupSession()
 	    xr_gbl->systemProperties.systemName, xr_gbl->handTrackingProperties.supportsHandTracking);
 
 	// If required, re-setup the input system for this new session
-	BaseInput* input = GetUnsafeBaseInput();
-	if (input)
-		input->BindInputsForSession();
+	// First check if BaseInput (and indeed any of the interfaces) have been created yet. If this
+	// is running as part of the startup process, this won't have happened yet.
+	if (GetInterfaceImplementations())
+		GetBaseInput()->BindInputsForSession();
 
 	currentBackend->OnSessionCreated();
 }

@@ -89,7 +89,8 @@ with open(output_dir / "stubs.gen.cpp", "w", newline='\n') as impl:
     #  for any non-static functions we define
     impl.write('#include "Reimpl/Interfaces.h"\n')
     impl.write(f'#include "{bases_header_fn.name}"\n')
-    impl.write('#include "Misc/Config.h"\n')
+    impl.write('#include "Misc/Config.h"\n')  # Used for call logging
+    impl.write("InterfaceImplementations::~InterfaceImplementations() = default;\n")
 
     for iface in interfaces:
         codegen.write_stubs(impl, iface)
@@ -103,14 +104,33 @@ with open(bases_header_fn, "w", newline='\n') as bases_header:
     bases_header.write("#pragma once\n")
     bases_header.write("#include <memory>\n")
 
+    # Write the forward-declarations
+    for iface in interfaces:
+        basename = iface.versions[0].basename()
+        bases_header.write(f"class {basename};\n")
+
+    # Write the definition for the class via which the manually-written code provides pointers
+    # to all the interfaces. Include a destructor here so users of this class don't have to import
+    # all the base classes.
+    bases_header.write("class InterfaceImplementations {\n")
+    bases_header.write("public:\n")
+    bases_header.write("\t~InterfaceImplementations();")
+    for iface in interfaces:
+        basename = iface.versions[0].basename()
+        if not iface.custom_lifecycle():
+            bases_header.write(f"\tstd::unique_ptr<{basename}> imp{basename};\n")
+    bases_header.write("};\n")
+    bases_header.write("InterfaceImplementations *GetInterfaceImplementations(); // To be implemented by hand\n")
+
     for iface in interfaces:
         # Here we assume all the versions are of the same type (normal, API, driver, etc)
         basename = iface.versions[0].basename()
         getter = iface.versions[0].getter_name()
 
-        bases_header.write(f"""
-class {basename};
-std::shared_ptr<{basename}> Get{getter}();
-{basename}* GetUnsafe{getter}();
-std::shared_ptr<{basename}> GetCreate{getter}();
-""".lstrip())
+        # If CUSTOM_LIFECYCLE is defined, then it's manually managed by openvr_api.cpp.
+        if iface.custom_lifecycle():
+            impl = ";"
+        else:
+            impl = "{ return GetInterfaceImplementations()->imp%s.get(); }" % basename
+            bases_header.write("inline ")
+        bases_header.write(f"{basename}* Get{getter}() {impl}\n")

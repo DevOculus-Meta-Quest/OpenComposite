@@ -109,7 +109,7 @@ uint32_t XrController::GetStringTrackedDeviceProperty(vr::ETrackedDeviceProperty
 	}
 
 #define PROP(in, out)                                                                                  \
-	if (prop == in) {                                                                                  \
+	if (prop == (in)) {                                                                                \
 		if (value != NULL && bufferSize > 0) {                                                         \
 			strcpy_s(value, bufferSize, out); /* FFS msvc - strncpy IS the secure version of strcpy */ \
 		}                                                                                              \
@@ -155,19 +155,15 @@ void XrController::GetPose(vr::ETrackingUniverseOrigin origin, vr::TrackedDevice
 	pose->bPoseIsValid = false;
 	pose->eTrackingResult = vr::TrackingResult_Running_OutOfRange;
 
-	BaseInput* input = GetUnsafeBaseInput();
-	if (input == nullptr)
-		return;
-
 	// TODO do something with TrackingState
 	XrSpace space = XR_NULL_HANDLE;
-	input->GetHandSpace(DeviceIndex(), space);
+	GetBaseInput()->GetHandSpace(DeviceIndex(), space);
 
 	if (!space) {
 		// Lie and say the pose is valid if the actions haven't even been loaded yet.
 		// This is a workaround for games like DCS, which appear to require valid poses before
 		// it will even attempt to request the controller state (and thus create the actions).
-		if (!input->AreActionsLoaded()) {
+		if (!GetBaseInput()->AreActionsLoaded()) {
 			pose->bPoseIsValid = true;
 			pose->eTrackingResult = vr::TrackingResult_Running_OK;
 		}

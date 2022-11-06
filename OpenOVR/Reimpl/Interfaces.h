@@ -1,5 +1,6 @@
 #pragma once
 #include "BaseCommon.h"
+#include "generated/static_bases.gen.h"
 
 // Note we return void* not CVRCommon* - that's due to vtable magic.
 // Since our interfaces don't use CVRCommon as their first ancestor, this
@@ -11,6 +12,10 @@ void* CreateInterfaceByName(const char* name);
 // flag - The name of the flag to check (i.e. APPTYPE)
 // success - If supplied, set the value pointed to by success to true if the flag was found, false otherwise
 uint64_t GetInterfaceFlagsByName(const char* name, const char* flag, bool* success = nullptr);
+
+// Create an object containing a copy of every interface. This is provided in the interests of
+// compile times, to avoid importing every base class into openvr_api.cpp.
+std::unique_ptr<InterfaceImplementations> InitialiseImplementations();
 
 // Use stdcall on Windows, see openvr_capi.h
 // Note that VC++ (and most other compilers) ignore calltype definitions on 64-bit, using fastcall instead. Not that it's

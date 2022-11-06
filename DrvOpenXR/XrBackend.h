@@ -83,7 +83,7 @@ private:
 	bool usingApplicationGraphicsAPI = false;
 
 	// The views for the two main eye layers
-	XrCompositionLayerProjectionView projectionViews[XruEyeCount];
+	XrCompositionLayerProjectionView projectionViews[XruEyeCount] = {};
 
 	// Have we started rendering a frame yet? If not, calling xrEndFrame would result in an error
 	bool renderingFrame = false;
