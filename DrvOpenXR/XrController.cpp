@@ -172,3 +172,8 @@ void XrController::GetPose(vr::ETrackingUniverseOrigin origin, vr::TrackedDevice
 
 	xr_utils::PoseFromSpace(pose, space, origin);
 }
+
+vr::ETrackedDeviceClass XrController::GetTrackedDeviceClass()
+{
+	return vr::TrackedDeviceClass_Controller;
+}

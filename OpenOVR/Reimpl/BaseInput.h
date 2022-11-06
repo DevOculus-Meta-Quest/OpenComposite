@@ -369,6 +369,11 @@ public: // INTERNAL FUNCTIONS
 	 */
 	inline uint64_t GetSyncSerial() const { return syncSerial; }
 
+	/**
+	 * Convert a tracked device index to 0=left 1=right -1=other
+	 */
+	static int DeviceIndexToHandId(vr::TrackedDeviceIndex_t idx);
+
 private:
 	enum class ActionRequirement {
 		Suggested = 0, // default
@@ -689,11 +694,6 @@ private:
 
 	void LoadDpadAction(const InteractionProfile& profile, const std::string& importBasePath, const std::string& inputName, const std::string& subMode, Action* action, std::vector<XrActionSuggestedBinding>& bindings);
 	void CreateLegacyActions();
-
-	/**
-	 * Convert a tracked device index to 0=left 1=right -1=other
-	 */
-	static int DeviceIndexToHandId(vr::TrackedDeviceIndex_t idx);
 
 	LegacyControllerActions legacyControllers[2] = {};
 
