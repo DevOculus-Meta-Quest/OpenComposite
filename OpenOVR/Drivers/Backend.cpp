@@ -228,6 +228,18 @@ ITrackedDevice::HandType ITrackedDevice::GetHand()
 	return HAND_NONE;
 }
 
+vr::ETrackedControllerRole ITrackedDevice::GetControllerRole()
+{
+	switch (GetHand()) {
+	case ITrackedDevice::HAND_LEFT:
+		return vr::TrackedControllerRole_LeftHand;
+	case ITrackedDevice::HAND_RIGHT:
+		return vr::TrackedControllerRole_RightHand;
+	default:
+		return vr::TrackedControllerRole_Invalid;
+	}
+}
+
 // properties
 
 bool ITrackedDevice::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError* pErrorL)
@@ -310,4 +322,9 @@ uint32_t ITrackedDevice::GetStringTrackedDeviceProperty(vr::ETrackedDeviceProper
 	if (pErrorL)
 		*pErrorL = vr::TrackedProp_UnknownProperty;
 	return 0;
+}
+
+vr::ETrackedDeviceClass IHMD::GetTrackedDeviceClass()
+{
+	return vr::TrackedDeviceClass_HMD;
 }

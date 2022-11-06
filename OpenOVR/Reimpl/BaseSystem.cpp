@@ -289,42 +289,39 @@ void BaseSystem::ApplyTransform(TrackedDevicePose_t* pOutputPose, const TrackedD
 
 vr::TrackedDeviceIndex_t BaseSystem::GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole unDeviceType)
 {
+	ITrackedDevice::HandType hand = ITrackedDevice::HAND_NONE;
 	if (unDeviceType == TrackedControllerRole_LeftHand) {
-		return leftHandIndex;
+		hand = ITrackedDevice::HAND_LEFT;
 	} else if (unDeviceType == TrackedControllerRole_RightHand) {
-		return rightHandIndex;
+		hand = ITrackedDevice::HAND_RIGHT;
+	} else {
+		// This is what SteamVR does for unknown devices
+		return -1;
 	}
 
-	// This is what SteamVR does for unknown devices
-	return -1;
+	ITrackedDevice* dev = BackendManager::Instance().GetDeviceByHand(hand);
+	if (!dev)
+		return -1;
+
+	return dev->DeviceIndex();
 }
 
 vr::ETrackedControllerRole BaseSystem::GetControllerRoleForTrackedDeviceIndex(vr::TrackedDeviceIndex_t unDeviceIndex)
 {
-	if (unDeviceIndex == leftHandIndex) {
-		return TrackedControllerRole_LeftHand;
-	} else if (unDeviceIndex == rightHandIndex) {
-		return TrackedControllerRole_RightHand;
-	} else {
+	ITrackedDevice* dev = BackendManager::Instance().GetDevice(unDeviceIndex);
+	if (!dev)
 		return TrackedControllerRole_Invalid;
-	}
+
+	return dev->GetControllerRole();
 }
 
 ETrackedDeviceClass BaseSystem::GetTrackedDeviceClass(vr::TrackedDeviceIndex_t deviceIndex)
 {
-	if (!IsTrackedDeviceConnected(deviceIndex))
+	ITrackedDevice* dev = BackendManager::Instance().GetDevice(deviceIndex);
+	if (!dev)
 		return TrackedDeviceClass_Invalid;
 
-	if (deviceIndex == k_unTrackedDeviceIndex_Hmd)
-		return TrackedDeviceClass_HMD;
-
-	if (deviceIndex == leftHandIndex || deviceIndex == rightHandIndex)
-		return TrackedDeviceClass_Controller;
-
-	if (deviceIndex == thirdTouchIndex)
-		return TrackedDeviceClass_GenericTracker;
-
-	return TrackedDeviceClass_Invalid;
+	return dev->GetTrackedDeviceClass();
 }
 
 bool BaseSystem::IsTrackedDeviceConnected(vr::TrackedDeviceIndex_t deviceIndex)
@@ -671,11 +668,7 @@ void BaseSystem::TriggerHapticPulse(vr::TrackedDeviceIndex_t unControllerDeviceI
 	if (!oovr_global_configuration.Haptics())
 		return;
 
-	if (unControllerDeviceIndex == leftHandIndex || unControllerDeviceIndex == rightHandIndex) {
-		GetBaseInput()->TriggerLegacyHapticPulse(unControllerDeviceIndex, (uint64_t)usDurationMicroSec * 1000);
-	}
-	// if index is invalid, nothing to do
-	return;
+	GetBaseInput()->TriggerLegacyHapticPulse(unControllerDeviceIndex, (uint64_t)usDurationMicroSec * 1000);
 }
 
 const char* BaseSystem::GetButtonIdNameFromEnum(EVRButtonId eButtonId)

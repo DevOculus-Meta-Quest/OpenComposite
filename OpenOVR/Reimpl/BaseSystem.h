@@ -44,10 +44,6 @@ private:
 	void CheckControllerEvents(vr::TrackedDeviceIndex_t hand, VRControllerState_t& last);
 
 public:
-	static const TrackedDeviceIndex_t leftHandIndex = 1;
-	static const TrackedDeviceIndex_t rightHandIndex = 2;
-	static const TrackedDeviceIndex_t thirdTouchIndex = 3;
-
 	static float SGetIpd();
 
 public:
