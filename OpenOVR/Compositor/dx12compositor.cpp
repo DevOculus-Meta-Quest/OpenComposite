@@ -201,16 +201,7 @@ void DX12Compositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBou
 	commandList->Reset(commandAllocators[currentIndex].Get(), nullptr);
 
 	// Wait until the swapchain is ready - this makes sure the compositor isn't writing to it
-	// We don't have to pass in currentIndex since it uses the oldest acquired-but-not-waited-on
-	// image, so we should be careful with concurrency here.
-	// XR_TIMEOUT_EXPIRED is considered successful but swapchain still can't be used so need to handle that
-	XrSwapchainImageWaitInfo waitInfo{ XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO };
-	waitInfo.timeout = 500000000; // time out in nano seconds - 500ms
-	XrResult res;
-	OOVR_FAILED_XR_ABORT(res = xrWaitSwapchainImage(chain, &waitInfo));
-
-	if (res == XR_TIMEOUT_EXPIRED)
-		OOVR_ABORTF("xrWaitSwapchainImage timeout");
+	WaitForSwapchain();
 
 	// Copy the source to the destination image
 	D3D12_BOX sourceRegion;

@@ -45,6 +45,8 @@ public:
 	virtual void ResetSubmitContext(){};
 
 protected:
+	void WaitForSwapchain();
+
 	XrSwapchain chain = XR_NULL_HANDLE;
 
 	// The request used to create the current swapchain. This can be used to check if the swapchain needs recreating.
