@@ -14,8 +14,10 @@
 #include "../OpenOVR/linux_funcs.h"
 #endif
 
+#ifndef STUBBED
 #define STUBBED() \
 	OOVR_ABORTF("DrvOpenXR: Hit stubbed file at %s:%d func %s", __FILE__, __LINE__, __func__)
+#endif
 
 namespace DrvOpenXR {
 void SetupSession();

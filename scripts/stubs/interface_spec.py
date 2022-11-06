@@ -2,6 +2,7 @@ import re
 
 import libparse
 import stubs.interface
+from typing import List
 
 # Regex for matching GEN_INTERFACE macro
 geniface = re.compile("GEN_INTERFACE\(\"(?P<interface>\w+)\",\s*\"(?P<version>\d{3})\"(?:\s*,\s*(?P<flags>.*))?\s*\)")
@@ -13,6 +14,8 @@ impldef = re.compile(r"^\w[\w\d\s:]*\s+[\*&]*\s*(?P<cls>[\w\d_]+)::(?P<name>[\w\
 
 
 class InterfaceSpec:
+    versions: List[stubs.interface.InterfaceDef]
+
     def __init__(self, input_dir, headers_dir, output_dir, name):
         self.name = name
         self.versions = []
@@ -42,7 +45,9 @@ class InterfaceSpec:
                 match = baseflag.match(line)
                 if match:
                     flag = match.group("flag")
-                    value = match.group("value").strip()
+                    value = match.group("value")
+                    if value:
+                        value = value.strip()
                     self.flags[flag] = value or True
 
                 match = impldef.match(line)
@@ -59,8 +64,11 @@ class InterfaceSpec:
 
             self.versions.append(build_interface(interface, version, flags, self))
 
+    def custom_lifecycle(self) -> bool:
+        return "CUSTOM_LIFECYCLE" in self.flags
 
-def build_interface(name, version, flags, spec):
+
+def build_interface(name, version, flags, spec) -> stubs.interface.InterfaceDef:
     if "CUSTOM" in flags:
         return stubs.interface.CustomInterface(name, version, flags, spec)
     elif "API" in flags:

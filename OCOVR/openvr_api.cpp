@@ -4,6 +4,7 @@
 #include "plat.h"
 
 #include "Reimpl/Interfaces.h"
+#include "generated/static_bases.gen.h"
 
 // Needed for the system-wide usage of this DLL (when renamed to vrclient[_x64].dll)
 #include "generated/GVRClientCore.gen.h"
@@ -46,6 +47,8 @@ class CVRCorrectLayout : public _InheritCVRLayout, public CVRCommon {
 using correct_layout_unique = std::unique_ptr<CVRCorrectLayout, std::function<void(CVRCorrectLayout*)>>;
 
 static std::map<std::string, correct_layout_unique> interfaces;
+static std::unique_ptr<InterfaceImplementations> implementations;
+static std::unique_ptr<BaseClientCore> clientCore;
 
 VR_INTERFACE void* VR_CALLTYPE VR_GetGenericInterface(const char* interfaceVersion, EVRInitError* error)
 {
@@ -265,8 +268,10 @@ success:
 	current_apptype = eApplicationType;
 	running = true;
 
-	// TODO seperate this from the rest of dllmain
 	BackendManager::Create(DrvOpenXR::CreateOpenXRBackend());
+
+	// This must be run after the backend is created
+	implementations = InitialiseImplementations();
 
 	return current_init_token;
 }
@@ -341,6 +346,9 @@ VR_INTERFACE void VR_CALLTYPE VR_ShutdownInternal()
 	//  need to use it for cleanup.
 	interfaces.clear();
 
+	// Destroy all the Base* classes
+	implementations.reset();
+
 	// Shut down OpenXR
 	BackendManager::Reset();
 
@@ -382,4 +390,18 @@ VR_INTERFACE void* VRClientCoreFactory(const char* pInterfaceName, int* pReturnC
 	OOVR_LOG(pInterfaceName);
 	OOVR_MESSAGE(pInterfaceName, "Missing client interface");
 	ERR("unknown/unsupported interface " + name);
+}
+
+InterfaceImplementations* GetInterfaceImplementations()
+{
+	return implementations.get();
+}
+
+// BaseClientCore is handled separately from all the other interfaces because of the CUSTOM_LIFECYCLE flag
+BaseClientCore* GetBaseClientCore()
+{
+	if (!clientCore) {
+		clientCore = std::make_unique<BaseClientCore>();
+	}
+	return clientCore.get();
 }

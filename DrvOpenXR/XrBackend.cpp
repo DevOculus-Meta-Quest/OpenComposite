@@ -379,7 +379,7 @@ void XrBackend::WaitForTrackingData()
 	XrViewLocateInfo locateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
 	locateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	locateInfo.displayTime = xr_gbl->nextPredictedFrameTime;
-	locateInfo.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+	locateInfo.space = xr_space_from_ref_space_type(GetBaseSystem()->currentSpace);
 	XrViewState viewState = { XR_TYPE_VIEW_STATE };
 	uint32_t viewCount = 0;
 	XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
@@ -485,7 +485,7 @@ void XrBackend::SubmitFrames(bool showSkybox, bool postPresent)
 	XrCompositionLayerProjection mainLayer{ XR_TYPE_COMPOSITION_LAYER_PROJECTION };
 	if (submittedEyeTextures) {
 		// We have eye textures so setup a projection layer
-		mainLayer.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+		mainLayer.space = xr_space_from_ref_space_type(GetBaseSystem()->currentSpace);
 		mainLayer.views = projectionViews;
 		mainLayer.viewCount = 2;
 
@@ -499,14 +499,8 @@ void XrBackend::SubmitFrames(bool showSkybox, bool postPresent)
 		submittedEyeTextures = false;
 	}
 
-	// If we have an overlay then add
-	BaseOverlay* overlay = GetUnsafeBaseOverlay();
-	if (overlay) {
-		layer_count = overlay->_BuildLayers(app_layer, headers);
-	} else if (app_layer) {
-		layer_count = 1;
-		headers = &app_layer;
-	}
+	// If we have an overlay then add it's layers
+	layer_count = GetBaseOverlay()->_BuildLayers(app_layer, headers);
 
 	// It's ok if no layers have been added at this point,
 	// it will just cause the display to be blanked
@@ -515,10 +509,7 @@ void XrBackend::SubmitFrames(bool showSkybox, bool postPresent)
 
 	OOVR_FAILED_XR_SOFT_ABORT(xrEndFrame(xr_session.get(), &info));
 
-	BaseSystem* sys = GetUnsafeBaseSystem();
-	if (sys) {
-		sys->_OnPostFrame();
-	}
+	GetBaseSystem()->_OnPostFrame();
 
 	auto now = std::chrono::system_clock::now().time_since_epoch();
 	frameSubmitTimeUs = (double)std::chrono::duration_cast<std::chrono::microseconds>(now).count() / 1000000.0;
@@ -569,7 +560,7 @@ IBackend::openvr_enum_t XrBackend::SetSkyboxOverride(const vr::Texture_t* pTextu
 		layerQuad.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
 		layerQuad.next = NULL;
 		layerQuad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-		layerQuad.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+		layerQuad.space = xr_space_from_ref_space_type(GetBaseSystem()->currentSpace);
 		layerQuad.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
 		layerQuad.pose = { { 0.f, 0.f, 0.f, 1.f },
 			{ 0.0f, 0.0f, -0.65f } };
@@ -799,8 +790,7 @@ void XrBackend::PumpEvents()
 	   session when we can't even receive input anyway, as well as before the session is restarted for
 	   the temporary session.
    */
-	BaseInput* input = GetUnsafeBaseInput();
-	if (input && !input->AreActionsLoaded() && sessionState == XR_SESSION_STATE_FOCUSED && !hand_left && !hand_right) {
+	if (GetInterfaceImplementations() && !GetBaseInput()->AreActionsLoaded() && sessionState == XR_SESSION_STATE_FOCUSED && !hand_left && !hand_right) {
 		QueryForInteractionProfile();
 	}
 }
@@ -892,19 +882,16 @@ void XrBackend::UpdateInteractionProfile()
 					OOVR_LOGF("%s - Using interaction profile: %s", info.pathstr, path_name);
 					info.controller = std::make_unique<XrController>(info.hand, *profile);
 					hmd->SetInteractionProfile(profile.get());
-					BaseSystem* system = GetUnsafeBaseSystem();
-					if (system) {
-						VREvent_t event = {
-							.eventType = VREvent_TrackedDeviceActivated,
-							.trackedDeviceIndex = (TrackedDeviceIndex_t)info.hand + 1
-						};
-						system->_EnqueueEvent(event);
-						event = {
-							.eventType = VREvent_TrackedDeviceUpdated,
-							.trackedDeviceIndex = 0
-						};
-						system->_EnqueueEvent(event);
-					}
+					VREvent_t event = {
+						.eventType = VREvent_TrackedDeviceActivated,
+						.trackedDeviceIndex = (TrackedDeviceIndex_t)info.hand + 1
+					};
+					GetBaseSystem()->_EnqueueEvent(event);
+					event = {
+						.eventType = VREvent_TrackedDeviceUpdated,
+						.trackedDeviceIndex = 0
+					};
+					GetBaseSystem()->_EnqueueEvent(event);
 					break;
 				}
 			}
@@ -917,14 +904,11 @@ void XrBackend::UpdateInteractionProfile()
 			OOVR_LOGF("%s - No interaction profile detected", info.pathstr);
 			if (info.controller) {
 				info.controller.reset();
-				BaseSystem* system = GetUnsafeBaseSystem();
-				if (system) {
-					VREvent_t event = {
-						.eventType = VREvent_TrackedDeviceDeactivated,
-						.trackedDeviceIndex = (TrackedDeviceIndex_t)info.hand + 1
-					};
-					system->_EnqueueEvent(event);
-				}
+				VREvent_t event = {
+					.eventType = VREvent_TrackedDeviceDeactivated,
+					.trackedDeviceIndex = (TrackedDeviceIndex_t)info.hand + 1
+				};
+				GetBaseSystem()->_EnqueueEvent(event);
 			}
 		}
 	}
@@ -933,8 +917,7 @@ void XrBackend::UpdateInteractionProfile()
 void XrBackend::MaybeRestartForInputs()
 {
 	// if we haven't attached any actions to the session (infoSet or game actions), no need to restart
-	BaseInput* input = GetUnsafeBaseInput();
-	if (infoSet == XR_NULL_HANDLE && (!input || !input->AreActionsLoaded()))
+	if (infoSet == XR_NULL_HANDLE && !GetBaseInput()->AreActionsLoaded())
 		return;
 
 	OOVR_LOG("Restarting session for inputs...");

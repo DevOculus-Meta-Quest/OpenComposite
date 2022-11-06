@@ -110,5 +110,5 @@ void BaseChaperone::ResetZeroPose(vr::ETrackingUniverseOrigin eTrackingUniverseO
 	}
 
 	// TODO do we have to do anything about the tracking origin?
-	GetUnsafeBaseSystem()->ResetSeatedZeroPose();
+	GetBaseSystem()->ResetSeatedZeroPose();
 }

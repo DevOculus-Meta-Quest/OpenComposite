@@ -523,22 +523,7 @@ void BaseSystem::_OnPostFrame()
 
 	// Note: OpenXR event handling is now in XrBackend
 
-	// Create the input system, if the game hasn't already done so
-	// See the comment in GetControllerState for the rationale here
-	if (!inputSystem) {
-		inputSystem = GetBaseInput();
-
-		if (!inputSystem) {
-			inputSystem = GetCreateBaseInput();
-
-			// We used to load an empty manifest here. Instead, we now wait until games first read the legacy
-			// inputs. This way games that wait until several frames in to load their manifest will still work.
-		}
-	}
-
-	if (inputSystem) {
-		inputSystem->InternalUpdate();
-	}
+	GetBaseInput()->InternalUpdate();
 }
 
 void BaseSystem::_EnqueueEvent(const VREvent_t& e)
@@ -583,10 +568,7 @@ void BaseSystem::CheckControllerEvents(TrackedDeviceIndex_t hand, VRControllerSt
 	ev_base.data.controller = { 0 };
 
 	TrackedDevicePose_t pose = { 0 };
-	BaseCompositor* compositor = GetUnsafeBaseCompositor();
-	if (compositor) {
-		compositor->GetSinglePoseRendering(compositor->GetTrackingSpace(), hand, &pose);
-	}
+	GetBaseCompositor()->GetSinglePoseRendering(GetBaseCompositor()->GetTrackingSpace(), hand, &pose);
 
 	// Check each possible button, and fire an event if it changed
 	// (note that incrementing enums in C++ is a bit of a pain, wrt the casting)
@@ -661,10 +643,6 @@ bool BaseSystem::GetControllerState(vr::TrackedDeviceIndex_t controllerDeviceInd
 
 	memset(controllerState, 0, controllerStateSize);
 
-	if (!inputSystem) {
-		inputSystem = GetBaseInput();
-	}
-
 	// Since we can only bind the manifest once, and some games may never call it or may
 	//  try reading the controller state first, wait until the first frame has been submitted (returning
 	//  blank controller states until then) AND the game tries reading the controller state.
@@ -673,13 +651,10 @@ bool BaseSystem::GetControllerState(vr::TrackedDeviceIndex_t controllerDeviceInd
 	//  be unnecessary.) and for games that load their manifest late (Jet Island does as of 29/05/2022).
 	// This won't work for games that need hand positions but don't use either legacy or new input, but
 	//  it seems unlikely any shipping game falls into that category.
-	if (!inputSystem) {
-		return true;
-	}
 	if (frameNumber > 0)
-		inputSystem->LoadEmptyManifestIfRequired();
+		GetBaseInput()->LoadEmptyManifestIfRequired();
 
-	return inputSystem->GetLegacyControllerState(controllerDeviceIndex, controllerState);
+	return GetBaseInput()->GetLegacyControllerState(controllerDeviceIndex, controllerState);
 }
 
 bool BaseSystem::GetControllerStateWithPose(ETrackingUniverseOrigin eOrigin, vr::TrackedDeviceIndex_t unControllerDeviceIndex,
@@ -697,13 +672,7 @@ void BaseSystem::TriggerHapticPulse(vr::TrackedDeviceIndex_t unControllerDeviceI
 		return;
 
 	if (unControllerDeviceIndex == leftHandIndex || unControllerDeviceIndex == rightHandIndex) {
-
-		// Similar to GetControllerState, wait until the input system is ready
-		if (!inputSystem) {
-			return;
-		}
-
-		inputSystem->TriggerLegacyHapticPulse(unControllerDeviceIndex, (uint64_t)usDurationMicroSec * 1000);
+		GetBaseInput()->TriggerLegacyHapticPulse(unControllerDeviceIndex, (uint64_t)usDurationMicroSec * 1000);
 	}
 	// if index is invalid, nothing to do
 	return;

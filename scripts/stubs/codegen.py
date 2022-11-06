@@ -28,7 +28,7 @@ def _write_interface_header(fi, iface: InterfaceDef):
 #include "Reimpl/{iface.base_header()}"
 class {cname} : public {iface.namespace()}::{iface.interface()}, public CVRCommon {{
 private:
-    const std::shared_ptr<{iface.basename()}> base;
+    {iface.basename()} *base;
 public:
     virtual void** _GetStatFuncList() override;
     virtual void Delete() override;
@@ -47,38 +47,16 @@ public:
 
 
 def write_stubs(fi, iface: InterfaceSpec):
-    first_ver = iface.versions[0]
-    cls = first_ver.basename()
-    var = "_single_inst_" + first_ver.varname()
-    getter_name = first_ver.getter_name()
+    fi.write(f'#include "GVR{iface.name}.gen.h"')
 
-    # Write the version-independent code that creates the instance of the base class
-    fi.write(f"""
-#include "GVR{iface.name}.gen.h"
-// Single inst of {cls}
-static std::weak_ptr<{cls}> {var};
-static {cls} *{var}_unsafe = NULL;
-std::shared_ptr<{cls}> Get{getter_name}() {{ return {var}.lock(); }};
-{cls}* GetUnsafe{getter_name}() {{ return {var}_unsafe; }};
-std::shared_ptr<{cls}> GetCreate{getter_name}() {{
-    std::shared_ptr<{cls}> ret = {var}.lock();
-    if(!ret) {{
-        ret = std::shared_ptr<{cls}>(new {cls}(), []({cls} *obj){{ {var}_unsafe = NULL; delete obj; }});
-        {var} = ret;
-        {var}_unsafe = ret.get();
-    }}
-    return ret;
-}}
-""".replace("    ", "\t").lstrip())
-
-    # Write the actual version-specific stubs:
+    # Write the version-specific stubs:
     for ver in iface.versions:
         cname = ver.proxy_class_name()
         namespace = ver.namespace()
 
         fi.write(f"""
 // Misc for {cname}:
-{cname}::{cname}() : base(GetCreate{ver.getter_name()}()) {{}}
+{cname}::{cname}() : base(Get{ver.getter_name()}()) {{}}
 // Interface methods for {cname}:
 """.lstrip())
 
@@ -196,4 +174,15 @@ def write_stub_footer(fi, interfaces: List[InterfaceSpec]):
 
     fi.write("\tif(success) *success = false;\n")
     fi.write("\treturn 0;\n")
+    fi.write("}\n")
+
+    # Generate InitialiseImplementations
+    fi.write("// Initialise all implementations\n")
+    fi.write("std::unique_ptr<InterfaceImplementations> InitialiseImplementations() {\n")
+    fi.write("\tstd::unique_ptr<InterfaceImplementations> impls = std::make_unique<InterfaceImplementations>();\n")
+    for spec in interfaces:
+        basename = spec.versions[0].basename()
+        if not spec.custom_lifecycle():
+            fi.write(f"\timpls->imp{basename} = std::make_unique<{basename}>();\n")
+    fi.write("\treturn impls;\n")
     fi.write("}\n")

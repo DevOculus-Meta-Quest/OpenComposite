@@ -197,7 +197,7 @@ EVROverlayError BaseOverlay::CreateOverlay(const char* pchOverlayKey, const char
 	data->layerQuad.type = XR_TYPE_COMPOSITION_LAYER_QUAD;
 	data->layerQuad.next = NULL;
 	data->layerQuad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-	data->layerQuad.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+	data->layerQuad.space = xr_space_from_ref_space_type(GetBaseSystem()->currentSpace);
 	data->layerQuad.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
 	data->layerQuad.pose = { { 0.f, 0.f, 0.f, 1.f },
 		{ 0.0f, 0.0f, -0.65f } };
@@ -727,7 +727,7 @@ EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle
 		return VROverlayError_None;
 
 	if (!overlay->compositor) {
-		overlay->compositor.reset(GetUnsafeBaseCompositor()->CreateCompositorAPI(pTexture));
+		overlay->compositor.reset(GetBaseCompositor()->CreateCompositorAPI(pTexture));
 	}
 
 	overlay->compositor->LoadSubmitContext();
@@ -737,7 +737,7 @@ EVROverlayError BaseOverlay::SetOverlayTexture(VROverlayHandle_t ulOverlayHandle
 
 	overlay->compositor->Invoke(&overlay->texture, nullptr);
 
-	overlay->layerQuad.space = xr_space_from_ref_space_type(GetUnsafeBaseSystem()->currentSpace);
+	overlay->layerQuad.space = xr_space_from_ref_space_type(GetBaseSystem()->currentSpace);
 	overlay->layerQuad.subImage = {
 		overlay->compositor->GetSwapChain(),
 		{ { 0, 0 },
@@ -824,10 +824,7 @@ EVROverlayError BaseOverlay::ShowKeyboardWithDispatch(EGamepadTextInputMode eInp
 
 	keyboard->contents(VRKeyboard::CHAR_CONV.from_bytes(pchExistingText));
 
-	BaseSystem* system = GetUnsafeBaseSystem();
-	if (system) {
-		system->_BlockInputsUntilReleased();
-	}
+	GetBaseSystem()->_BlockInputsUntilReleased();
 #else
 	STUBBED();
 #endif
@@ -839,10 +836,7 @@ EVROverlayError BaseOverlay::ShowKeyboard(EGamepadTextInputMode eInputMode, EGam
 {
 
 	VRKeyboard::eventDispatch_t dispatch = [](VREvent_t ev) {
-		BaseSystem* sys = GetUnsafeBaseSystem();
-		if (sys) {
-			sys->_EnqueueEvent(ev);
-		}
+		GetBaseSystem()->_EnqueueEvent(ev);
 	};
 
 	return ShowKeyboardWithDispatch(eInputMode, eLineInputMode, pchDescription, unCharMax, pchExistingText, bUseMinimalMode, uUserValue, dispatch);
@@ -895,10 +889,7 @@ void BaseOverlay::HideKeyboard()
 	// Delete the keyboard instance
 	keyboard.reset();
 
-	BaseSystem* system = GetUnsafeBaseSystem();
-	if (system) {
-		system->_BlockInputsUntilReleased();
-	}
+	GetBaseSystem()->_BlockInputsUntilReleased();
 }
 void BaseOverlay::SetKeyboardTransformAbsolute(ETrackingUniverseOrigin eTrackingOrigin, const HmdMatrix34_t* pmatTrackingOriginToKeyboardTransform)
 {
@@ -908,7 +899,7 @@ void BaseOverlay::SetKeyboardTransformAbsolute(ETrackingUniverseOrigin eTracking
 #ifdef OC_XR_PORT
 	XR_STUBBED();
 #else
-	BaseCompositor* compositor = GetUnsafeBaseCompositor();
+	BaseCompositor* compositor = GetBaseCompositor();
 	if (compositor && eTrackingOrigin != compositor->GetTrackingSpace()) {
 		OOVR_ABORTF("Origin mismatch - current %d, requested %d", compositor->GetTrackingSpace(), eTrackingOrigin);
 	}

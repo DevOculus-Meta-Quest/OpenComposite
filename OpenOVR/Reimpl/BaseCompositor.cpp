@@ -50,12 +50,12 @@ void BaseCompositor::SetTrackingSpace(ETrackingUniverseOrigin eOrigin)
 		origin = XR_REFERENCE_SPACE_TYPE_LOCAL;
 	}
 
-	GetUnsafeBaseSystem()->currentSpace = origin;
+	GetBaseSystem()->currentSpace = origin;
 }
 
 ETrackingUniverseOrigin BaseCompositor::GetTrackingSpace()
 {
-	if (GetUnsafeBaseSystem()->currentSpace == XR_REFERENCE_SPACE_TYPE_LOCAL) {
+	if (GetBaseSystem()->currentSpace == XR_REFERENCE_SPACE_TYPE_LOCAL) {
 		return TrackingUniverseSeated;
 	} else {
 		return TrackingUniverseStanding;
