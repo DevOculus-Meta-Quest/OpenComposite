@@ -150,10 +150,14 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, dx10Mode);
 		CFGOPT(bool, enableAppRequestedCubemap);
 		CFGOPT(bool, enableHiddenMeshFix);
-		CFGOPT(bool, invertUsingShaders);
 		CFGOPT(bool, initUsingVulkan);
 		CFGOPT(float, hiddenMeshVerticalScale);
 		CFGOPT(bool, logAllOpenVRCalls);
+
+		if (name == "invertUsingShaders") {
+			cfg->invertUsingShaders = parse_bool(value, name, lineno);
+			cfg->invertUsingShadersAuto = false;
+		}
 	}
 
 #undef CFGOPT
@@ -247,4 +251,17 @@ Config::Config()
 
 Config::~Config()
 {
+}
+
+void Config::UpdateAutoSettings()
+{
+	XrInstanceProperties runtimeProperties = { XR_TYPE_INSTANCE_PROPERTIES };
+	OOVR_FAILED_XR_ABORT(xrGetInstanceProperties(xr_instance, &runtimeProperties));
+	std::string runtimeName = runtimeProperties.runtimeName;
+
+	// The Oculus runtime appears to be nonconformant, and needs the shader-based image inverting
+	if (runtimeName.find("Oculus") != std::string::npos) {
+		if (invertUsingShadersAuto)
+			invertUsingShaders = true;
+	}
 }
