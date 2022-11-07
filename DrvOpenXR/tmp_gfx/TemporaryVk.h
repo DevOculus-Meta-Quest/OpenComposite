@@ -6,7 +6,7 @@
 
 #include "TemporaryGraphics.h"
 
-#include "../XrDriverPrivate.h"
+#include "../OpenOVR/Misc/xr_ext.h"
 
 class TemporaryVk : public TemporaryGraphics {
 public:

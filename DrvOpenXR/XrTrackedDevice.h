@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "XrDriverPrivate.h"
-
 class XrTrackedDevice : public virtual ITrackedDevice {
 public:
 	void GetPose(
