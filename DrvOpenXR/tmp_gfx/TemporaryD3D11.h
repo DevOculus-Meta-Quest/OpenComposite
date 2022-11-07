@@ -6,6 +6,9 @@
 
 #include "TemporaryGraphics.h"
 
+#include <d3d11.h>
+#include <openxr/openxr_platform.h>
+
 class TemporaryD3D11 : public TemporaryGraphics {
 public:
 	TemporaryD3D11();

@@ -14,6 +14,7 @@
 #include "ReverbG2InteractionProfile.h"
 #include "ViveInteractionProfile.h"
 
+#include "Misc/xr_ext.h"
 #include "Reimpl/BaseInput.h"
 #include "generated/static_bases.gen.h"
 

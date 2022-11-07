@@ -35,7 +35,7 @@ protected:
 	ID3D11PixelShader* fs_pshader;
 	ID3D11Buffer* constBuffer = nullptr;
 
-	std::vector<XrSwapchainImageD3D11KHR> imagesHandles;
+	std::vector<struct XrSwapchainImageD3D11KHR> imagesHandles;
 	std::vector<ID3D11RenderTargetView*> swapchain_rtvs;
 	std::vector<ID3D11Texture2D*> resolvedMSAATextures;
 

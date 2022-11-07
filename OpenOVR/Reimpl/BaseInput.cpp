@@ -1,6 +1,3 @@
-#include "generated/interfaces/vrtypes.h"
-#include "logging.h"
-#include "openxr/openxr.h"
 #include "stdafx.h"
 #define BASE_IMPL
 #include "BaseInput.h"
@@ -9,7 +6,10 @@
 #include <convert.h>
 
 #include "Drivers/Backend.h"
+#include "generated/interfaces/vrtypes.h"
 #include "generated/static_bases.gen.h"
+#include "logging.h"
+#include "openxr/openxr.h"
 #include <algorithm>
 #include <cmath>
 #include <codecvt>
@@ -22,6 +22,7 @@
 #include <set>
 #include <utility>
 
+#include "Misc/xr_ext.h"
 #include "Misc/xrmoreutils.h"
 
 using namespace vr;

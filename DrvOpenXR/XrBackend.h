@@ -46,7 +46,8 @@ public:
 	static void MaybeRestartForInputs();
 
 #ifdef SUPPORT_VK
-	static void VkGetPhysicalDevice(VkInstance instance, VkPhysicalDevice* out);
+	// Use the _T variants since they're already forward-declared in vrtypes and we don't have to import Vulkan
+	static void VkGetPhysicalDevice(VkInstance_T* instance, VkPhysicalDevice_T** out);
 #endif
 
 private:

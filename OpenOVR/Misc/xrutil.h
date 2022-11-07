@@ -20,6 +20,9 @@ enum XruEye : int {
 	XruEyeCount = 2,
 };
 
+// This doesn't really belong here, but it's somewhere that everything will include
+typedef unsigned int GLuint;
+
 // A macro to ifndef against for a section being ported, so we can remove it to make sure we
 // haven't missed anything
 #define OC_XR_PORT

@@ -1,23 +1,6 @@
 #pragma once
 
 #include "generated/interfaces/vrtypes.h"
-#ifdef WIN32
-// Windows template libraries
-#include <atlbase.h>
-#include <wrl/client.h>
-#endif
-
-#include "../Misc/xr_ext.h"
-#include "../Misc/xrutil.h"
-
-#include <memory>
-#include <vector>
-
-#ifdef WIN32
-using Microsoft::WRL::ComPtr;
-#endif
-
-typedef unsigned int GLuint;
 
 class Compositor {
 public:

@@ -4,16 +4,22 @@
 
 #include "drvxr_pch.h"
 
+#include "Compositor/compositor.h"
 #include "XrBackend.h"
 #include "generated/interfaces/vrtypes.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <wrl/client.h>
 #endif
 
 #if defined(SUPPORT_GL) && !defined(_WIN32)
 #include <GL/glx.h>
+#endif
+
+#if defined(SUPPORT_VK)
+#include "Compositor/vkcompositor.h"
 #endif
 
 #include <openxr/openxr_platform.h>
@@ -220,7 +226,7 @@ void XrBackend::CheckOrInitCompositors(const vr::Texture_t* tex)
 			OOVR_FAILED_XR_ABORT(xr_ext->xrGetD3D12GraphicsRequirementsKHR(xr_instance, xr_system, &graphicsRequirements));
 
 			D3D12TextureData_t* d3dTexData = (D3D12TextureData_t*)tex->handle;
-			ComPtr<ID3D12Device> device;
+			Microsoft::WRL::ComPtr<ID3D12Device> device;
 			d3dTexData->m_pResource->GetDevice(IID_PPV_ARGS(&device));
 
 			XrGraphicsBindingD3D12KHR d3dInfo{};
@@ -231,7 +237,7 @@ void XrBackend::CheckOrInitCompositors(const vr::Texture_t* tex)
 			DrvOpenXR::SetupSession();
 
 #ifdef _DEBUG
-			ComPtr<ID3D12Debug> debugController;
+			Microsoft::WRL::ComPtr<ID3D12Debug> debugController;
 			D3D12GetDebugInterface(IID_PPV_ARGS(&debugController));
 			debugController->EnableDebugLayer();
 #endif
