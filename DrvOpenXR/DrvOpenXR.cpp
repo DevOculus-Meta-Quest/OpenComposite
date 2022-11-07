@@ -13,6 +13,12 @@
 #include "XrBackend.h"
 #include "generated/static_bases.gen.h"
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
+#include <Shlwapi.h>
+#include <Windows.h>
+#endif
+
 #include <memory>
 #include <set>
 #include <string>

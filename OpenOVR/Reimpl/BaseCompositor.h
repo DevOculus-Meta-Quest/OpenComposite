@@ -2,11 +2,10 @@
 #include "../BaseCommon.h" // TODO don't import from OCOVR, and remove the "../"
 #include "generated/interfaces/IVRCompositor_022.h"
 
-#include "../Compositor/compositor_backend.h" // TODO don't import from OCOVR, and remove the "../"
-
 #include <vector>
 
-typedef unsigned int GLuint;
+// Forward-declare Compositor, to avoid including it's huge header
+class Compositor;
 
 struct OOVR_Compositor_FrameTiming {
 	uint32_t m_nSize; // Set to sizeof( Compositor_FrameTiming )

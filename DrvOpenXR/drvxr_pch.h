@@ -1,11 +1,11 @@
 #pragma once
 // Precompiled header for DrvOpenXR stuff - this MUST be the first include!
 
-#include "pub/DrvOpenXR.h"
-
-#include "../OpenOVR/Misc/xrutil.h"
 #include "../OpenOVR/Misc/xr_ext.h"
+#include "../OpenOVR/Misc/xrutil.h"
 #include "../OpenOVR/logging.h"
+
+#include "pub/DrvOpenXR.h"
 
 #ifndef _WIN32
 #include "../OpenOVR/linux_funcs.h"

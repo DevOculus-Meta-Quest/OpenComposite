@@ -2,6 +2,8 @@
 
 #include "compositor.h"
 
+#include <vulkan/vulkan_core.h>
+
 // BAD NO NO NO NO. NO GLOBAL STATE
 // The actual purpose of these, from Moses, is so we can assert if the client tries to switch tehse up on us.
 extern VkPhysicalDevice expectedPhysicalDevice;
@@ -30,7 +32,7 @@ private:
 	VkDeviceSize BindNextMemoryToImage(VkDevice dev, VkImage img, VkDeviceMemory mem, VkDeviceSize offset);
 
 	// These resources live in the runtime's VkDevice
-	std::vector<XrSwapchainImageVulkanKHR> swapchainImages;
+	std::vector<struct XrSwapchainImageVulkanKHR> swapchainImages;
 
 	// These resources live in the app's VkDevice
 	VkDevice appDevice = VK_NULL_HANDLE;

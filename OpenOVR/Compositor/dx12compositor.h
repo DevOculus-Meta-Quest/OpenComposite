@@ -38,7 +38,7 @@ private:
 	std::vector<UINT64> fenceValues;
 	UINT64 currentFenceValue;
 
-	std::vector<XrSwapchainImageD3D12KHR> imagesHandles;
+	std::vector<class XrSwapchainImageD3D12KHR> imagesHandles;
 
 	struct DxgiFormatInfo {
 		/// The different versions of this format, set to DXGI_FORMAT_UNKNOWN if absent.

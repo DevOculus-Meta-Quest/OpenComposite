@@ -1,6 +1,4 @@
-#include "generated/interfaces/vrtypes.h"
 #include "stdafx.h"
-#include <vulkan/vulkan_core.h>
 
 #if defined(SUPPORT_VK)
 
@@ -9,10 +7,11 @@
 #include <unistd.h>
 #endif
 
-#include "../../DrvOpenXR/tmp_gfx/TemporaryVk.h"
 #include "vkcompositor.h"
 
-#include <vulkan/vulkan.h>
+#include "Misc/xr_ext.h"
+
+#include "generated/interfaces/vrtypes.h"
 
 VkPhysicalDevice expectedPhysicalDevice = NULL;
 VkDevice expectedDevice = NULL;

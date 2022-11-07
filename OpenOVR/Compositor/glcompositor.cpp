@@ -1,19 +1,11 @@
 #include "stdafx.h"
 
-#if defined(SUPPORT_GL) || defined(SUPPORT_GLES)
+#if defined(SUPPORT_GL)
+
 #include "glcompositor.h"
-#endif
 
-// Import GL or GLES
-#ifdef SUPPORT_GL
-#include <GL/gl.h>
-#endif
-#ifdef SUPPORT_GLES
-#include <GLES3/gl32.h>
-#endif
-
-// OpenGL compositor
-#ifdef SUPPORT_GL
+// Includes OpenGL and the OpenXR-OpenGL stuff correctly
+#include "Misc/xr_ext.h"
 
 #include <algorithm>
 #include <string>

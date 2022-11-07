@@ -27,6 +27,10 @@ using glm::vec4;
 #include "BaseClientCore.h"
 #include "Drivers/Backend.h"
 #include "Misc/ScopeGuard.h"
+#include "Misc/xr_ext.h"
+
+// This includes all the compositor implementations
+#include "Compositor/compositor_backend.h"
 
 using namespace vr;
 using namespace IVRCompositor_022;

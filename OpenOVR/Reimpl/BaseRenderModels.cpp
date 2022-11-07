@@ -14,6 +14,10 @@
 
 #include <glm/gtx/transform.hpp>
 
+#if defined(SUPPORT_DX11)
+#include <d3d11.h>
+#endif
+
 using glm::mat4;
 using glm::quat;
 using glm::vec3;
