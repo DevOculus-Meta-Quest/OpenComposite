@@ -270,6 +270,10 @@ success:
 
 	BackendManager::Create(DrvOpenXR::CreateOpenXRBackend());
 
+	// Update the settings based on the current runtime
+	// Currently this detects if invertUsingShaders needs to be set
+	oovr_global_configuration.UpdateAutoSettings();
+
 	// This must be run after the backend is created
 	implementations = InitialiseImplementations();
 
