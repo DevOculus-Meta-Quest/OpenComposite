@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "XrDriverPrivate.h"
-
 #include "Misc/Input/InteractionProfile.h"
 #include "XrTrackedDevice.h"
 

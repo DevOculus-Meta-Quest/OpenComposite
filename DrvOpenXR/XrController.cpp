@@ -1,3 +1,5 @@
+#include "drvxr_pch.h"
+
 #include "XrController.h"
 
 // HACK: grab the pose from BaseInput

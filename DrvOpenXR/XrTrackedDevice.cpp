@@ -2,6 +2,8 @@
 // Created by ZNix on 25/10/2020.
 //
 
+#include "drvxr_pch.h"
+
 #include "XrTrackedDevice.h"
 
 #include "../OpenOVR/convert.h"

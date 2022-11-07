@@ -6,8 +6,6 @@
 
 #include "TemporaryGraphics.h"
 
-#include "../XrDriverPrivate.h"
-
 class TemporaryD3D11 : public TemporaryGraphics {
 public:
 	TemporaryD3D11();

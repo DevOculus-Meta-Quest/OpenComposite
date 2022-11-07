@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "XrDriverPrivate.h"
-
 #include "XrController.h"
 #include "XrHMD.h"
 

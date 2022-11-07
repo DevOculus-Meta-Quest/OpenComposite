@@ -161,9 +161,9 @@ target_include_directories(glm INTERFACE libs/glm) # No separate include directo
 
 # === DrvOpenXR ===
 add_library(DrvOpenXR STATIC
-	DrvOpenXR/DrvOpenXR.cpp
+	DrvOpenXR/drvxr_pch.cpp DrvOpenXR/drvxr_pch.h
 
-	DrvOpenXR/XrDriverPrivate.h
+	DrvOpenXR/DrvOpenXR.cpp
 
 	DrvOpenXR/XrBackend.cpp
 	DrvOpenXR/XrBackend.h
@@ -187,6 +187,7 @@ add_library(DrvOpenXR STATIC
 	${GENERATED_DIR}/interfaces/vrtypes.h
 	${GENERATED_DIR}/static_bases.gen.h
 )
+target_precompile_headers(DrvOpenXR PRIVATE DrvOpenXR/drvxr_pch.h)
 target_include_directories(DrvOpenXR PUBLIC DrvOpenXR/pub ${CMAKE_BINARY_DIR})
 target_include_directories(DrvOpenXR PRIVATE DrvOpenXR OpenOVR)
 target_link_libraries(DrvOpenXR PUBLIC OpenVR OpenXR glm)
