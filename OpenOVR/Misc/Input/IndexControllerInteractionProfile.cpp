@@ -1,5 +1,6 @@
+#include "stdafx.h"
+
 #include "IndexControllerInteractionProfile.h"
-#include "logging.h"
 
 IndexControllerInteractionProfile::IndexControllerInteractionProfile()
 {

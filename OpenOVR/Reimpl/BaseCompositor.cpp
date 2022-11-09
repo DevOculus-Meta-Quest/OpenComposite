@@ -19,14 +19,8 @@ using glm::vec4;
 #include "BaseSystem.h"
 #include "generated/static_bases.gen.h"
 
-// FIXME find a nice way to clean this up
-#ifdef SUPPORT_VK
-#include "../../DrvOpenXR/pub/DrvOpenXR.h"
-#endif
-
 #include "BaseClientCore.h"
 #include "Drivers/Backend.h"
-#include "Misc/ScopeGuard.h"
 #include "Misc/xr_ext.h"
 
 // This includes all the compositor implementations
