@@ -119,3 +119,8 @@ InteractionProfile* InteractionProfile::GetProfileByPath(const string& name)
 		OOVR_ABORTF("Could not find interaction profile '%s'", name.c_str());
 	return byPath.at(name);
 }
+
+glm::mat4 InteractionProfile::GetGripToSteamVRTransform(ITrackedDevice::HandType hand) const
+{
+	return glm::identity<glm::mat4>();
+}
