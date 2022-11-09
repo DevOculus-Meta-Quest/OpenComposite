@@ -240,6 +240,16 @@ vr::ETrackedControllerRole ITrackedDevice::GetControllerRole()
 	}
 }
 
+const InteractionProfile* ITrackedDevice::GetInteractionProfile()
+{
+	return nullptr;
+}
+
+vr::ETrackedDeviceClass IHMD::GetTrackedDeviceClass()
+{
+	return vr::TrackedDeviceClass_HMD;
+}
+
 // properties
 
 bool ITrackedDevice::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError* pErrorL)
@@ -322,9 +332,4 @@ uint32_t ITrackedDevice::GetStringTrackedDeviceProperty(vr::ETrackedDeviceProper
 	if (pErrorL)
 		*pErrorL = vr::TrackedProp_UnknownProperty;
 	return 0;
-}
-
-vr::ETrackedDeviceClass IHMD::GetTrackedDeviceClass()
-{
-	return vr::TrackedDeviceClass_HMD;
 }
