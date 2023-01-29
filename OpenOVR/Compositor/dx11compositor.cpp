@@ -343,7 +343,7 @@ void DX11Compositor::Invoke(const vr::Texture_t* texture, const vr::VRTextureBou
 		// error E_INVALIDARG 0x80070057 (putting this here for ease of searching later).
 		// See https://learn.microsoft.com/en-gb/windows/win32/api/d3d11/ns-d3d11-d3d11_shader_resource_view_desc#remarks
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		srvDesc.Format = (DXGI_FORMAT)createInfo.format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = 1;
 		srvDesc.Texture2D.MostDetailedMip = 0;
