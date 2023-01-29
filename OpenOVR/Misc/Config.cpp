@@ -157,6 +157,7 @@ int Config::ini_handler(void* user, const char* pSection,
 		if (name == "invertUsingShaders") {
 			cfg->invertUsingShaders = parse_bool(value, name, lineno);
 			cfg->invertUsingShadersAuto = false;
+			return true;
 		}
 	}
 
