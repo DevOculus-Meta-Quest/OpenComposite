@@ -4,18 +4,12 @@ configuration: Release
 platform:
   - Win32
   - x64
-install:
-  - cmd: >-
-      git submodule update --init --recursive
-  - ps: appveyor DownloadFile https://znix.xyz/random/vulkan-1.1.85.0-minisdk.7z
-  - ps: 7z x -olibs vulkan-1.1.85.0-minisdk.7z
 before_build:
-  - ps: nuget restore RuntimeSwitcher/RuntimeSwitcher.csproj -PackagesDirectory packages
   - ps: >-
       mkdir build;
       cd build
 
-      cmake .. -A $env:Platform
+      cmake blah blah blah fail :) .. -A $env:Platform
 
       cd ..
 build:
@@ -35,3 +29,12 @@ on_success:
       7z rn OpenComposite.zip "RuntimeSwitcher/bin/$env:Configuration" "OpenComposite"
 
       Push-AppveyorArtifact "OpenComposite.zip"
+notifications:
+  - provider: Webhook
+    url: https://opencomposite.znix.xyz/builds/webhook/upload_build
+    on_build_success: true
+    on_build_failure: true
+    on_build_status_changed: false
+    headers:
+      X-BuildTrack-Auth:
+        secure: Oy+fUhSRCERHsIiOOOLNWCp94RJHpKn7djIn8x2qm/aouJg7GZEkNShPG7p7D1opokkKRumnH/+TjeasJ+LzLiHSgyxhSdwXaX5dMGMdkkk=
