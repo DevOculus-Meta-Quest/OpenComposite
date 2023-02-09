@@ -103,7 +103,12 @@ void BaseInput::ConvertHandModelSpace(const std::vector<XrHandJointLocationEXT>&
 		quaternionCopy(out_rotation, out.orientation);
 	}
 
-	OOVR_SOFT_ABORT("Aux bones not yet implemented!");
+	// In model space, aux bones are identical to distal bones
+	output[eBone_Aux_Thumb] = output[eBone_Thumb2];
+	output[eBone_Aux_IndexFinger] = output[eBone_IndexFinger3];
+	output[eBone_Aux_MiddleFinger] = output[eBone_MiddleFinger3];
+	output[eBone_Aux_RingFinger] = output[eBone_RingFinger3];
+	output[eBone_Aux_PinkyFinger] = output[eBone_PinkyFinger3];
 }
 
 // END MODEL POSE STUFF
@@ -193,5 +198,9 @@ void BaseInput::ConvertHandParentSpace(const std::vector<XrHandJointLocationEXT>
 	mapBone(XR_HAND_JOINT_LITTLE_TIP_EXT,          BaseInput::eBone_PinkyFinger4);
 	// clang-format on
 
-	// TODO aux bones - they're equal to the distal bones but always use VRSkeletalTransformSpace_Model mode
+	// Aux bones are equivalent to distal bones, but always use model space, so
+	// just copy directly from the model space values
+	for (int i = eBone_Aux_Thumb; i <= eBone_Aux_PinkyFinger; i++) {
+		out_transforms[i] = modelRelative[i];
+	}
 }
