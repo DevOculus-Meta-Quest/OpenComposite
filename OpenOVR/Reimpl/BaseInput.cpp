@@ -1700,8 +1700,49 @@ EVRInputError BaseInput::GetSkeletalSummaryData(VRActionHandle_t actionHandle, E
 	}
 
 	for (int i = 0; i < 4; ++i) {
-		OOVR_SOFT_ABORT("Finger splay hardcoded at 0.2");
-		pSkeletalSummaryData->flFingerSplay[i] = 0.2f; // TODO
+		// We want a value of 0 to represent the fingers being touching, and 1 to be "entirely
+		// separated" (for some reasonable definition of that). A basic approach here would be to look
+		// at the distance between the corresponding finger tips, but that doesn't quite work, since
+		// fingers are different lengths. Instead, we'll consider only the separation on the axis on
+		// which the proximal joints lie. Even then, we have the issue that directly adjacent fingers
+		// still have a separation of your finger width. We'll deal with that by subtracting the
+		// distance between the proximal joints, which we would expect to be fairly similar to the
+		// finger width and to not vary too much.
+
+		XrHandJointLocationEXT tipA, tipB;
+		XrHandJointLocationEXT proxA, proxB;
+
+#define CASE(i, f1, f2) \
+		case i: \
+			tipA = jointLocations[XR_HAND_JOINT_##f1##_TIP_EXT]; \
+			tipB = jointLocations[XR_HAND_JOINT_##f2##_TIP_EXT]; \
+			proxA = jointLocations[XR_HAND_JOINT_##f1##_PROXIMAL_EXT]; \
+			proxB = jointLocations[XR_HAND_JOINT_##f2##_PROXIMAL_EXT]; \
+			break;
+
+		switch (i) {
+			CASE(0, THUMB, INDEX)
+			CASE(1, INDEX, MIDDLE)
+			CASE(2, MIDDLE, RING)
+			CASE(3, RING, LITTLE)
+			default:
+				break;
+		}
+
+#undef CASE
+
+		glm::vec3 tipDelta = X2G_v3f(tipA.pose.position) - X2G_v3f(tipB.pose.position);
+		glm::vec3 proxDelta = X2G_v3f(tipA.pose.position) - X2G_v3f(tipB.pose.position);
+
+		float proxDist = glm::length(proxDelta);
+		glm::vec3 proxAxis = proxDelta / proxDist; // normalized proximal delta
+
+		float splay = glm::dot(tipDelta, proxAxis) - proxDist;
+		splay /= 0.04f; // coeffecient guesstimated through the pro method of measuring my hands with a ruler
+		if (splay < 0.f) splay = 0.f;
+		if (splay > 1.f) splay = 1.f;
+
+		pSkeletalSummaryData->flFingerSplay[i] = splay;
 	}
 
 	return vr::VRInputError_None;
