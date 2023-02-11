@@ -116,18 +116,18 @@ void BaseInput::ConvertHandModelSpace(const std::vector<XrHandJointLocationEXT>&
 // RELATIVE POSE STUFF
 
 // This is just exactly what OC did before. It probably doesn't do the right thing.
-void BaseInput::ConvertHandParentSpace(const std::vector<XrHandJointLocationEXT>& joints, bool isRight, VRBoneTransform_t* out_transforms)
+void BaseInput::ConvertHandModelToParentSpace(VRBoneTransform_t* transforms)
 {
 	// First, get everything into the SteamVR coordinate system, to avoid duplicating the delicate space conversion system
 	VRBoneTransform_t modelRelative[31];
-	ConvertHandModelSpace(joints, isRight, modelRelative);
+	memcpy(modelRelative, transforms, sizeof modelRelative);
 
 	// Load the data into the output bones, with the correct mapping
 	std::optional<XrHandJointEXT> parentId;
 	auto mapBone = [&](XrHandJointEXT xrId, int vrId) {
 		OOVR_FALSE_ABORT(vrId < 31);
 		const vr::VRBoneTransform_t& src = modelRelative[xrId];
-		vr::VRBoneTransform_t& out = out_transforms[vrId];
+		vr::VRBoneTransform_t& out = transforms[vrId];
 
 		// Read the model-relative transform
 		glm::mat4 pose = readBoneTransform(src);
@@ -156,8 +156,8 @@ void BaseInput::ConvertHandParentSpace(const std::vector<XrHandJointLocationEXT>
 	};
 
 	// Set up the root bone
-	out_transforms[0].orientation = vr::HmdQuaternionf_t{ /* w */ 1, 0, 0, 0 };
-	out_transforms[0].position = vr::HmdVector4_t{ 0, 0, 0, 1 };
+	transforms[0].orientation = vr::HmdQuaternionf_t{ /* w */ 1, 0, 0, 0 };
+	transforms[0].position = vr::HmdVector4_t{ 0, 0, 0, 1 };
 
 	parentId = {};
 	mapBone(XR_HAND_JOINT_WRIST_EXT, eBone_Wrist);
@@ -201,6 +201,6 @@ void BaseInput::ConvertHandParentSpace(const std::vector<XrHandJointLocationEXT>
 	// Aux bones are equivalent to distal bones, but always use model space, so
 	// just copy directly from the model space values
 	for (int i = eBone_Aux_Thumb; i <= eBone_Aux_PinkyFinger; i++) {
-		out_transforms[i] = modelRelative[i];
+		transforms[i] = modelRelative[i];
 	}
 }
