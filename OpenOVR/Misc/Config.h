@@ -49,7 +49,11 @@ private:
 	bool enableAppRequestedCubemap = true;
 	bool enableHiddenMeshFix = true;
 	bool invertUsingShaders = false;
+#ifdef WIN32
+	bool initUsingVulkan = false;
+#else
 	bool initUsingVulkan = true;
+#endif
 	float hiddenMeshVerticalScale = 1.0f;
 	bool logAllOpenVRCalls = false;
 };
