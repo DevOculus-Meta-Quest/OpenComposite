@@ -15,6 +15,7 @@
 #include "ViveInteractionProfile.h"
 
 #include "Reimpl/BaseInput.h"
+#include "Misc/xr_ext.h"
 #include "generated/static_bases.gen.h"
 
 std::string InteractionProfile::TranslateAction(const std::string& inputPath) const

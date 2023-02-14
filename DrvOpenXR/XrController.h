@@ -17,7 +17,7 @@ public:
 
 	void GetPose(vr::ETrackingUniverseOrigin origin, vr::TrackedDevicePose_t* pose, ETrackingStateType trackingState) override;
 
-	vr::ETrackedDeviceClass GetTrackedDeviceClass() override;
+	vr::ETrackedDeviceClass GetTrackedDeviceClass();
 
 	const InteractionProfile* GetInteractionProfile() override;
 

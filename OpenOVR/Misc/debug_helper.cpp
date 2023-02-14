@@ -8,7 +8,6 @@
 static const int MaxNameLen = 256;
 
 #include "dbghelp.h"
-#include <Windows.h>
 #include <sstream>
 #pragma comment(lib, "Dbghelp.lib")
 

@@ -1,5 +1,9 @@
 #include "ReverbG2InteractionProfile.h"
 
+#include "stdafx.h"
+
+#include <glm/gtc/matrix_inverse.hpp>
+
 ReverbG2InteractionProfile::ReverbG2InteractionProfile()
 {
 	std::string left_hand_paths[] = {
@@ -55,6 +59,45 @@ ReverbG2InteractionProfile::ReverbG2InteractionProfile()
 		{ vr::Prop_ModelNumber_String, { "WindowsMR" } },
 		{ vr::Prop_ControllerType_String, { GetOpenVRName().value() } },
 	};
+
+	// Setup the grip-to-steamvr space matrices
+
+	// This is the matrices pulled from GetComponentState("handgrip") with SteamVR - they're
+	// the opposite of what we want, since they transform from the SteamVR space to the grip space.
+	// Both hands have the same matrix.
+	glm::mat4 inverseHandTransform = {
+		{ 1.000000, 0.000000, 0.000000, 0.000000 }, // Column 0
+		{ 0.000000, 0.996138, 0.087799, 0.000000 }, // Column 1
+		{ 0.000000, -0.087799, 0.996138, 0.000000 }, // Column 2
+		{ 0.000000, 0.003000, 0.097000, 1.000000 }, // Column 3 (translation)
+	};
+	handTransform = glm::affineInverse(inverseHandTransform);
+
+	// Set up the component transforms
+	leftComponentTransforms["base"] = {
+		{ -1.000000, 0.000000, 0.000000, 0.000000 },
+		{ 0.000000, 0.999976, 0.006981, 0.000000 },
+		{ -0.000000, 0.006981, -0.999976, 0.000000 },
+		{ -0.003400, -0.003400, 0.149100, 1.000000 },
+	};
+	rightComponentTransforms["base"] = {
+		{ -1.000000, 0.000000, 0.000000, 0.000000 },
+		{ 0.000000, 0.999976, 0.006981, 0.000000 },
+		{ -0.000000, 0.006981, -0.999976, 0.000000 },
+		{ 0.003400, -0.003400, 0.149100, 1.000000 },
+	};
+	leftComponentTransforms["tip"] = {
+		{ 1.000000, 0.000000, 0.000000, 0.000000 },
+		{ 0.000000, 0.794415, -0.607376, 0.000000 },
+		{ 0.000000, 0.607376, 0.794415, 0.000000 },
+		{ 0.016694, -0.025220, 0.024687, 1.000000 },
+	};
+	rightComponentTransforms["tip"] = {
+		{ 1.000000, 0.000000, 0.000000, 0.000000 },
+		{ 0.000000, 0.794415, -0.607376, 0.000000 },
+		{ 0.000000, 0.607376, 0.794415, 0.000000 },
+		{ -0.016694, -0.025220, 0.024687, 1.000000 },
+	};
 }
 
 const std::string& ReverbG2InteractionProfile::GetPath() const
@@ -94,4 +137,9 @@ const InteractionProfile::LegacyBindings* ReverbG2InteractionProfile::GetLegacyB
 	}
 
 	return &bindings;
+}
+
+glm::mat4 ReverbG2InteractionProfile::GetGripToSteamVRTransform(ITrackedDevice::HandType hand) const
+{
+	return handTransform;
 }

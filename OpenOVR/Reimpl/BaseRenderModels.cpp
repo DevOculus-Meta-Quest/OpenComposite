@@ -514,7 +514,7 @@ bool BaseRenderModels::GetComponentState(const char* pchRenderModelName, const c
 	pComponentState->mTrackingToComponentLocal = ident;
 	pComponentState->mTrackingToComponentRenderModel = ident;
 
-	pComponentState->uProperties = VRComponentProperty_IsVisible | VRComponentProperty_IsStatic;
+	pComponentState->uProperties = OOVR_EVRComponentProperty::VRComponentProperty_IsVisible | OOVR_EVRComponentProperty::VRComponentProperty_IsStatic;
 
 	return true;
 }
@@ -535,7 +535,7 @@ bool BaseRenderModels::TryGetComponentState(ITrackedDevice::HandType hand, const
 		if (transform) {
 			result->mTrackingToComponentLocal = G2S_m34(transform.value());
 			result->mTrackingToComponentRenderModel = G2S_m34(transform.value());
-			result->uProperties = VRComponentProperty_IsVisible | VRComponentProperty_IsStatic;
+			result->uProperties = OOVR_EVRComponentProperty::VRComponentProperty_IsVisible | OOVR_EVRComponentProperty::VRComponentProperty_IsStatic;
 			return true;
 		}
 	}
@@ -550,7 +550,7 @@ bool BaseRenderModels::TryGetComponentState(ITrackedDevice::HandType hand, const
 	if (componentName == "handgrip") {
 		result->mTrackingToComponentLocal = G2S_m34(handToGripSpace);
 		result->mTrackingToComponentRenderModel = G2S_m34(handToGripSpace);
-		result->uProperties = VRComponentProperty_IsVisible | VRComponentProperty_IsStatic;
+		result->uProperties = OOVR_EVRComponentProperty::VRComponentProperty_IsVisible | OOVR_EVRComponentProperty::VRComponentProperty_IsStatic;
 		return true;
 	}
 
@@ -581,7 +581,7 @@ bool BaseRenderModels::TryGetComponentState(ITrackedDevice::HandType hand, const
 
 	result->mTrackingToComponentLocal = G2S_m34(handToComponentSpace);
 	result->mTrackingToComponentRenderModel = G2S_m34(handToComponentSpace);
-	result->uProperties = VRComponentProperty_IsVisible | VRComponentProperty_IsStatic;
+	result->uProperties = OOVR_EVRComponentProperty::VRComponentProperty_IsVisible | OOVR_EVRComponentProperty::VRComponentProperty_IsStatic;
 	return true;
 }
 
