@@ -23,6 +23,8 @@ public:
 	inline bool InitUsingVulkan() const { return initUsingVulkan; }
 	float HiddenMeshVerticalScale() const { return hiddenMeshVerticalScale; }
 	inline bool LogAllOpenVRCalls() const { return logAllOpenVRCalls; }
+	inline bool EnableAudioSwitch() const { return enableAudioSwitch; }
+	std::string AudioDeviceName() const { return audioDeviceName; }
 
 private:
 	static int ini_handler(
@@ -52,6 +54,8 @@ private:
 	bool initUsingVulkan = false;
 	float hiddenMeshVerticalScale = 1.0f;
 	bool logAllOpenVRCalls = false;
+	bool enableAudioSwitch = false;
+	std::string audioDeviceName = "";
 };
 
 extern Config oovr_global_configuration;

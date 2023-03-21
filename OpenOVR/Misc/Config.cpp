@@ -118,6 +118,14 @@ static float parse_float(string orig, string name, int line)
 	return result;
 }
 
+static string parse_string(string orig, string name, int line)
+{
+	string result = str_tolower(orig);
+
+	OOVR_LOGF("Setting config param %s to %s", name.c_str(), result.c_str());
+	return result;
+}
+
 int Config::ini_handler(void* user, const char* pSection,
     const char* pName, const char* pValue,
     int lineno)
@@ -154,6 +162,8 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, initUsingVulkan);
 		CFGOPT(float, hiddenMeshVerticalScale);
 		CFGOPT(bool, logAllOpenVRCalls);
+		CFGOPT(bool, enableAudioSwitch);
+		CFGOPT(string, audioDeviceName);
 	}
 
 #undef CFGOPT

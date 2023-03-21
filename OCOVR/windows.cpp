@@ -18,9 +18,12 @@
 #include "Drivers/Backend.h"
 #include "Drivers/DriverManager.h"
 #include "DrvOpenXR.h"
+#include "Misc/AudioOverride.h"
 
 HMODULE openovr_module_id;
 HMODULE chainedImplementation;
+
+static void init_audio();
 
 BOOL APIENTRY DllMain(HMODULE hModule,
     DWORD ul_reason_for_call,
@@ -32,6 +35,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 #if defined(_DEBUG)
 		DbgSetModule(hModule);
 #endif
+		init_audio();
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
 		break;
@@ -88,4 +92,24 @@ alternativeCoreFactory_t PlatformGetAlternativeCoreFactory()
 	}
 
 	return (alternativeCoreFactory_t)GetProcAddress(chainedImplementation, "VRClientCoreFactory");
+}
+
+// Hook the audio thing as soon as possible. This will use the Rift device
+//  as listed in the Windows audio settings.
+void init_audio()
+{
+	if (!oovr_global_configuration.EnableAudioSwitch())
+		return;
+
+	OOVR_LOGF("Attempting to switch Audio.");
+
+	std::wstring dev;
+	HRESULT hr = find_output_device(dev, oovr_global_configuration.AudioDeviceName());
+
+	if (SUCCEEDED(hr)) {
+		OOVR_LOGF("Succeeded in getting audio device output: %s.  Setting app default audio output to device.", dev);
+		set_app_default_audio_device(dev);
+	} else {
+		OOVR_LOGF("Failed to get audio device output");
+	}		
 }
