@@ -60,6 +60,12 @@ XrBackend::XrBackend(bool useVulkanTmpGfx, bool useD3D11TmpGfx)
 #endif
 
 #if defined(SUPPORT_DX) && defined(SUPPORT_DX11)
+	//To prevent error code XR_ERROR_GRAPHICS_REQUIREMENTS_CALL_MISSING with Unity games
+	if (temporaryGraphics) {
+		XrGraphicsRequirementsD3D11KHR graphicsRequirements{ XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR };
+		OOVR_FAILED_XR_ABORT(xr_ext->xrGetD3D11GraphicsRequirementsKHR(xr_instance, xr_system, &graphicsRequirements));
+	}
+
 	if (!temporaryGraphics && useD3D11TmpGfx) {
 		temporaryGraphics = std::make_unique<TemporaryD3D11>();
 	}
