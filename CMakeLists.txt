@@ -234,6 +234,8 @@ add_library(OCCore STATIC
 	OpenOVR/convert.cpp
 	OpenOVR/logging.cpp
 	OpenOVR/linux_funcs.cpp
+	OpenOVR/Misc/AudioOverride.cpp
+	OpenOVR/Misc/smooth_input.cpp
 	OpenOVR/Misc/Config.cpp
 	OpenOVR/Misc/debug_helper.cpp
 	OpenOVR/Misc/Haptics.cpp
@@ -300,6 +302,8 @@ add_library(OCCore STATIC
 	OpenOVR/convert.h
 	OpenOVR/custom_types.h
 	OpenOVR/logging.h
+	OpenOVR/Misc/AudioOverride.h
+	OpenOVR/Misc/smooth_input.h
 	OpenOVR/Misc/Config.h
 	OpenOVR/Misc/debug_helper.h
 	OpenOVR/Misc/Haptics.h
