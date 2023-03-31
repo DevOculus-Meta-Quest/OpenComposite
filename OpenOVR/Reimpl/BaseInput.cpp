@@ -22,7 +22,9 @@
 #include <set>
 #include <utility>
 
+#include "Misc/Config.h"
 #include "Misc/xrmoreutils.h"
+#include "Misc/smooth_input.h"
 
 // Use RenderModels for the pose offsets, which are the same as component positions
 #include "BaseRenderModels.h"
@@ -33,6 +35,8 @@ using namespace vr;
 
 // On Android, the application must supply a function to load the contents of a file
 #include "Misc/android_api.h"
+
+static SmoothInput smoothInput;
 
 /**
  * Macro for creating an Action object from a handle and verifying isn't invalid.
@@ -2173,6 +2177,23 @@ VRInputValueHandle_t BaseInput::activeOriginFromSubaction(Action* action, const 
 	return handle;
 }
 
+void log_binary(uint64_t value)
+{
+	char binary_repr[65 + 8]; // 64 bits + 8 spaces for readability + 1 for the null-terminator
+	int index = 0;
+
+	for (int i = 63; i >= 0; i--) {
+		uint64_t bit = (value >> i) & 1;
+		binary_repr[index++] = '0' + bit;
+		if (i % 8 == 0) {
+			binary_repr[index++] = ' '; // Optional: add a space every 8 bits for readability
+		}
+	}
+	binary_repr[index] = '\0'; // Null-terminate the string
+
+	OOVR_LOGF("Binary representation: %s", binary_repr);
+}
+
 bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDeviceIndex, vr::VRControllerState_t* state)
 {
 	*state = {};
@@ -2232,11 +2253,19 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 		}
 	};
 
-	VRControllerAxis_t& thumbstick = state->rAxis[0];
-	thumbstick.x = readFloat(ctrl.stickX);
-	thumbstick.y = readFloat(ctrl.stickY);
+	bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
 
-	// Add additional state setting used in the Oculus branch to fix Oculus controller issues
+	VRControllerAxis_t& thumbstick = state->rAxis[0];
+	if (inputSmoothingEnabled) {
+		smoothInput.updateJoystickXValue(hand, readFloat(ctrl.stickX));
+		smoothInput.updateJoystickYValue(hand, readFloat(ctrl.stickY));
+		thumbstick.x = smoothInput.getSmoothedJoystickXValue(hand);
+		thumbstick.y = smoothInput.getSmoothedJoystickYValue(hand);
+	} else {
+		thumbstick.x = readFloat(ctrl.stickX);
+		thumbstick.y = readFloat(ctrl.stickY);
+	}	
+
 	// Pythagoras, and don't bother square rooting it since that's much slower than squaring what we compare it to
 	float valueSquared = thumbstick.x * thumbstick.x + thumbstick.y * thumbstick.y;
 
@@ -2266,11 +2295,23 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	}
 
 	VRControllerAxis_t& trigger = state->rAxis[1];
-	trigger.x = readFloat(ctrl.trigger);
+	if (inputSmoothingEnabled) {
+		smoothInput.updateTriggerValue(hand, readFloat(ctrl.trigger));
+		trigger.x = smoothInput.getSmoothedTriggerValue(hand);
+	} else {
+		trigger.x = readFloat(ctrl.trigger);
+	}
+	
 	trigger.y = 0;
 
 	VRControllerAxis_t& grip = state->rAxis[2];
-	grip.x = readFloat(ctrl.grip);
+	if (inputSmoothingEnabled) {
+		smoothInput.updateGripValue(hand, readFloat(ctrl.grip));
+		grip.x = smoothInput.getSmoothedGripValue(hand);
+	} else {
+		grip.x = readFloat(ctrl.grip);
+	}
+	
 	grip.y = 0;
 
 	if (grip.x >= 0.4) {
