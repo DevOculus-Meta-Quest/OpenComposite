@@ -60,7 +60,8 @@ const InteractionProfile::LegacyBindings* ViveWandInteractionProfile::GetLegacyB
 		bindings.stickY = "input/trackpad/y";
 		bindings.stickBtn = "input/trackpad/click";
 		bindings.stickBtnTouch = "input/trackpad/touch";
-		bindings.trigger = "input/trigger/click";
+		bindings.triggerClick = "input/trigger/click";
+		bindings.trigger = "input/trigger/value";
 		bindings.grip = "input/squeeze/click";
 		bindings.haptic = "output/haptic";
 		bindings.gripPoseAction = "input/grip/pose";

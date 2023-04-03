@@ -735,7 +735,7 @@ private:
 	};
 
 	void ConvertHandModelSpace(const std::vector<XrHandJointLocationEXT>& joints, bool isRight, VRBoneTransform_t* output);
-	void ConvertHandParentSpace(const std::vector<XrHandJointLocationEXT>& joints, bool isRight, VRBoneTransform_t* out_transforms);
+	void ConvertHandModelToParentSpace(VRBoneTransform_t* transforms);
 
 	XrHandTrackerEXT handTrackers[2] = { XR_NULL_HANDLE, XR_NULL_HANDLE };
 
