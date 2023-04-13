@@ -1173,7 +1173,7 @@ void BaseInput::InternalUpdate()
 	XrActionsSyncInfo syncInfo = { XR_TYPE_ACTIONS_SYNC_INFO };
 	syncInfo.activeActionSets = &aas;
 	syncInfo.countActiveActionSets = 1;
-	OOVR_FAILED_XR_ABORT(xrSyncActions(xr_session.get(), &syncInfo));
+	OOVR_FAILED_XR_SOFT_ABORT(xrSyncActions(xr_session.get(), &syncInfo));
 	syncSerial++;
 }
 
