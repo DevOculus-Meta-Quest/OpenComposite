@@ -2,7 +2,7 @@
 
 #include <array>
 
-constexpr auto SMOOTHING_WINDOW_SIZE = 10;
+constexpr auto SMOOTHING_WINDOW_SIZE = 3;
 
 class SmoothInput {
 public:
@@ -27,7 +27,6 @@ private:
 	private:
 		std::array<float, SMOOTHING_WINDOW_SIZE> values;
 		int index = 0;
-		float sum = 0.0f;
 	};
 
 	SmoothValue leftGrip;

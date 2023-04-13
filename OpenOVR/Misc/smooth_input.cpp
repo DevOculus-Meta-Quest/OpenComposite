@@ -43,8 +43,6 @@ float SmoothInput::getSmoothedJoystickYValue(int hand) const
 
 void SmoothInput::SmoothValue::update(float newValue)
 {
-	sum -= values[index];
-	sum += newValue;
 	values[index] = newValue;
 	index = (index + 1) % SMOOTHING_WINDOW_SIZE;
 }
@@ -53,8 +51,7 @@ float SmoothInput::SmoothValue::getSmoothedValue() const
 {
 	std::array<float, SMOOTHING_WINDOW_SIZE> sortedValues = values;
 	std::sort(sortedValues.begin(), sortedValues.end(), [](float a, float b) {
-		return std::abs(a) < std::abs(b);
+		return std::abs(a) > std::abs(b);
 	});
-	float sumWithoutTwoClosestToZero = sum - sortedValues[0] - sortedValues[1];
-	return sumWithoutTwoClosestToZero / (SMOOTHING_WINDOW_SIZE - 2);
+	return sortedValues[0];
 }
