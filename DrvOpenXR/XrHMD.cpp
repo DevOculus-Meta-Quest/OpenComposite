@@ -107,7 +107,10 @@ void XrHMD::GetProjectionRaw(vr::EVREye eEye, float* pfLeft, float* pfRight, flo
 	uint32_t viewCount = 0;
 	XrView views[XruEyeCount] = { { XR_TYPE_VIEW }, { XR_TYPE_VIEW } };
 	OOVR_FAILED_XR_SOFT_ABORT(xrLocateViews(xr_session.get(), &locateInfo, &state, XruEyeCount, &viewCount, views));
-	OOVR_FALSE_ABORT(viewCount == XruEyeCount);
+	if (viewCount != XruEyeCount) {
+		OOVR_LOG_ONCEF("Eye count is incorrect: %d", viewCount);
+		return;
+	}
 
 	XrFovf& fov = views[eEye].fov;
 
