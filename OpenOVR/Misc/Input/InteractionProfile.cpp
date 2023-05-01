@@ -16,6 +16,7 @@
 
 #include "Reimpl/BaseInput.h"
 #include "generated/static_bases.gen.h"
+#include <Misc/Config.h>
 
 std::string InteractionProfile::TranslateAction(const std::string& inputPath) const
 {
@@ -125,10 +126,19 @@ InteractionProfile* InteractionProfile::GetProfileByPath(const string& name)
 
 glm::mat4 InteractionProfile::GetGripToSteamVRTransform(ITrackedDevice::HandType hand) const
 {
+	bool adjustTilt = oovr_global_configuration.AdjustTilt();
+	float degrees = oovr_global_configuration.Tilt();
+
+	// Convert degrees to radians
+	float radians = glm::radians(degrees);
+
+	// Create a rotation matrix around the X-axis
+	glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), radians, glm::vec3(1.0f, 0.0f, 0.0f));
+
 	if (hand == ITrackedDevice::HandType::HAND_LEFT) {
-		return leftHandGripTransform;
+		return adjustTilt ? leftHandGripTransform * rotationMatrix : leftHandGripTransform;
 	} else if (hand == ITrackedDevice::HandType::HAND_RIGHT) {
-		return rightHandGripTransform;
+		return adjustTilt ? rightHandGripTransform * rotationMatrix : rightHandGripTransform;
 	} 
 	return glm::identity<glm::mat4>();
 }

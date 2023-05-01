@@ -165,6 +165,9 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, enableAudioSwitch);
 		CFGOPT(string, audioDeviceName);
 		CFGOPT(bool, enableInputSmoothing);
+		CFGOPT(bool, adjustTilt);
+		CFGOPT(float, tilt);
+
 	}
 
 #undef CFGOPT

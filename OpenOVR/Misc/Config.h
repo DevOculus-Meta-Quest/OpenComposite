@@ -26,6 +26,8 @@ public:
 	inline bool EnableAudioSwitch() const { return enableAudioSwitch; }
 	std::string AudioDeviceName() const { return audioDeviceName; }
 	inline bool EnableInputSmoothing() { return enableInputSmoothing; }
+	inline bool AdjustTilt() { return adjustTilt; }
+	float Tilt() const { return tilt; }
 
 private:
 	static int ini_handler(
@@ -58,6 +60,8 @@ private:
 	bool enableAudioSwitch = false;	
 	std::string audioDeviceName = "";
 	bool enableInputSmoothing = false;
+	bool adjustTilt = false;
+	float tilt = 0.0f;
 };
 
 extern Config oovr_global_configuration;
