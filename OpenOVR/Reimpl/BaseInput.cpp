@@ -1047,6 +1047,10 @@ void BaseInput::CreateLegacyActions()
 		create(&ctrl.stickX, "thumbstick-x", "Thumbstick X axis", XR_ACTION_TYPE_FLOAT_INPUT);
 		create(&ctrl.stickY, "thumbstick-y", "Thumbstick Y axis", XR_ACTION_TYPE_FLOAT_INPUT);
 
+		create(&ctrl.trackPadClick, "trackpad-btn", "Trackpad Click", XR_ACTION_TYPE_BOOLEAN_INPUT);
+		create(&ctrl.trackPadX, "trackpad-x", "Trackpad X axis", XR_ACTION_TYPE_FLOAT_INPUT);
+		create(&ctrl.trackPadY, "trackpad-y", "Trackpad Y axis", XR_ACTION_TYPE_FLOAT_INPUT);
+
 		// Note that while we define the grip as a float, we can still bind it to boolean actions and the OpenXR runtime will
 		// return 0.0 or 1.0 depending on the button status. OpenXR 1.0 § 11.4.
 		create(&ctrl.grip, "grip", "Grip", XR_ACTION_TYPE_FLOAT_INPUT);
@@ -2224,10 +2228,9 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
 			state->ulButtonTouched |= (uint64_t)(xs.currentState != 0) << shift;
 		}
-	};
+	};	
 
 	// Read the buttons
-
 	bindButton(ctrl.system, XR_NULL_HANDLE, vr::k_EButton_System);
 	bindButton(ctrl.btnA, ctrl.btnATouch, vr::k_EButton_A);
 	bindButton(ctrl.menu, ctrl.menuTouch, vr::k_EButton_ApplicationMenu);
@@ -2252,6 +2255,22 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 			return 0;
 		}
 	};
+
+	if (ctrl.trackPadClick && ctrl.trackPadY) {
+		XrActionStateGetInfo getInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
+		XrActionStateBoolean xs = { XR_TYPE_ACTION_STATE_BOOLEAN };
+		getInfo.action = ctrl.trackPadClick;
+		OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
+
+		float valueTrackPadY = readFloat(ctrl.trackPadY);
+		if (valueTrackPadY <= 0.0f) {			
+			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_A;	
+			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_ApplicationMenu;
+		} else {
+			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_ApplicationMenu;
+			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_A;
+		}
+	}	
 
 	bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
 
@@ -2343,7 +2362,7 @@ void BaseInput::TriggerLegacyHapticPulse(vr::TrackedDeviceIndex_t controllerDevi
 	XrHapticVibration vibration = { XR_TYPE_HAPTIC_VIBRATION };
 	vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
 	vibration.duration = durationNanos;
-	vibration.amplitude = 1;
+	vibration.amplitude = 1.0;
 
 	OOVR_FAILED_XR_ABORT(xrApplyHapticFeedback(xr_session.get(), &info, (XrHapticBaseHeader*)&vibration));
 }
