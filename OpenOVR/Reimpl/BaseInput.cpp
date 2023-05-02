@@ -2285,32 +2285,18 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 		thumbstick.y = readFloat(ctrl.stickY);
 	}	
 
-	// Pythagoras, and don't bother square rooting it since that's much slower than squaring what we compare it to
-	float valueSquared = thumbstick.x * thumbstick.x + thumbstick.y * thumbstick.y;
-
-	// The threshold for activating the virtual DPad buttons
-	// TODO add a latch thing so you can't have it flip back and forth
-	float threshold = 0.6f;
-
-	if (valueSquared > threshold * threshold) {
-		// 0=west
-		float angle = atan2(thumbstick.y, thumbstick.x);
-
-		// Subtract 45deg so the divisions are diagonal
-		angle -= math_pi / 4;
-
-		if (angle < 0)
-			angle += math_pi * 2;
-
-		if (angle < math_pi * 0.5) {
-			state->ulButtonPressed |= ButtonMaskFromId(k_EButton_DPad_Right);
-		} else if (angle < math_pi * 1.0) {
-			state->ulButtonPressed |= ButtonMaskFromId(k_EButton_DPad_Down);
-		} else if (angle < math_pi * 1.5) {
-			state->ulButtonPressed |= ButtonMaskFromId(k_EButton_DPad_Left);
-		} else {
-			state->ulButtonPressed |= ButtonMaskFromId(k_EButton_DPad_Up);
-		}
+	float deadZoneSize = 0.0f;
+	if (hand == 0) {
+		deadZoneSize = std::abs(oovr_global_configuration.LeftDeadZoneSize());
+	} else if (hand == 1) {
+		deadZoneSize = std::abs(oovr_global_configuration.RightDeadZoneSize());
+	}
+	
+	if (std::abs(thumbstick.x) <= deadZoneSize) {
+		thumbstick.x = 0.0f;
+	}
+	if (std::abs(thumbstick.y) <= deadZoneSize) {
+		thumbstick.y = 0.0f;
 	}
 
 	VRControllerAxis_t& trigger = state->rAxis[1];
@@ -2333,11 +2319,11 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	
 	grip.y = 0;
 
-	if (grip.x >= 0.4) {
+	if (grip.x >= 0.6) {
 		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_Grip);
 		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_Axis2);
 	}
-	if (trigger.x >= 0.4) {
+	if (trigger.x >= 0.6) {
 		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_SteamVR_Trigger);
 	}
 

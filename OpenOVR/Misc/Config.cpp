@@ -167,7 +167,8 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, enableInputSmoothing);
 		CFGOPT(bool, adjustTilt);
 		CFGOPT(float, tilt);
-
+		CFGOPT(float, leftDeadZoneSize);
+		CFGOPT(float, rightDeadZoneSize);
 	}
 
 #undef CFGOPT

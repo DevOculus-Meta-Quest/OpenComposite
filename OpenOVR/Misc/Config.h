@@ -28,6 +28,8 @@ public:
 	inline bool EnableInputSmoothing() { return enableInputSmoothing; }
 	inline bool AdjustTilt() { return adjustTilt; }
 	float Tilt() const { return tilt; }
+	float LeftDeadZoneSize() const { return leftDeadZoneSize; }
+	float RightDeadZoneSize() const { return rightDeadZoneSize; }
 
 private:
 	static int ini_handler(
@@ -62,6 +64,8 @@ private:
 	bool enableInputSmoothing = false;
 	bool adjustTilt = false;
 	float tilt = 0.0f;
+	float leftDeadZoneSize = 0.0f;
+	float rightDeadZoneSize = 0.0f;
 };
 
 extern Config oovr_global_configuration;
