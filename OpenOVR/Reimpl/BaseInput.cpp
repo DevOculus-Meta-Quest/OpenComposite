@@ -2228,7 +2228,9 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
 			state->ulButtonTouched |= (uint64_t)(xs.currentState != 0) << shift;
 		}
-	};	
+	};
+
+	bool disableTriggerTouch = oovr_global_configuration.DisableTriggerTouch();
 
 	// Read the buttons
 	bindButton(ctrl.system, XR_NULL_HANDLE, vr::k_EButton_System);
@@ -2236,8 +2238,8 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	bindButton(ctrl.menu, ctrl.menuTouch, vr::k_EButton_ApplicationMenu);
 	bindButton(ctrl.stickBtn, ctrl.stickBtnTouch, vr::k_EButton_SteamVR_Touchpad);
 	bindButton(ctrl.gripClick, XR_NULL_HANDLE, vr::k_EButton_Grip);
-	bindButton(ctrl.triggerClick, ctrl.triggerTouch, vr::k_EButton_SteamVR_Trigger);
-	//bindButton(XR_NULL_HANDLE, XR_NULL_HANDLE, vr::k_EButton_Axis2); // FIXME clean up? Is this the grip?
+	bindButton(ctrl.triggerClick, disableTriggerTouch ? XR_NULL_HANDLE : ctrl.triggerTouch, vr::k_EButton_SteamVR_Trigger);
+	// bindButton(XR_NULL_HANDLE, XR_NULL_HANDLE, vr::k_EButton_Axis2); // FIXME clean up? Is this the grip?
 
 	// Read the analogue values
 	auto readFloat = [](XrAction action) -> float {
@@ -2263,14 +2265,14 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 		OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
 
 		float valueTrackPadY = readFloat(ctrl.trackPadY);
-		if (valueTrackPadY <= 0.0f) {			
-			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_A;	
+		if (valueTrackPadY <= 0.0f) {
+			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_A;
 			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_ApplicationMenu;
 		} else {
 			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_ApplicationMenu;
 			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_A;
 		}
-	}	
+	}
 
 	bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
 
@@ -2283,7 +2285,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else {
 		thumbstick.x = readFloat(ctrl.stickX);
 		thumbstick.y = readFloat(ctrl.stickY);
-	}	
+	}
 
 	float deadZoneSize = 0.0f;
 	if (hand == 0) {
@@ -2291,7 +2293,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else if (hand == 1) {
 		deadZoneSize = std::abs(oovr_global_configuration.RightDeadZoneSize());
 	}
-	
+
 	if (std::abs(thumbstick.x) <= deadZoneSize) {
 		thumbstick.x = 0.0f;
 	}
@@ -2306,7 +2308,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else {
 		trigger.x = readFloat(ctrl.trigger);
 	}
-	
+
 	trigger.y = 0;
 
 	VRControllerAxis_t& grip = state->rAxis[2];
@@ -2316,7 +2318,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else {
 		grip.x = readFloat(ctrl.grip);
 	}
-	
+
 	grip.y = 0;
 
 	if (grip.x >= 0.6) {
@@ -2325,6 +2327,9 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	}
 	if (trigger.x >= 0.6) {
 		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_SteamVR_Trigger);
+	}
+	if (disableTriggerTouch && trigger.x >= 0.1) {
+		state->ulButtonTouched |= ButtonMaskFromId(k_EButton_SteamVR_Trigger);
 	}
 
 	return true;

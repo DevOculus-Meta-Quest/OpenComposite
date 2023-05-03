@@ -169,6 +169,7 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(float, tilt);
 		CFGOPT(float, leftDeadZoneSize);
 		CFGOPT(float, rightDeadZoneSize);
+		CFGOPT(bool, disableTriggerTouch);
 	}
 
 #undef CFGOPT

@@ -30,6 +30,7 @@ public:
 	float Tilt() const { return tilt; }
 	float LeftDeadZoneSize() const { return leftDeadZoneSize; }
 	float RightDeadZoneSize() const { return rightDeadZoneSize; }
+	inline bool DisableTriggerTouch() { return disableTriggerTouch; }
 
 private:
 	static int ini_handler(
@@ -66,6 +67,7 @@ private:
 	float tilt = 0.0f;
 	float leftDeadZoneSize = 0.0f;
 	float rightDeadZoneSize = 0.0f;
+	bool disableTriggerTouch = false;
 };
 
 extern Config oovr_global_configuration;
