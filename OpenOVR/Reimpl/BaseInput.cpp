@@ -1346,6 +1346,13 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 				continue;
 			lengthSq = maxLengthSq;
 
+			bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
+
+			if (inputSmoothingEnabled) {
+				smoothInput.updateTriggerValue(hand, state.currentState);
+				state.currentState = smoothInput.getSmoothedTriggerValue(hand);
+			}
+
 			pActionData->x = state.currentState;
 			pActionData->y = 0;
 			pActionData->z = 0;
