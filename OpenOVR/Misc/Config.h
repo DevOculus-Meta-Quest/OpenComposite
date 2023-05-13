@@ -32,6 +32,7 @@ public:
 	float LeftDeadZoneSize() const { return leftDeadZoneSize; }
 	float RightDeadZoneSize() const { return rightDeadZoneSize; }
 	inline bool DisableTriggerTouch() { return disableTriggerTouch; }
+	float HapticStrength() { return hapticStrength; }
 
 private:
 	static int ini_handler(
@@ -70,6 +71,7 @@ private:
 	float leftDeadZoneSize = 0.0f;
 	float rightDeadZoneSize = 0.0f;
 	bool disableTriggerTouch = false;
+	float hapticStrength = 0.1f;
 };
 
 extern Config oovr_global_configuration;

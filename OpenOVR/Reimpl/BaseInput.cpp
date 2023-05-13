@@ -2376,7 +2376,7 @@ void BaseInput::TriggerLegacyHapticPulse(vr::TrackedDeviceIndex_t controllerDevi
 	XrHapticVibration vibration = { XR_TYPE_HAPTIC_VIBRATION };
 	vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
 	vibration.duration = durationNanos;
-	vibration.amplitude = 0.1;
+	vibration.amplitude = oovr_global_configuration.HapticStrength();
 
 	OOVR_FAILED_XR_ABORT(xrApplyHapticFeedback(xr_session.get(), &info, (XrHapticBaseHeader*)&vibration));
 }
