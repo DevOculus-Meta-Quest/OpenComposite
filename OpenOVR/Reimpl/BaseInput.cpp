@@ -36,7 +36,7 @@ using namespace vr;
 // On Android, the application must supply a function to load the contents of a file
 #include "Misc/android_api.h"
 
-static SmoothInput smoothInput;
+SmoothInput BaseInput::smoothInput(oovr_global_configuration.InputWindowSize());
 
 /**
  * Macro for creating an Action object from a handle and verifying isn't invalid.

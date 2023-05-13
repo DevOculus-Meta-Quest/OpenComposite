@@ -6,6 +6,8 @@ constexpr auto SMOOTHING_WINDOW_SIZE = 3;
 
 class SmoothInput {
 public:
+	SmoothInput(size_t smoothingWindowSize);
+
 	void updateTriggerValue(int hand, float newTriggerValue);
 	float getSmoothedTriggerValue(int hand) const;
 
@@ -21,20 +23,22 @@ public:
 private:
 	class SmoothValue {
 	public:
+		SmoothValue(size_t windowSize);
 		void update(float newValue);
 		float getSmoothedValue() const;
 
 	private:
-		std::array<float, SMOOTHING_WINDOW_SIZE> values;
-		int index = 0;
+		std::vector<float> values;
+		size_t index = 0;
 	};
 
+	size_t smoothingWindowSize;
 	SmoothValue leftGrip;
-	SmoothValue leftTrigger;	
+	SmoothValue leftTrigger;
 	SmoothValue leftJoystickX;
 	SmoothValue leftJoystickY;
 	SmoothValue rightGrip;
-	SmoothValue rightTrigger;	
+	SmoothValue rightTrigger;
 	SmoothValue rightJoystickX;
 	SmoothValue rightJoystickY;
 };

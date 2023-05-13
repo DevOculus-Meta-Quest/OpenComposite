@@ -26,6 +26,7 @@ public:
 	inline bool EnableAudioSwitch() const { return enableAudioSwitch; }
 	std::string AudioDeviceName() const { return audioDeviceName; }
 	inline bool EnableInputSmoothing() { return enableInputSmoothing; }
+	int InputWindowSize() const { return inputWindowSize; }
 	inline bool AdjustTilt() { return adjustTilt; }
 	float Tilt() const { return tilt; }
 	float LeftDeadZoneSize() const { return leftDeadZoneSize; }
@@ -63,6 +64,7 @@ private:
 	bool enableAudioSwitch = false;	
 	std::string audioDeviceName = "";
 	bool enableInputSmoothing = false;
+	int inputWindowSize = 5;
 	bool adjustTilt = false;
 	float tilt = 0.0f;
 	float leftDeadZoneSize = 0.0f;
