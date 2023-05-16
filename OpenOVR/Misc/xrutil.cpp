@@ -36,6 +36,8 @@ XrExt::XrExt(XrGraphicsApiSupportedFlags apis, const std::vector<const char*>& e
 			hasHandTracking = true;
 		if (strcmp(ext, XR_EXT_HP_MIXED_REALITY_CONTROLLER_EXTENSION_NAME) == 0)
 			supportsG2Controller = true;
+		if (strcmp(ext, XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME) == 0)
+			supportsPicoController = true;
 	}
 
 #define XR_BIND(name, function) OOVR_FAILED_XR_ABORT(xrGetInstanceProcAddr(xr_instance, #name, (PFN_xrVoidFunction*)&this->function))

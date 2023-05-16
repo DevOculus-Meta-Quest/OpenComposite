@@ -13,6 +13,7 @@
 #include "OculusInteractionProfile.h"
 #include "ReverbG2InteractionProfile.h"
 #include "ViveInteractionProfile.h"
+#include "Pico4InteractionProfile.h"
 
 #include "Reimpl/BaseInput.h"
 #include "generated/static_bases.gen.h"
@@ -101,6 +102,9 @@ const InteractionProfile::ProfileList& InteractionProfile::GetProfileList()
 	if (profiles.empty()) {
 		if (xr_ext->G2Controller_Available())
 			profiles.emplace_back(std::make_unique<ReverbG2InteractionProfile>());
+
+		if (xr_ext->PicoController_Available())
+			profiles.emplace_back(std::make_unique<Pico4InteractionProfile>());
 
 		profiles.emplace_back(std::make_unique<HolographicInteractionProfile>());
 		profiles.emplace_back(std::make_unique<IndexControllerInteractionProfile>());
