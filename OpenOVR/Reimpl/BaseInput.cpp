@@ -21,6 +21,7 @@
 #include <optional>
 #include <set>
 #include <utility>
+#include <json/json.h>
 
 #include "Misc/Config.h"
 #include "Misc/xrmoreutils.h"
