@@ -1754,7 +1754,7 @@ EVRInputError BaseInput::GetSkeletalSummaryData(vr::TrackedDeviceIndex_t control
 			if (angCos > 1.0f)
 				angCos = 1.0f;
 			float ang = acosf(angCos);
-			curl = 1.0f - (ang / M_PIf);
+			curl = 1.0f - (ang / M_PI);
 		}
 
 		pSkeletalSummaryData->flFingerCurl[i] = curl;
