@@ -1673,7 +1673,7 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t actionHandle, EVRS
 	return vr::VRInputError_None;
 }
 
-// A hack implementation of GetSkeletalSummaryData that is not part of the OpenVR api.
+// An implementation of GetSkeletalSummaryData that is not part of the OpenVR api.
 // It is for use internally, intended to get finger curl data when using legacy input,
 // without needing to create a skeletal action.
 EVRInputError BaseInput::GetSkeletalSummaryData_Internal(int controllerDeviceIndex, VRSkeletalSummaryData_t* pSkeletalSummaryData) {
@@ -1701,18 +1701,12 @@ EVRInputError BaseInput::GetSkeletalSummaryData_Internal(int controllerDeviceInd
 	std::vector<XrHandJointLocationEXT> jointLocations(locations.jointCount);
 	locations.jointLocations = jointLocations.data();
 
-	OOVR_LOG("created joint locations");
-
 	OOVR_FAILED_XR_ABORT(xr_ext->xrLocateHandJointsEXT(handTrackers[controllerDeviceIndex], &locateInfo, &locations));
-
-	OOVR_LOG("got hand joints");
 
 	if (!locations.isActive) {
 		// Leave empty-handed, IDK if this is the right error or not
 		return vr::VRInputError_InvalidSkeleton;
 	}
-
-	OOVR_LOG("Is Active");
 
 	for (int i = 0; i < 5; ++i) {
 		XrHandJointLocationEXT metacarpal, proximal, tip;
