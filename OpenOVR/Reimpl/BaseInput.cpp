@@ -1684,8 +1684,6 @@ EVRInputError BaseInput::GetSkeletalSummaryData_Internal(int controllerDeviceInd
 		return vr::VRInputError_None;
 	}
 
-	OOVR_LOGF("INDEX: %i", controllerDeviceIndex);
-
 	XrHandJointsLocateInfoEXT locateInfo = { XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT };
 	if (controllerDeviceIndex >= 2)
 		return vr::VRInputError_InvalidDevice;
@@ -2264,6 +2262,8 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	grip.x = readFloat(ctrl.grip);
 	grip.y = 0;
 
+	// SteamVR seemingly writes to these two axis to represent finger curl on legacy input.
+	// The device index given here doesn't match the one expected by GetSkeletalSummaryData, so we -1 it.
 	auto skelly_data = new VRSkeletalSummaryData_t();
 	if (GetSkeletalSummaryData_Internal((int)controllerDeviceIndex - 1, skelly_data) != VRInputError_None)
 		return true; //not a critical fail
