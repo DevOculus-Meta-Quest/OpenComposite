@@ -2265,7 +2265,8 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	grip.y = 0;
 
 	auto skelly_data = new VRSkeletalSummaryData_t();
-	GetSkeletalSummaryData_Internal((int)controllerDeviceIndex - 1, skelly_data);
+	if (GetSkeletalSummaryData_Internal((int)controllerDeviceIndex - 1, skelly_data) != VRInputError_None)
+		return true; //not a critical fail
 
 	VRControllerAxis_t& fingies = state->rAxis[3];
 	fingies.x = skelly_data->flFingerCurl[1];
