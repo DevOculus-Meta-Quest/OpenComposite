@@ -414,7 +414,7 @@ private:
 	// A hack implementation of GetSkeletalSummaryData that is not part of the OpenVR api.
 	// It is for use internally, intended to get finger curl data when using legacy input,
 	// without needing to create a skeletal action.
-	virtual EVRInputError GetSkeletalSummaryData(vr::TrackedDeviceIndex_t, VRSkeletalSummaryData_t*);
+	virtual EVRInputError GetSkeletalSummaryData_Internal(int, VRSkeletalSummaryData_t*);
 
 	enum class ActionSourceMode {
 		// Some may be missing, there's no documentation on this that I could find

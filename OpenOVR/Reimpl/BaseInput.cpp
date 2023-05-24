@@ -1676,7 +1676,7 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t actionHandle, EVRS
 // A hack implementation of GetSkeletalSummaryData that is not part of the OpenVR api.
 // It is for use internally, intended to get finger curl data when using legacy input,
 // without needing to create a skeletal action.
-EVRInputError BaseInput::GetSkeletalSummaryData(vr::TrackedDeviceIndex_t controllerDeviceIndex, VRSkeletalSummaryData_t* pSkeletalSummaryData) {
+EVRInputError BaseInput::GetSkeletalSummaryData_Internal(int controllerDeviceIndex, VRSkeletalSummaryData_t* pSkeletalSummaryData) {
 	if (!xr_gbl->handTrackingProperties.supportsHandTracking) {
 		// TODO: generate our own data as mentioned above. We might want to use the
 		// generated summary data to generate the bone data.
@@ -1684,7 +1684,15 @@ EVRInputError BaseInput::GetSkeletalSummaryData(vr::TrackedDeviceIndex_t control
 		return vr::VRInputError_None;
 	}
 
+	OOVR_LOGF("INDEX: %i", controllerDeviceIndex);
+
 	XrHandJointsLocateInfoEXT locateInfo = { XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT };
+	if (controllerDeviceIndex >= 2)
+		return vr::VRInputError_InvalidDevice;
+
+	if (&legacyControllers[controllerDeviceIndex] == nullptr)
+		return vr::VRInputError_InvalidHandle;
+
 	locateInfo.baseSpace = legacyControllers[controllerDeviceIndex].aimPoseSpace;
 	locateInfo.time = xr_gbl->GetBestTime();
 
@@ -1693,12 +1701,18 @@ EVRInputError BaseInput::GetSkeletalSummaryData(vr::TrackedDeviceIndex_t control
 	std::vector<XrHandJointLocationEXT> jointLocations(locations.jointCount);
 	locations.jointLocations = jointLocations.data();
 
+	OOVR_LOG("created joint locations");
+
 	OOVR_FAILED_XR_ABORT(xr_ext->xrLocateHandJointsEXT(handTrackers[controllerDeviceIndex], &locateInfo, &locations));
+
+	OOVR_LOG("got hand joints");
 
 	if (!locations.isActive) {
 		// Leave empty-handed, IDK if this is the right error or not
 		return vr::VRInputError_InvalidSkeleton;
 	}
+
+	OOVR_LOG("Is Active");
 
 	for (int i = 0; i < 5; ++i) {
 		XrHandJointLocationEXT metacarpal, proximal, tip;
@@ -1776,95 +1790,7 @@ EVRInputError BaseInput::GetSkeletalSummaryData(VRActionHandle_t actionHandle, E
 		return vr::VRInputError_None;
 	}
 
-	if (!xr_gbl->handTrackingProperties.supportsHandTracking) {
-		// TODO: generate our own data as mentioned above. We might want to use the
-		// generated summary data to generate the bone data.
-		OOVR_SOFT_ABORT("Runtime does not support hand-tracking, skeletal summary data unavailable");
-		return vr::VRInputError_None;
-	}
-
-	XrHandJointsLocateInfoEXT locateInfo = { XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT };
-	locateInfo.baseSpace = legacyControllers[(int)action->skeletalHand].aimPoseSpace;
-	locateInfo.time = xr_gbl->GetBestTime();
-
-	XrHandJointLocationsEXT locations = { XR_TYPE_HAND_JOINT_LOCATIONS_EXT };
-	locations.jointCount = XR_HAND_JOINT_COUNT_EXT;
-	std::vector<XrHandJointLocationEXT> jointLocations(locations.jointCount);
-	locations.jointLocations = jointLocations.data();
-
-	OOVR_FAILED_XR_ABORT(xr_ext->xrLocateHandJointsEXT(handTrackers[(int)action->skeletalHand], &locateInfo, &locations));
-
-	if (!locations.isActive) {
-		// Leave empty-handed, IDK if this is the right error or not
-		return vr::VRInputError_InvalidSkeleton;
-	}
-
-	for (int i = 0; i < 5; ++i) {
-		XrHandJointLocationEXT metacarpal, proximal, tip;
-
-		switch (i) {
-		case 0: // thumb
-			metacarpal = jointLocations[XR_HAND_JOINT_THUMB_METACARPAL_EXT];
-			proximal = jointLocations[XR_HAND_JOINT_THUMB_PROXIMAL_EXT];
-			tip = jointLocations[XR_HAND_JOINT_THUMB_TIP_EXT];
-			break;
-		case 1: // index
-			metacarpal = jointLocations[XR_HAND_JOINT_INDEX_METACARPAL_EXT];
-			proximal = jointLocations[XR_HAND_JOINT_INDEX_PROXIMAL_EXT];
-			tip = jointLocations[XR_HAND_JOINT_INDEX_TIP_EXT];
-			break;
-		case 2: // middle
-			metacarpal = jointLocations[XR_HAND_JOINT_MIDDLE_METACARPAL_EXT];
-			proximal = jointLocations[XR_HAND_JOINT_MIDDLE_PROXIMAL_EXT];
-			tip = jointLocations[XR_HAND_JOINT_MIDDLE_TIP_EXT];
-			break;
-		case 3: // ring
-			metacarpal = jointLocations[XR_HAND_JOINT_RING_METACARPAL_EXT];
-			proximal = jointLocations[XR_HAND_JOINT_RING_PROXIMAL_EXT];
-			tip = jointLocations[XR_HAND_JOINT_RING_TIP_EXT];
-			break;
-		case 4: // little
-			metacarpal = jointLocations[XR_HAND_JOINT_LITTLE_METACARPAL_EXT];
-			proximal = jointLocations[XR_HAND_JOINT_LITTLE_PROXIMAL_EXT];
-			tip = jointLocations[XR_HAND_JOINT_LITTLE_TIP_EXT];
-			break;
-		default:
-			break;
-		}
-
-		glm::vec3 metacarpalProximalDelta = X2G_v3f(metacarpal.pose.position) - X2G_v3f(proximal.pose.position);
-		glm::vec3 tipProximalDelta = X2G_v3f(tip.pose.position) - X2G_v3f(proximal.pose.position);
-
-		float dot = glm::dot(metacarpalProximalDelta, tipProximalDelta);
-		float a = glm::length(metacarpalProximalDelta);
-		float b = glm::length(tipProximalDelta);
-		// dot = a * b * cos(ang)
-
-		float curl;
-		if (a == 0.0f || b == 0.0f) {
-			// That's probably not meant to happen? But if two joints really do
-			// coincide then that probably means the hand is curled up
-			curl = 1.0f;
-		} else {
-			// Find the angle between these three joints
-			float angCos = dot / (a * b);
-			if (angCos < -1.0f)
-				angCos = -1.0f;
-			if (angCos > 1.0f)
-				angCos = 1.0f;
-			float ang = acosf(angCos);
-			curl = 1.0f - (ang / M_PI);
-		}
-
-		pSkeletalSummaryData->flFingerCurl[i] = curl;
-	}
-
-	for (int i = 0; i < 4; ++i) {
-		OOVR_SOFT_ABORT("Finger splay hardcoded at 0.2");
-		pSkeletalSummaryData->flFingerSplay[i] = 0.2f; // TODO
-	}
-
-	return vr::VRInputError_None;
+	return GetSkeletalSummaryData_Internal((int)action->skeletalHand, pSkeletalSummaryData);
 }
 EVRInputError BaseInput::GetSkeletalSummaryData(VRActionHandle_t action, VRSkeletalSummaryData_t* pSkeletalSummaryData)
 {
@@ -2344,24 +2270,16 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	grip.x = readFloat(ctrl.grip);
 	grip.y = 0;
 
-	// HACK: SteamVR seemingly always writes to these two axis to represent finger curl on the given device,
-	// when the application uses legacy input. We use Skeletal Input to calculate the given finger curl.
-	VRSkeletalSummaryData_t summary_data;
-	if (GetSkeletalSummaryData(controllerDeviceIndex-1, &summary_data) != VRInputError_None)
-	{
-		// Not critical, not a reason to return false.
-		OOVR_SOFT_ABORT("Failed to get Skeletal Summary Data");
-		return true;
-	}
+	auto skelly_data = new VRSkeletalSummaryData_t();
+	GetSkeletalSummaryData_Internal((int)controllerDeviceIndex - 1, skelly_data);
 
-	//flFingerCurl[0] is thumb, which is unable to be tracked by index controllers, unused by SteamVR here.
-	VRControllerAxis_t& index_middle = state->rAxis[3];
-	index_middle.x = summary_data.flFingerCurl[1]; //index finger
-	index_middle.y = summary_data.flFingerCurl[2]; //middle finger
+	VRControllerAxis_t& fingies = state->rAxis[3];
+	fingies.x = skelly_data->flFingerCurl[1];
+	fingies.y = skelly_data->flFingerCurl[2];
 
-	VRControllerAxis_t& ring_pinky = state->rAxis[4];
-	ring_pinky.x = summary_data.flFingerCurl[3]; //ring finger
-	ring_pinky.y = summary_data.flFingerCurl[4]; //pinky finger
+	VRControllerAxis_t& fingies2 = state->rAxis[4];
+	fingies2.x = skelly_data->flFingerCurl[3];
+	fingies2.y = skelly_data->flFingerCurl[4];
 
 	return true;
 }
