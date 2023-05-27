@@ -290,3 +290,4 @@ file of this repository.
 
 This programme uses Scott Tsai's [DebugBreak](https://github.com/scottt/debugbreak) library when built on Linux. It's full
 text can be found in `LICENCE_DEBUG_BREAK.txt`.
+
