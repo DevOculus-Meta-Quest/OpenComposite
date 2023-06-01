@@ -1676,7 +1676,8 @@ EVRInputError BaseInput::GetSkeletalBoneData(VRActionHandle_t actionHandle, EVRS
 // An implementation of GetSkeletalSummaryData that is not part of the OpenVR api.
 // It is for use internally, intended to get finger curl data when using legacy input,
 // without needing to create a skeletal action.
-EVRInputError BaseInput::GetSkeletalSummaryData_Internal(int controllerDeviceIndex, VRSkeletalSummaryData_t* pSkeletalSummaryData) {
+EVRInputError BaseInput::GetSkeletalSummaryData_Internal(int controllerDeviceIndex, VRSkeletalSummaryData_t* pSkeletalSummaryData)
+{
 	if (!xr_gbl->handTrackingProperties.supportsHandTracking) {
 		// TODO: generate our own data as mentioned above. We might want to use the
 		// generated summary data to generate the bone data.
@@ -2266,15 +2267,15 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	// The device index given here doesn't match the one expected by GetSkeletalSummaryData, so we -1 it.
 	auto skelly_data = new VRSkeletalSummaryData_t();
 	if (GetSkeletalSummaryData_Internal((int)controllerDeviceIndex - 1, skelly_data) != VRInputError_None)
-		return true; //not a critical fail
+		return true; // not a critical fail
 
 	VRControllerAxis_t& fingies = state->rAxis[3];
-	fingies.x = skelly_data->flFingerCurl[1];
-	fingies.y = skelly_data->flFingerCurl[2];
+	fingies.x = skelly_data->flFingerCurl[1] * 1.66 * 1.33;
+	fingies.y = skelly_data->flFingerCurl[2] * 1.66;
 
 	VRControllerAxis_t& fingies2 = state->rAxis[4];
-	fingies2.x = skelly_data->flFingerCurl[3];
-	fingies2.y = skelly_data->flFingerCurl[4];
+	fingies2.x = skelly_data->flFingerCurl[3] * 1.66;
+	fingies2.y = skelly_data->flFingerCurl[4] * 1.66;
 
 	return true;
 }
