@@ -50,3 +50,5 @@
 
 # clangd cache
 .cache/
+
+.vscode/
