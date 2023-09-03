@@ -853,6 +853,10 @@ void BaseInput::LoadBindingsSet(const struct InteractionProfile& profile, const 
 				info.point = PoseBindingPoint::BASE;
 			} else if (withoutPrefix == "pose/tip") {
 				info.point = PoseBindingPoint::TIP;
+			} else if (withoutPrefix == "pose/body") {
+				info.point = PoseBindingPoint::BODY;
+			} else if (withoutPrefix == "pose/gdc2015") {
+				info.point = PoseBindingPoint::GDC2015;
 			} else {
 				OOVR_LOGF("WARNING: Ignoring unknown pose path '%s' (%s) for action %s", specPath.c_str(), withoutPrefix.c_str(), action->fullName.c_str());
 				continue;
@@ -1329,8 +1333,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	float maxLengthSq = 0;
 
 	// Unfortunately to implement activeOrigin we have to loop through and query each action state
-	for (int i = 0, hand = 0; i < allSubactionPaths.size(); i++, hand++) {
-
+	for (int i = 0; i < allSubactionPaths.size(); i++) {
 		XrPath subactionPath = allSubactionPaths[i];
 		if (!checkRestrictToDevice(ulRestrictToDevice, subactionPath))
 			continue;
@@ -1350,8 +1353,8 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 			bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
 
 			if (inputSmoothingEnabled) {
-				smoothInput.updateTriggerValue(hand, state.currentState);
-				state.currentState = smoothInput.getSmoothedTriggerValue(hand);
+				smoothInput.updateTriggerValue(i, state.currentState);
+				state.currentState = smoothInput.getSmoothedTriggerValue(i);
 			}
 
 			pActionData->x = state.currentState;
@@ -1365,19 +1368,17 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 			break;
 		}
 		case ActionType::Vector2: {
-
 			XrActionStateVector2f state = { XR_TYPE_ACTION_STATE_VECTOR2F };
 			OOVR_FAILED_XR_ABORT(xrGetActionStateVector2f(xr_session.get(), &getInfo, &state));
 
 			float lengthSq = state.currentState.x * state.currentState.x + state.currentState.y * state.currentState.y;
 			if (lengthSq < maxLengthSq || !state.isActive)
 				continue;
-			maxLengthSq = lengthSq;	
 
 			float deadZoneSize = 0.0f;
-			if (hand == 0) {
+			if (i == 0) {
 				deadZoneSize = std::abs(oovr_global_configuration.LeftDeadZoneSize());
-			} else if (hand == 1) {
+			} else if (i == 1) {
 				deadZoneSize = std::abs(oovr_global_configuration.RightDeadZoneSize());
 			}
 
@@ -1388,8 +1389,10 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 				state.currentState.y = 0.0f;
 			}
 
+			maxLengthSq = lengthSq;
+
 			pActionData->x = state.currentState.x;
-			pActionData->y = state.currentState.y;			
+			pActionData->y = state.currentState.y;
 			pActionData->z = 0;
 			pActionData->deltaX = state.currentState.x - act->previousState.x;
 			pActionData->deltaY = state.currentState.y - act->previousState.y;
@@ -1412,6 +1415,23 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	// TODO implement the deltas
 
 	return VRInputError_None;
+}
+
+void log_binary(uint64_t value)
+{
+	char binary_repr[65 + 8]; // 64 bits + 8 spaces for readability + 1 for the null-terminator
+	int index = 0;
+
+	for (int i = 63; i >= 0; i--) {
+		uint64_t bit = (value >> i) & 1;
+		binary_repr[index++] = '0' + bit;
+		if (i % 8 == 0) {
+			binary_repr[index++] = ' '; // Optional: add a space every 8 bits for readability
+		}
+	}
+	binary_repr[index] = '\0'; // Null-terminate the string
+
+	OOVR_LOGF("Binary representation: %s", binary_repr);
 }
 
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
@@ -2205,23 +2225,6 @@ VRInputValueHandle_t BaseInput::activeOriginFromSubaction(Action* action, const 
 	return handle;
 }
 
-void log_binary(uint64_t value)
-{
-	char binary_repr[65 + 8]; // 64 bits + 8 spaces for readability + 1 for the null-terminator
-	int index = 0;
-
-	for (int i = 63; i >= 0; i--) {
-		uint64_t bit = (value >> i) & 1;
-		binary_repr[index++] = '0' + bit;
-		if (i % 8 == 0) {
-			binary_repr[index++] = ' '; // Optional: add a space every 8 bits for readability
-		}
-	}
-	binary_repr[index] = '\0'; // Null-terminate the string
-
-	OOVR_LOGF("Binary representation: %s", binary_repr);
-}
-
 bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDeviceIndex, vr::VRControllerState_t* state)
 {
 	*state = {};
@@ -2252,11 +2255,12 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
 			state->ulButtonTouched |= (uint64_t)(xs.currentState != 0) << shift;
 		}
-	};	
+	};
 
 	bool disableTriggerTouch = oovr_global_configuration.DisableTriggerTouch();
 
 	// Read the buttons
+
 	bindButton(ctrl.system, XR_NULL_HANDLE, vr::k_EButton_System);
 	bindButton(ctrl.btnA, ctrl.btnATouch, vr::k_EButton_A);
 	bindButton(ctrl.menu, ctrl.menuTouch, vr::k_EButton_ApplicationMenu);
@@ -2289,14 +2293,14 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 		OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
 
 		float valueTrackPadY = readFloat(ctrl.trackPadY);
-		if (valueTrackPadY <= 0.0f) {			
-			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_A;	
+		if (valueTrackPadY <= 0.0f) {
+			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_A;
 			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_ApplicationMenu;
 		} else {
 			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_ApplicationMenu;
 			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_A;
 		}
-	}	
+	}
 
 	bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
 
@@ -2309,7 +2313,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else {
 		thumbstick.x = readFloat(ctrl.stickX);
 		thumbstick.y = readFloat(ctrl.stickY);
-	}	
+	}
 
 	float deadZoneSize = 0.0f;
 	if (hand == 0) {
@@ -2317,7 +2321,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else if (hand == 1) {
 		deadZoneSize = std::abs(oovr_global_configuration.RightDeadZoneSize());
 	}
-	
+
 	if (std::abs(thumbstick.x) <= deadZoneSize) {
 		thumbstick.x = 0.0f;
 	}
@@ -2332,7 +2336,6 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else {
 		trigger.x = readFloat(ctrl.trigger);
 	}
-	
 	trigger.y = 0;
 
 	VRControllerAxis_t& grip = state->rAxis[2];
@@ -2342,7 +2345,6 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else {
 		grip.x = readFloat(ctrl.grip);
 	}
-	
 	grip.y = 0;
 
 	if (grip.x >= 0.6) {

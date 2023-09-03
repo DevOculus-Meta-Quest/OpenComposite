@@ -88,6 +88,8 @@ XrBackend::~XrBackend()
 	// in their destructor.
 	PrepareForSessionShutdown();
 
+	temporaryGraphics.reset();
+
 	DrvOpenXR::FullShutdown();
 }
 

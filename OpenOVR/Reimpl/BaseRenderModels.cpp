@@ -486,10 +486,10 @@ bool BaseRenderModels::GetComponentState(const char* pchRenderModelName, const c
 
 	std::string componentName = pchComponentName;
 
-	if (pchRenderModelName != nullptr) {
+	ITrackedDevice::HandType hand = ITrackedDevice::HAND_NONE;
+	if (pchRenderModelName)
+	{
 		std::string renderModelName = pchRenderModelName;
-
-		ITrackedDevice::HandType hand;
 		if (renderModelName == "renderLeftHand") {
 			hand = ITrackedDevice::HAND_LEFT;
 		} else if (renderModelName == "renderRightHand") {
@@ -497,12 +497,12 @@ bool BaseRenderModels::GetComponentState(const char* pchRenderModelName, const c
 		} else {
 			hand = ITrackedDevice::HAND_NONE;
 		}
+	}
 
-		// See if we can get it properly
-		bool success = TryGetComponentState(hand, componentName, pComponentState);
-		if (success)
-			return true;
-	}	
+	// See if we can get it properly
+	bool success = TryGetComponentState(hand, componentName, pComponentState);
+	if (success)
+		return true;
 
 	// Log a warning about this component, but only do so once
 	if (!warnedAboutComponents.contains(componentName)) {
