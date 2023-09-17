@@ -235,7 +235,6 @@ else ()
 endif ()
 set(OVR_PCH_EXCLUDED
 	OpenOVR/Misc/ini.c
-	OpenOVR/Misc/jsoncpp.cpp
 	OpenOVR/Misc/lodepng.cpp
 )
 
@@ -253,6 +252,8 @@ add_library(OCCore STATIC
 	OpenOVR/convert.cpp
 	OpenOVR/logging.cpp
 	OpenOVR/linux_funcs.cpp
+	OpenOVR/Misc/AudioOverride.cpp
+	OpenOVR/Misc/smooth_input.cpp
 	OpenOVR/Misc/Config.cpp
 	OpenOVR/Misc/debug_helper.cpp
 	OpenOVR/Misc/Haptics.cpp
@@ -268,6 +269,7 @@ add_library(OCCore STATIC
 	OpenOVR/Misc/Input/IndexControllerInteractionProfile.cpp
 	OpenOVR/Misc/Input/HolographicInteractionProfile.cpp
 	OpenOVR/Misc/Input/ReverbG2InteractionProfile.cpp
+	OpenOVR/Misc/Input/Pico4InteractionProfile.cpp
 	OpenOVR/OpenOVR.cpp
 	OpenOVR/Reimpl/BaseApplications.cpp
 	OpenOVR/Reimpl/BaseChaperone.cpp
@@ -319,12 +321,13 @@ add_library(OCCore STATIC
 	OpenOVR/convert.h
 	OpenOVR/custom_types.h
 	OpenOVR/logging.h
+	OpenOVR/Misc/AudioOverride.h
+	OpenOVR/Misc/smooth_input.h
 	OpenOVR/Misc/Config.h
 	OpenOVR/Misc/debug_helper.h
 	OpenOVR/Misc/Haptics.h
 	OpenOVR/Misc/ini.h
 	OpenOVR/Misc/json/json-forwards.h
-	OpenOVR/Misc/json/json.h
 	OpenOVR/Misc/Keyboard/KeyboardLayout.h
 	OpenOVR/Misc/Keyboard/SudoFontMeta.h
 	OpenOVR/Misc/Keyboard/VRKeyboard.h
@@ -373,7 +376,7 @@ add_library(OCCore STATIC
 	${GENERATED_DIR}/interfaces/vrtypes.h
 )
 target_include_directories(OCCore PUBLIC OpenOVR ${CMAKE_BINARY_DIR})  # TODO make this private and put the public headers elsewhere
-target_include_directories(OCCore PRIVATE BundledLibs OpenVRHeaders)
+target_include_directories(OCCore PRIVATE BundledLibs OpenVRHeaders ${XrDir}/src/external/jsoncpp/include)
 target_compile_definitions(OCCore PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS})
 
 target_link_libraries(OCCore OpenVR Vulkan ${XrLib} ${glmLib})

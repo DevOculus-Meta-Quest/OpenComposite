@@ -21,8 +21,11 @@
 #include <optional>
 #include <set>
 #include <utility>
+#include <json/json.h>
 
+#include "Misc/Config.h"
 #include "Misc/xrmoreutils.h"
+#include "Misc/smooth_input.h"
 
 // Use RenderModels for the pose offsets, which are the same as component positions
 #include "BaseRenderModels.h"
@@ -33,6 +36,8 @@ using namespace vr;
 
 // On Android, the application must supply a function to load the contents of a file
 #include "Misc/android_api.h"
+
+SmoothInput BaseInput::smoothInput(oovr_global_configuration.InputWindowSize());
 
 /**
  * Macro for creating an Action object from a handle and verifying isn't invalid.
@@ -666,7 +671,6 @@ void BaseInput::LoadEmptyManifestIfRequired()
 		for (const auto& legacyController : legacyControllers) {
 			profile->AddLegacyBindings(legacyController, bindings);
 		}
-
 		// Load the bindings into the runtime
 		XrPath interactionProfilePath;
 		OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, profile->GetPath().c_str(), &interactionProfilePath));
@@ -1047,6 +1051,10 @@ void BaseInput::CreateLegacyActions()
 		create(&ctrl.stickX, "thumbstick-x", "Thumbstick X axis", XR_ACTION_TYPE_FLOAT_INPUT);
 		create(&ctrl.stickY, "thumbstick-y", "Thumbstick Y axis", XR_ACTION_TYPE_FLOAT_INPUT);
 
+		create(&ctrl.trackPadClick, "trackpad-btn", "Trackpad Click", XR_ACTION_TYPE_BOOLEAN_INPUT);
+		create(&ctrl.trackPadX, "trackpad-x", "Trackpad X axis", XR_ACTION_TYPE_FLOAT_INPUT);
+		create(&ctrl.trackPadY, "trackpad-y", "Trackpad Y axis", XR_ACTION_TYPE_FLOAT_INPUT);
+
 		// Note that while we define the grip as a float, we can still bind it to boolean actions and the OpenXR runtime will
 		// return 0.0 or 1.0 depending on the button status. OpenXR 1.0 § 11.4.
 		create(&ctrl.grip, "grip", "Grip", XR_ACTION_TYPE_FLOAT_INPUT);
@@ -1173,7 +1181,7 @@ void BaseInput::InternalUpdate()
 	XrActionsSyncInfo syncInfo = { XR_TYPE_ACTIONS_SYNC_INFO };
 	syncInfo.activeActionSets = &aas;
 	syncInfo.countActiveActionSets = 1;
-	OOVR_FAILED_XR_ABORT(xrSyncActions(xr_session.get(), &syncInfo));
+	OOVR_FAILED_XR_SOFT_ABORT(xrSyncActions(xr_session.get(), &syncInfo));
 	syncSerial++;
 }
 
@@ -1341,6 +1349,13 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 				continue;
 			lengthSq = maxLengthSq;
 
+			bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
+
+			if (inputSmoothingEnabled) {
+				smoothInput.updateTriggerValue(i, state.currentState);
+				state.currentState = smoothInput.getSmoothedTriggerValue(i);
+			}
+
 			pActionData->x = state.currentState;
 			pActionData->y = 0;
 			pActionData->z = 0;
@@ -1358,6 +1373,21 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 			float lengthSq = state.currentState.x * state.currentState.x + state.currentState.y * state.currentState.y;
 			if (lengthSq < maxLengthSq || !state.isActive)
 				continue;
+
+			float deadZoneSize = 0.0f;
+			if (i == 0) {
+				deadZoneSize = std::abs(oovr_global_configuration.LeftDeadZoneSize());
+			} else if (i == 1) {
+				deadZoneSize = std::abs(oovr_global_configuration.RightDeadZoneSize());
+			}
+
+			if (std::abs(state.currentState.x) <= deadZoneSize) {
+				state.currentState.x = 0.0f;
+			}
+			if (std::abs(state.currentState.y) <= deadZoneSize) {
+				state.currentState.y = 0.0f;
+			}
+
 			maxLengthSq = lengthSq;
 
 			pActionData->x = state.currentState.x;
@@ -1384,6 +1414,23 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	// TODO implement the deltas
 
 	return VRInputError_None;
+}
+
+void log_binary(uint64_t value, int hand, string addText)
+{
+	char binary_repr[65 + 8]; // 64 bits + 8 spaces for readability + 1 for the null-terminator
+	int index = 0;
+
+	for (int i = 63; i >= 0; i--) {
+		uint64_t bit = (value >> i) & 1;
+		binary_repr[index++] = '0' + bit;
+		if (i % 8 == 0) {
+			binary_repr[index++] = ' '; // Optional: add a space every 8 bits for readability
+		}
+	}
+	binary_repr[index] = '\0'; // Null-terminate the string
+
+	OOVR_LOGF("hand: %d %s Binary representation: %s", hand, addText, binary_repr);
 }
 
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
@@ -2192,32 +2239,98 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 		return false;
 	LegacyControllerActions& ctrl = legacyControllers[hand];
 
-	auto bindButton = [state](XrAction action, XrAction touch, int shift) {
+	auto bindButton = [state](XrAction action, XrAction touch, int shift, int hand, bool inputSmoothingEnabled) {
 		XrActionStateGetInfo getInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
 		XrActionStateBoolean xs = { XR_TYPE_ACTION_STATE_BOOLEAN };
 
 		if (action) {
 			getInfo.action = action;
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
-			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << shift;
+			int storeState = xs.currentState;
+
+			if (inputSmoothingEnabled) {
+				switch (shift) {
+				case vr::k_EButton_A:
+					smoothInput.updateAButtonPressValue(hand, storeState);
+					storeState = smoothInput.getSmoothedAButtonPressValue(hand);
+					break;
+				case vr::k_EButton_System:
+					smoothInput.updateBButtonPressValue(hand, storeState);
+					storeState = smoothInput.getSmoothedBButtonPressValue(hand);
+					break;
+				case vr::k_EButton_ApplicationMenu:
+					smoothInput.updateMenuPressValue(hand, storeState);
+					storeState = smoothInput.getSmoothedMenuPressValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Touchpad:
+					smoothInput.updateThumbClickValue(hand, storeState);
+					storeState = smoothInput.getSmoothedThumbClickValue(hand);
+					break;
+				case vr::k_EButton_Grip:
+					smoothInput.updateGripClickValue(hand, storeState);
+					storeState = smoothInput.getSmoothedGripClickValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Trigger:
+					smoothInput.updateTriggerClickValue(hand, storeState);
+					storeState = smoothInput.getSmoothedTriggerClickValue(hand);
+					break;
+				default:
+					break;
+				}
+			}
+
+			state->ulButtonPressed |= (uint64_t)(storeState != 0) << shift;
 		}
 
 		if (touch != XR_NULL_HANDLE) {
 			getInfo.action = touch;
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
-			state->ulButtonTouched |= (uint64_t)(xs.currentState != 0) << shift;
+			int storeState = xs.currentState;
+
+			if (inputSmoothingEnabled) {		
+				switch (shift) {
+				case vr::k_EButton_A:
+					smoothInput.updateAButtonTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedAButtonTouchValue(hand);
+					break;
+				case vr::k_EButton_System:
+					smoothInput.updateBButtonTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedBButtonTouchValue(hand);
+					break;
+				case vr::k_EButton_ApplicationMenu:
+					smoothInput.updateMenuTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedMenuTouchValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Touchpad:
+					smoothInput.updateThumbTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedThumbTouchValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Trigger:
+					smoothInput.updateTriggerTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedTriggerTouchValue(hand);
+					break;
+				default:
+					break;
+				}
+			}			
+
+			state->ulButtonTouched |= (uint64_t)(storeState != 0) << shift;
 		}
 	};
 
+	bool disableTriggerTouch = oovr_global_configuration.DisableTriggerTouch();
+	bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
+
 	// Read the buttons
 
-	bindButton(ctrl.system, XR_NULL_HANDLE, vr::k_EButton_System);
-	bindButton(ctrl.btnA, ctrl.btnATouch, vr::k_EButton_A);
-	bindButton(ctrl.menu, ctrl.menuTouch, vr::k_EButton_ApplicationMenu);
-	bindButton(ctrl.stickBtn, ctrl.stickBtnTouch, vr::k_EButton_SteamVR_Touchpad);
-	bindButton(ctrl.gripClick, XR_NULL_HANDLE, vr::k_EButton_Grip);
-	bindButton(ctrl.triggerClick, ctrl.triggerTouch, vr::k_EButton_SteamVR_Trigger);
-	bindButton(XR_NULL_HANDLE, XR_NULL_HANDLE, vr::k_EButton_Axis2); // FIXME clean up? Is this the grip?
+	//Let them set these to null?
+	bindButton(ctrl.system, XR_NULL_HANDLE, vr::k_EButton_System, hand, inputSmoothingEnabled);
+	bindButton(ctrl.btnA, ctrl.btnATouch, vr::k_EButton_A, hand, inputSmoothingEnabled);
+	bindButton(ctrl.menu, ctrl.menuTouch, vr::k_EButton_ApplicationMenu, hand, inputSmoothingEnabled);
+	bindButton(ctrl.stickBtn, ctrl.stickBtnTouch, vr::k_EButton_SteamVR_Touchpad, hand, inputSmoothingEnabled);
+	bindButton(ctrl.gripClick, XR_NULL_HANDLE, vr::k_EButton_Grip, hand, inputSmoothingEnabled);
+	bindButton(ctrl.triggerClick, disableTriggerTouch ? XR_NULL_HANDLE : ctrl.triggerTouch, vr::k_EButton_SteamVR_Trigger, hand, inputSmoothingEnabled);
+	//bindButton(XR_NULL_HANDLE, XR_NULL_HANDLE, vr::k_EButton_Axis2); // FIXME clean up? Is this the grip?
 
 	// Read the analogue values
 	auto readFloat = [](XrAction action) -> float {
@@ -2236,17 +2349,76 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 		}
 	};
 
+	if (!oovr_global_configuration.DisableTrackPad() && ctrl.trackPadClick && ctrl.trackPadY) {
+		XrActionStateGetInfo getInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
+		XrActionStateBoolean xs = { XR_TYPE_ACTION_STATE_BOOLEAN };
+		getInfo.action = ctrl.trackPadClick;
+		OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
+
+		float valueTrackPadY = readFloat(ctrl.trackPadY);
+		if (valueTrackPadY <= 0.0f) {
+			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_A;
+			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_ApplicationMenu;
+		} else {
+			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << vr::k_EButton_ApplicationMenu;
+			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_A;
+		}
+	}
+
 	VRControllerAxis_t& thumbstick = state->rAxis[0];
-	thumbstick.x = readFloat(ctrl.stickX);
-	thumbstick.y = readFloat(ctrl.stickY);
+	if (inputSmoothingEnabled) {
+		smoothInput.updateJoystickXValue(hand, readFloat(ctrl.stickX));
+		smoothInput.updateJoystickYValue(hand, readFloat(ctrl.stickY));
+		thumbstick.x = smoothInput.getSmoothedJoystickXValue(hand);
+		thumbstick.y = smoothInput.getSmoothedJoystickYValue(hand);
+	} else {
+		thumbstick.x = readFloat(ctrl.stickX);
+		thumbstick.y = readFloat(ctrl.stickY);
+	}
+
+	float deadZoneSize = 0.0f;
+	if (hand == 0) {
+		deadZoneSize = std::abs(oovr_global_configuration.LeftDeadZoneSize());
+	} else if (hand == 1) {
+		deadZoneSize = std::abs(oovr_global_configuration.RightDeadZoneSize());
+	}
+
+	if (std::abs(thumbstick.x) <= deadZoneSize) {
+		thumbstick.x = 0.0f;
+	}
+	if (std::abs(thumbstick.y) <= deadZoneSize) {
+		thumbstick.y = 0.0f;
+	}
 
 	VRControllerAxis_t& trigger = state->rAxis[1];
-	trigger.x = readFloat(ctrl.trigger);
+	if (inputSmoothingEnabled) {
+		smoothInput.updateTriggerValue(hand, readFloat(ctrl.trigger));
+		trigger.x = smoothInput.getSmoothedTriggerValue(hand);
+	} else {
+		trigger.x = readFloat(ctrl.trigger);
+	}
 	trigger.y = 0;
 
 	VRControllerAxis_t& grip = state->rAxis[2];
-	grip.x = readFloat(ctrl.grip);
+	if (inputSmoothingEnabled) {
+		smoothInput.updateGripValue(hand, readFloat(ctrl.grip));
+		grip.x = smoothInput.getSmoothedGripValue(hand);
+	} else {
+		grip.x = readFloat(ctrl.grip);
+	}
+
 	grip.y = 0;
+
+	if (grip.x >= 0.6) {
+		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_Grip);
+		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_Axis2);
+	}
+	if (trigger.x >= 0.6) {
+		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_SteamVR_Trigger);
+	}
+	if (disableTriggerTouch && trigger.x >= 0.3) {
+		state->ulButtonTouched |= ButtonMaskFromId(k_EButton_SteamVR_Trigger);
+	}
 
 	return true;
 }
@@ -2269,7 +2441,7 @@ void BaseInput::TriggerLegacyHapticPulse(vr::TrackedDeviceIndex_t controllerDevi
 	XrHapticVibration vibration = { XR_TYPE_HAPTIC_VIBRATION };
 	vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
 	vibration.duration = durationNanos;
-	vibration.amplitude = 1;
+	vibration.amplitude = oovr_global_configuration.HapticStrength();
 
 	OOVR_FAILED_XR_ABORT(xrApplyHapticFeedback(xr_session.get(), &info, (XrHapticBaseHeader*)&vibration));
 }

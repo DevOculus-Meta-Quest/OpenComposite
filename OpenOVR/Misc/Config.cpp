@@ -118,6 +118,30 @@ static float parse_float(string orig, string name, int line)
 	return result;
 }
 
+static int parse_int(string orig, string name, int line)
+{
+	const char* str = orig.c_str();
+	char* end = NULL;
+	long result = strtol(str, &end, 10);
+
+	if (end != str + orig.length()) {
+		string err = "Value " + orig + " for in config file for " + name + " on line "
+		    + to_string(line) + " is not an integer (eg 5)";
+		ABORT(err);
+	}
+
+	OOVR_LOGF("Setting config param %s to %d", name.c_str(), result);
+	return static_cast<int>(result);
+}
+
+static string parse_string(string orig, string name, int line)
+{
+	string result = str_tolower(orig);
+
+	OOVR_LOGF("Setting config param %s to %s", name.c_str(), result.c_str());
+	return result;
+}
+
 int Config::ini_handler(void* user, const char* pSection,
     const char* pName, const char* pValue,
     int lineno)
@@ -154,6 +178,17 @@ int Config::ini_handler(void* user, const char* pSection,
 		CFGOPT(bool, initUsingVulkan);
 		CFGOPT(float, hiddenMeshVerticalScale);
 		CFGOPT(bool, logAllOpenVRCalls);
+		CFGOPT(bool, enableAudioSwitch);
+		CFGOPT(string, audioDeviceName);
+		CFGOPT(bool, enableInputSmoothing);
+		CFGOPT(int, inputWindowSize);
+		CFGOPT(bool, adjustTilt);
+		CFGOPT(float, tilt);
+		CFGOPT(float, leftDeadZoneSize);
+		CFGOPT(float, rightDeadZoneSize);
+		CFGOPT(bool, disableTriggerTouch);
+		CFGOPT(float, hapticStrength);
+		CFGOPT(bool, disableTrackPad);
 	}
 
 #undef CFGOPT

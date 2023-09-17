@@ -2,12 +2,11 @@
 #define BASE_IMPL
 #include "BaseClientCore.h"
 #include "steamvr_abi.h"
+#include <json/json.h>
 
 #include <codecvt>
 #include <fstream>
 #include <locale>
-
-#include "Misc/json/json.h"
 
 #ifdef _WIN32
 #include <ShlObj.h>

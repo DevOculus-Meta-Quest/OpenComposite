@@ -5,7 +5,6 @@
 #include "../BaseCommon.h"
 
 #include "Drivers/Backend.h"
-#include "Misc/json/json.h"
 #include <array>
 #include <map>
 #include <optional>
@@ -17,6 +16,7 @@
 #include "Misc/Input/InputData.h"
 #include "Misc/Input/InteractionProfile.h"
 #include "Misc/Input/LegacyControllerActions.h"
+#include "Misc/smooth_input.h"
 
 typedef vr::EVRSkeletalTrackingLevel OOVR_EVRSkeletalTrackingLevel;
 
@@ -148,6 +148,9 @@ public:
 	// Ctor/dtor
 	BaseInput();
 	~BaseInput();
+
+private:
+	static SmoothInput smoothInput;
 
 public:
 	typedef vr::VRInputValueHandle_t VRInputValueHandle_t;

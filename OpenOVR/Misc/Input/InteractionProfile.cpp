@@ -13,9 +13,11 @@
 #include "OculusInteractionProfile.h"
 #include "ReverbG2InteractionProfile.h"
 #include "ViveInteractionProfile.h"
+#include "Pico4InteractionProfile.h"
 
 #include "Reimpl/BaseInput.h"
 #include "generated/static_bases.gen.h"
+#include <Misc/Config.h>
 
 std::string InteractionProfile::TranslateAction(const std::string& inputPath) const
 {
@@ -79,6 +81,9 @@ void InteractionProfile::AddLegacyBindings(const LegacyControllerActions& ctrl, 
 	create(ctrl.btnATouch, paths->btnATouch);
 	create(ctrl.stickX, paths->stickX);
 	create(ctrl.stickY, paths->stickY);
+	create(ctrl.trackPadX, paths->trackPadX);
+	create(ctrl.trackPadY, paths->trackPadY);
+	create(ctrl.trackPadClick, paths->trackPadClick);
 	create(ctrl.stickBtn, paths->stickBtn);
 	create(ctrl.stickBtnTouch, paths->stickBtnTouch);
 	create(ctrl.trigger, paths->trigger);
@@ -97,6 +102,9 @@ const InteractionProfile::ProfileList& InteractionProfile::GetProfileList()
 	if (profiles.empty()) {
 		if (xr_ext->G2Controller_Available())
 			profiles.emplace_back(std::make_unique<ReverbG2InteractionProfile>());
+
+		if (xr_ext->PicoController_Available())
+			profiles.emplace_back(std::make_unique<Pico4InteractionProfile>());
 
 		profiles.emplace_back(std::make_unique<HolographicInteractionProfile>());
 		profiles.emplace_back(std::make_unique<IndexControllerInteractionProfile>());
@@ -122,10 +130,19 @@ InteractionProfile* InteractionProfile::GetProfileByPath(const string& name)
 
 glm::mat4 InteractionProfile::GetGripToSteamVRTransform(ITrackedDevice::HandType hand) const
 {
+	bool adjustTilt = oovr_global_configuration.AdjustTilt();
+	float degrees = oovr_global_configuration.Tilt();
+
+	// Convert degrees to radians
+	float radians = glm::radians(degrees);
+
+	// Create a rotation matrix around the X-axis
+	glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), radians, glm::vec3(1.0f, 0.0f, 0.0f));
+
 	if (hand == ITrackedDevice::HandType::HAND_LEFT) {
-		return leftHandGripTransform;
+		return adjustTilt ? leftHandGripTransform * rotationMatrix : leftHandGripTransform;
 	} else if (hand == ITrackedDevice::HandType::HAND_RIGHT) {
-		return rightHandGripTransform;
+		return adjustTilt ? rightHandGripTransform * rotationMatrix : rightHandGripTransform;
 	} 
 	return glm::identity<glm::mat4>();
 }

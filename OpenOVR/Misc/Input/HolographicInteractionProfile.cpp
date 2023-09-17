@@ -42,6 +42,24 @@ HolographicInteractionProfile::HolographicInteractionProfile()
 		{ vr::Prop_ModelNumber_String, { "WindowsMR" } },
 		{ vr::Prop_ControllerType_String, { GetOpenVRName().value() } },
 	};
+
+	// Setup the grip-to-steamvr space matrices
+	glm::mat4 inverseHandTransformLeft = {
+		{ 1.00000, -0.00000, 0.00000, 0.00000, },
+		{ 0.00000, 0.99614, -0.08780, 0.00000, },
+		{ 0.00000, 0.08780, 0.99614, 0.00000, },
+		{ 0.00000, -0.00553, 0.09689, 1.00000, }
+	};
+
+	glm::mat4 inverseHandTransformRight = {
+		{ 1.00000, -0.00000, 0.00000, 0.00000, },
+		{ 0.00000, 0.99614, -0.08780, 0.00000, },
+		{ 0.00000, 0.08780, 0.99614, 0.00000, },
+		{ 0.00000, -0.00553, 0.09689, 1.00000, }
+	};
+
+	leftHandGripTransform = glm::affineInverse(inverseHandTransformLeft);
+	rightHandGripTransform = glm::affineInverse(inverseHandTransformRight);
 }
 
 const std::string& HolographicInteractionProfile::GetPath() const
@@ -62,9 +80,12 @@ const InteractionProfile::LegacyBindings* HolographicInteractionProfile::GetLega
 	// Games that use legacy bindings will typically just not use the thumbstick,
 	// but most users would probably prefer to use it, so let's use it.
 	if (!bindings.menu) {
-		bindings.menu = "input/menu/click";
+		bindings.system = "input/menu/click";
 		bindings.stickX = "input/thumbstick/x";
 		bindings.stickY = "input/thumbstick/y";
+		bindings.trackPadClick = "input/trackpad/click";
+		bindings.trackPadX = "input/trackpad/x";
+		bindings.trackPadY = "input/trackpad/y";
 		bindings.stickBtn = "input/thumbstick/click";
 		bindings.trigger = "input/trigger/value";
 		bindings.triggerClick = "input/trigger/value";

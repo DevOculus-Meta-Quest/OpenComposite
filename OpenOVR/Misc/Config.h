@@ -23,6 +23,17 @@ public:
 	inline bool InitUsingVulkan() const { return initUsingVulkan; }
 	float HiddenMeshVerticalScale() const { return hiddenMeshVerticalScale; }
 	inline bool LogAllOpenVRCalls() const { return logAllOpenVRCalls; }
+	inline bool EnableAudioSwitch() const { return enableAudioSwitch; }
+	std::string AudioDeviceName() const { return audioDeviceName; }
+	inline bool EnableInputSmoothing() { return enableInputSmoothing; }
+	int InputWindowSize() const { return inputWindowSize; }
+	inline bool AdjustTilt() { return adjustTilt; }
+	float Tilt() const { return tilt; }
+	float LeftDeadZoneSize() const { return leftDeadZoneSize; }
+	float RightDeadZoneSize() const { return rightDeadZoneSize; }
+	inline bool DisableTriggerTouch() { return disableTriggerTouch; }
+	float HapticStrength() { return hapticStrength; }
+	inline bool DisableTrackPad() { return disableTrackPad; }
 
 private:
 	static int ini_handler(
@@ -52,6 +63,17 @@ private:
 	bool initUsingVulkan = false;
 	float hiddenMeshVerticalScale = 1.0f;
 	bool logAllOpenVRCalls = false;
+	bool enableAudioSwitch = false;	
+	std::string audioDeviceName = "";
+	bool enableInputSmoothing = false;
+	int inputWindowSize = 5;
+	bool adjustTilt = false;
+	float tilt = 0.0f;
+	float leftDeadZoneSize = 0.0f;
+	float rightDeadZoneSize = 0.0f;
+	bool disableTriggerTouch = false;
+	float hapticStrength = 0.1f;
+	bool disableTrackPad = false;
 };
 
 extern Config oovr_global_configuration;
