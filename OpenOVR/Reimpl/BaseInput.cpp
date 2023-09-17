@@ -671,7 +671,6 @@ void BaseInput::LoadEmptyManifestIfRequired()
 		for (const auto& legacyController : legacyControllers) {
 			profile->AddLegacyBindings(legacyController, bindings);
 		}
-
 		// Load the bindings into the runtime
 		XrPath interactionProfilePath;
 		OOVR_FAILED_XR_ABORT(xrStringToPath(xr_instance, profile->GetPath().c_str(), &interactionProfilePath));
@@ -1417,7 +1416,7 @@ EVRInputError BaseInput::GetAnalogActionData(VRActionHandle_t action, InputAnalo
 	return VRInputError_None;
 }
 
-void log_binary(uint64_t value)
+void log_binary(uint64_t value, int hand, string addText)
 {
 	char binary_repr[65 + 8]; // 64 bits + 8 spaces for readability + 1 for the null-terminator
 	int index = 0;
@@ -1431,7 +1430,7 @@ void log_binary(uint64_t value)
 	}
 	binary_repr[index] = '\0'; // Null-terminate the string
 
-	OOVR_LOGF("Binary representation: %s", binary_repr);
+	OOVR_LOGF("hand: %d %s Binary representation: %s", hand, addText, binary_repr);
 }
 
 EVRInputError BaseInput::GetPoseActionData(VRActionHandle_t action, ETrackingUniverseOrigin eOrigin, float fPredictedSecondsFromNow,
@@ -2240,33 +2239,97 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 		return false;
 	LegacyControllerActions& ctrl = legacyControllers[hand];
 
-	auto bindButton = [state](XrAction action, XrAction touch, int shift) {
+	auto bindButton = [state](XrAction action, XrAction touch, int shift, int hand, bool inputSmoothingEnabled) {
 		XrActionStateGetInfo getInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
 		XrActionStateBoolean xs = { XR_TYPE_ACTION_STATE_BOOLEAN };
 
 		if (action) {
 			getInfo.action = action;
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
-			state->ulButtonPressed |= (uint64_t)(xs.currentState != 0) << shift;
+			int storeState = xs.currentState;
+
+			if (inputSmoothingEnabled) {
+				switch (shift) {
+				case vr::k_EButton_A:
+					smoothInput.updateAButtonPressValue(hand, storeState);
+					storeState = smoothInput.getSmoothedAButtonPressValue(hand);
+					break;
+				case vr::k_EButton_System:
+					smoothInput.updateBButtonPressValue(hand, storeState);
+					storeState = smoothInput.getSmoothedBButtonPressValue(hand);
+					break;
+				case vr::k_EButton_ApplicationMenu:
+					smoothInput.updateMenuPressValue(hand, storeState);
+					storeState = smoothInput.getSmoothedMenuPressValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Touchpad:
+					smoothInput.updateThumbClickValue(hand, storeState);
+					storeState = smoothInput.getSmoothedThumbClickValue(hand);
+					break;
+				case vr::k_EButton_Grip:
+					smoothInput.updateGripClickValue(hand, storeState);
+					storeState = smoothInput.getSmoothedGripClickValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Trigger:
+					smoothInput.updateTriggerClickValue(hand, storeState);
+					storeState = smoothInput.getSmoothedTriggerClickValue(hand);
+					break;
+				default:
+					break;
+				}
+			}
+
+			state->ulButtonPressed |= (uint64_t)(storeState != 0) << shift;
 		}
 
 		if (touch != XR_NULL_HANDLE) {
 			getInfo.action = touch;
 			OOVR_FAILED_XR_ABORT(xrGetActionStateBoolean(xr_session.get(), &getInfo, &xs));
-			state->ulButtonTouched |= (uint64_t)(xs.currentState != 0) << shift;
+			int storeState = xs.currentState;
+
+			if (inputSmoothingEnabled) {		
+				switch (shift) {
+				case vr::k_EButton_A:
+					smoothInput.updateAButtonTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedAButtonTouchValue(hand);
+					break;
+				case vr::k_EButton_System:
+					smoothInput.updateBButtonTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedBButtonTouchValue(hand);
+					break;
+				case vr::k_EButton_ApplicationMenu:
+					smoothInput.updateMenuTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedMenuTouchValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Touchpad:
+					smoothInput.updateThumbTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedThumbTouchValue(hand);
+					break;
+				case vr::k_EButton_SteamVR_Trigger:
+					smoothInput.updateTriggerTouchValue(hand, storeState);
+					storeState = smoothInput.getSmoothedTriggerTouchValue(hand);
+					break;
+				default:
+					break;
+				}
+			}			
+
+			state->ulButtonTouched |= (uint64_t)(storeState != 0) << shift;
 		}
 	};
 
 	bool disableTriggerTouch = oovr_global_configuration.DisableTriggerTouch();
+	bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
 
 	// Read the buttons
 
-	bindButton(ctrl.system, XR_NULL_HANDLE, vr::k_EButton_System);
-	bindButton(ctrl.btnA, ctrl.btnATouch, vr::k_EButton_A);
-	bindButton(ctrl.menu, ctrl.menuTouch, vr::k_EButton_ApplicationMenu);
-	bindButton(ctrl.stickBtn, ctrl.stickBtnTouch, vr::k_EButton_SteamVR_Touchpad);
-	bindButton(ctrl.gripClick, XR_NULL_HANDLE, vr::k_EButton_Grip);
-	bindButton(ctrl.triggerClick, disableTriggerTouch ? XR_NULL_HANDLE : ctrl.triggerTouch, vr::k_EButton_SteamVR_Trigger);
+	//Let them set these to null?
+	bindButton(ctrl.system, XR_NULL_HANDLE, vr::k_EButton_System, hand, inputSmoothingEnabled);
+	bindButton(ctrl.btnA, ctrl.btnATouch, vr::k_EButton_A, hand, inputSmoothingEnabled);
+	bindButton(ctrl.menu, ctrl.menuTouch, vr::k_EButton_ApplicationMenu, hand, inputSmoothingEnabled);
+	bindButton(ctrl.stickBtn, ctrl.stickBtnTouch, vr::k_EButton_SteamVR_Touchpad, hand, inputSmoothingEnabled);
+	bindButton(ctrl.gripClick, XR_NULL_HANDLE, vr::k_EButton_Grip, hand, inputSmoothingEnabled);
+	bindButton(ctrl.triggerClick, disableTriggerTouch ? XR_NULL_HANDLE : ctrl.triggerTouch, vr::k_EButton_SteamVR_Trigger, hand, inputSmoothingEnabled);
 	//bindButton(XR_NULL_HANDLE, XR_NULL_HANDLE, vr::k_EButton_Axis2); // FIXME clean up? Is this the grip?
 
 	// Read the analogue values
@@ -2301,8 +2364,6 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 			state->ulButtonPressed |= (uint64_t)(false) << vr::k_EButton_A;
 		}
 	}
-
-	bool inputSmoothingEnabled = oovr_global_configuration.EnableInputSmoothing();
 
 	VRControllerAxis_t& thumbstick = state->rAxis[0];
 	if (inputSmoothingEnabled) {
@@ -2345,6 +2406,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	} else {
 		grip.x = readFloat(ctrl.grip);
 	}
+
 	grip.y = 0;
 
 	if (grip.x >= 0.6) {
@@ -2354,7 +2416,7 @@ bool BaseInput::GetLegacyControllerState(vr::TrackedDeviceIndex_t controllerDevi
 	if (trigger.x >= 0.6) {
 		state->ulButtonPressed |= ButtonMaskFromId(k_EButton_SteamVR_Trigger);
 	}
-	if (disableTriggerTouch && trigger.x >= 0.1) {
+	if (disableTriggerTouch && trigger.x >= 0.3) {
 		state->ulButtonTouched |= ButtonMaskFromId(k_EButton_SteamVR_Trigger);
 	}
 
