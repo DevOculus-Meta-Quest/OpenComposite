@@ -411,6 +411,11 @@ private:
 		XrActionSet xr = XR_NULL_HANDLE;
 	};
 
+	// An implementation of GetSkeletalSummaryData that is not part of the OpenVR api.
+	// It is for use internally, intended to get finger curl data when using legacy input,
+	// without needing to create a skeletal action.
+	EVRInputError GetSkeletalSummaryData_Internal(int, VRSkeletalSummaryData_t*);
+
 	enum class ActionSourceMode {
 		// Some may be missing, there's no documentation on this that I could find
 		BUTTON,
