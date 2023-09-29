@@ -75,6 +75,9 @@ public:
 	int32_t GetInt32TrackedDeviceProperty(vr::ETrackedDeviceProperty prop, vr::ETrackedPropertyError* pErrorL) override;
 
 	void SetInteractionProfile(const InteractionProfile* profile);
+
+private:
+	std::map<vr::EVREye, XrView> cachedViews;
 };
 
 #pragma warning(pop)
